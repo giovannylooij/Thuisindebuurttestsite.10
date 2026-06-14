@@ -9,6 +9,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=Public+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.supabase = supabase.createClient(
+      'https://bxklumejqczcmhrpzstt.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4a2x1bWVqcWN6Y21ocnB6c3R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MjI3MDksImV4cCI6MjA5NTk5ODcwOX0.qUHVcctJkOxuzPPcG_xSA7VQ9kHR8v3Zmp3VdkxL2TI'
+    );
+  </script>
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
@@ -1668,7 +1675,7 @@ function ClubjesList({ onNav, onEdit }) {
   function handleDelete(id, naam) {
     if (!window.confirm('Buurtgroep "' + naam + '" definitief verwijderen?')) return;
     const idx = DATA.clubjes.findIndex(c => c.id === id);
-    if (idx >= 0) DATA.clubjes.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('clubjes', id); DATA.clubjes.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Buurtgroep verwijderd');
     forceUpdate();
@@ -1769,13 +1776,14 @@ function ClubjeEdit({ id, onBack }) {
       DATA.clubjes.push({ ...toSave, id: newId });
     }
     window.__syncToSite && window.__syncToSite();
+    window.__supabaseUpsert('clubjes', toSave);
     window.__showToast && window.__showToast('Buurtgroep opgeslagen!');
   }
 
   function handleDelete() {
     if (!window.confirm('Buurtgroep "' + fd.naam + '" definitief verwijderen?')) return;
     const idx = DATA.clubjes.findIndex(c => c.id === id);
-    if (idx >= 0) DATA.clubjes.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('clubjes', id); DATA.clubjes.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Buurtgroep verwijderd');
     onBack();
@@ -2006,6 +2014,7 @@ function WeekagendaScreen() {
   function handleSave() {
     DATA.weekagenda = rows.map(r => ({ ...r }));
     window.__syncToSite && window.__syncToSite();
+    window.__supabaseBulkUpsert('weekagenda', DATA.weekagenda);
     window.__showToast && window.__showToast('Weekagenda opgeslagen!');
   }
 
@@ -2151,13 +2160,14 @@ function ActiviteitEdit({ item, onBack }) {
       DATA.activiteiten.push({ ...toSave, id: newId });
     }
     window.__syncToSite && window.__syncToSite();
+    window.__supabaseUpsert('activiteiten', toSave);
     window.__showToast && window.__showToast('Activiteit opgeslagen!');
   }
 
   function handleDelete() {
     if (!window.confirm('Activiteit "' + fd.naam + '" definitief verwijderen?')) return;
     const idx = DATA.activiteiten.findIndex(a => a.id === item.id);
-    if (idx >= 0) DATA.activiteiten.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('activiteiten', item.id); DATA.activiteiten.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Activiteit verwijderd');
     onBack();
@@ -2231,7 +2241,7 @@ function ActiviteitenScreen() {
   function handleDelete(id, naam) {
     if (!window.confirm('Activiteit "' + naam + '" definitief verwijderen?')) return;
     const idx = DATA.activiteiten.findIndex(a => a.id === id);
-    if (idx >= 0) DATA.activiteiten.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('activiteiten', id); DATA.activiteiten.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Activiteit verwijderd');
     forceUpdate();
@@ -2334,13 +2344,14 @@ function AgendaEdit({ item, onBack }) {
       DATA.agenda.push({ ...toSave, id: newId });
     }
     window.__syncToSite && window.__syncToSite();
+    window.__supabaseUpsert('agenda', toSave);
     window.__showToast && window.__showToast('Agenda-item opgeslagen!');
   }
 
   function handleDelete() {
     if (!window.confirm('Agenda-item "' + fd.titel + '" definitief verwijderen?')) return;
     const idx = DATA.agenda.findIndex(a => a.id === item.id);
-    if (idx >= 0) DATA.agenda.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('agenda', item.id); DATA.agenda.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Agenda-item verwijderd');
     onBack();
@@ -2415,7 +2426,7 @@ function AgendaScreen() {
   function handleDelete(id, titel) {
     if (!window.confirm('Agenda-item "' + titel + '" definitief verwijderen?')) return;
     const idx = DATA.agenda.findIndex(a => a.id === id);
-    if (idx >= 0) DATA.agenda.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('agenda', id); DATA.agenda.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Agenda-item verwijderd');
     forceUpdate();
@@ -2563,13 +2574,14 @@ function NieuwsEdit({ item, onBack }) {
       DATA.nieuws.push({ ...toSave, id: newId });
     }
     window.__syncToSite && window.__syncToSite();
+    window.__supabaseUpsert('nieuws', toSave);
     window.__showToast && window.__showToast('Nieuwsbericht opgeslagen!');
   }
 
   function handleDelete() {
     if (!window.confirm('Nieuwsbericht "' + fd.titel + '" definitief verwijderen?')) return;
     const idx = DATA.nieuws.findIndex(n => n.id === item.id);
-    if (idx >= 0) DATA.nieuws.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('nieuws', item.id); DATA.nieuws.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Nieuwsbericht verwijderd');
     onBack();
@@ -2684,7 +2696,7 @@ function NieuwsScreen() {
   function handleDelete(id, titel) {
     if (!window.confirm('Nieuwsbericht "' + titel + '" definitief verwijderen?')) return;
     const idx = DATA.nieuws.findIndex(n => n.id === id);
-    if (idx >= 0) DATA.nieuws.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('nieuws', id); DATA.nieuws.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Nieuwsbericht verwijderd');
     forceUpdate();
@@ -3090,13 +3102,14 @@ function PartnerEdit({ item, onBack }) {
       DATA.partners.push({ ...toSave, id: newId, zichtbaar: true });
     }
     window.__syncToSite && window.__syncToSite();
+    window.__supabaseUpsert('partners', toSave);
     window.__showToast && window.__showToast('Partner opgeslagen!');
   }
 
   function handleDelete() {
     if (!window.confirm('Partner "' + fd.naam + '" definitief verwijderen?')) return;
     const idx = DATA.partners.findIndex(p => p.id === item.id);
-    if (idx >= 0) DATA.partners.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('partners', item.id); DATA.partners.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Partner verwijderd');
     onBack();
@@ -3160,7 +3173,7 @@ function PartnersScreen() {
   function handleDelete(id, naam) {
     if (!window.confirm('Partner "' + naam + '" definitief verwijderen?')) return;
     const idx = DATA.partners.findIndex(p => p.id === id);
-    if (idx >= 0) DATA.partners.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('partners', id); DATA.partners.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Partner verwijderd');
     forceUpdate();
@@ -3224,13 +3237,14 @@ function NetwerkEdit({ item, onBack }) {
       DATA.netwerken.push({ ...toSave, id: newId });
     }
     window.__syncToSite && window.__syncToSite();
+    window.__supabaseUpsert('netwerken', toSave);
     window.__showToast && window.__showToast('Netwerk opgeslagen!');
   }
 
   function handleDelete() {
     if (!window.confirm('Netwerk "' + fd.naam + '" definitief verwijderen?')) return;
     const idx = DATA.netwerken.findIndex(n => n.id === item.id);
-    if (idx >= 0) DATA.netwerken.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('netwerken', item.id); DATA.netwerken.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Netwerk verwijderd');
     onBack();
@@ -3282,7 +3296,7 @@ function NetwerkenScreen() {
   function handleDelete(id, naam) {
     if (!window.confirm('Netwerk "' + naam + '" definitief verwijderen?')) return;
     const idx = DATA.netwerken.findIndex(n => n.id === id);
-    if (idx >= 0) DATA.netwerken.splice(idx, 1);
+    if (idx >= 0) { window.__supabaseDelete('netwerken', id); DATA.netwerken.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Netwerk verwijderd');
     forceUpdate();
@@ -4832,7 +4846,54 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+window.__supabaseUpsert = async function(tabel, item) {
+  try {
+    const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
+    await window.supabase.from(dbTabel).upsert(item, { onConflict: 'id' });
+  } catch(e) { console.warn('Supabase upsert mislukt:', tabel, e); }
+};
+
+window.__supabaseDelete = async function(tabel, id) {
+  try {
+    const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
+    await window.supabase.from(dbTabel).delete().eq('id', id);
+  } catch(e) { console.warn('Supabase delete mislukt:', tabel, e); }
+};
+
+window.__supabaseBulkUpsert = async function(tabel, items) {
+  try {
+    const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
+    await window.supabase.from(dbTabel).upsert(items, { onConflict: 'id' });
+  } catch(e) { console.warn('Supabase bulk upsert mislukt:', tabel, e); }
+};
+
+async function loadFromSupabase() {
+  const tabellen = ['clubjes', 'activiteiten', 'agenda', 'nieuws', 'partners', 'netwerken', 'terugkerende_activiteiten'];
+  await Promise.all(tabellen.map(async (tabel) => {
+    try {
+      const { data, error } = await window.supabase.from(tabel).select('*');
+      if (!error && Array.isArray(data) && data.length > 0) {
+        if (tabel === 'terugkerende_activiteiten') {
+          window.DATA.weekagenda = data;
+        } else {
+          window.DATA[tabel] = data;
+        }
+      }
+    } catch (e) {
+      // fallback: behoud bestaande startdata
+    }
+  }));
+}
+
+const rootEl = document.getElementById('root');
+const reactRoot = ReactDOM.createRoot(rootEl);
+
+rootEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;font-size:16px;color:#555;">Bezig met laden...</div>';
+
+loadFromSupabase().then(() => {
+  rootEl.innerHTML = '';
+  reactRoot.render(<App />);
+});
 
   </script>
 </body>
