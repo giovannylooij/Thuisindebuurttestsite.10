@@ -1149,7 +1149,7 @@ window.DATA = {
   // De 9 pagina's uit jouw site (NAV_ITEMS) + Doe mee / Doneren / Boek (uit CTAs)
   pages: [
     { id: 1, titel: "Home", slug: "/", status: "Gepubliceerd", inMenu: true, ord: 1, secties: 7 },
-    { id: 2, titel: "Clubjes", slug: "/clubjes", status: "Gepubliceerd", inMenu: true, ord: 2, secties: 3 },
+    { id: 2, titel: "Buurtgroepen", slug: "/clubjes", status: "Gepubliceerd", inMenu: true, ord: 2, secties: 3 },
     { id: 3, titel: "Activiteiten", slug: "/activiteiten", status: "Gepubliceerd", inMenu: true, ord: 3, secties: 3 },
     { id: 4, titel: "Agenda", slug: "/agenda", status: "Gepubliceerd", inMenu: true, ord: 4, secties: 2 },
     { id: 5, titel: "Buurtatlas", slug: "/buurtatlas", status: "Gepubliceerd", inMenu: true, ord: 5, secties: 2 },
@@ -1165,7 +1165,7 @@ window.DATA = {
   // Navigation items for the main menu
   nav: [
     { id: 'nav-1', label: 'Home',         target: '/',             visible: true,  level: 0 },
-    { id: 'nav-2', label: 'Clubjes',      target: '/clubjes',      visible: true,  level: 0 },
+    { id: 'nav-2', label: 'Buurtgroepen',      target: '/clubjes',      visible: true,  level: 0 },
     { id: 'nav-3', label: 'Activiteiten', target: '/activiteiten', visible: true,  level: 0 },
     { id: 'nav-4', label: 'Agenda',       target: '/agenda',       visible: true,  level: 0 },
     { id: 'nav-5', label: 'Buurtatlas',   target: '/buurtatlas',   visible: true,  level: 0 },
@@ -1176,15 +1176,15 @@ window.DATA = {
   ],
 
   // Contact form subject / routing options
-  contactOpties: ["Koffie & Soep", "Buurtatlas", "Clubjes-redactie", "Communicatie", "Anders"],
+  contactOpties: ["Koffie & Soep", "Buurtatlas", "Buurtgroepen-redactie", "Communicatie", "Anders"],
 
   // Contact page content (editable from ContactScreen)
   contact: {
     titel: "Neem contact op.",
     intro: "Heb je een vraag, suggestie of zin om iets bij te dragen? Stuur ons een bericht — we reageren binnen drie werkdagen.",
     cards: [
-      { role: "Algemene informatie", desc: "Voor alle vragen over Thuis in de Buurt — meedoen, een clubje starten, samenwerken.", email: "info@thuisindebuurt.org", icon: "✉", visible: true },
-      { role: "Webredactie", desc: "Voor vragen over de site, tekst- of fotosuggesties, of een nieuw clubje aanmelden.", email: "webredactie@thuisindebuurt.nl", icon: "✎", visible: true },
+      { role: "Algemene informatie", desc: "Voor alle vragen over Thuis in de Buurt — meedoen, een buurtgroep starten, samenwerken.", email: "info@thuisindebuurt.org", icon: "✉", visible: true },
+      { role: "Webredactie", desc: "Voor vragen over de site, tekst- of fotosuggesties, of een nieuwe buurtgroep aanmelden.", email: "webredactie@thuisindebuurt.nl", icon: "✎", visible: true },
       { role: "Doneren & boek", desc: "Vragen over donaties of het boek 'Leven is spelen' van Margreet Jonkers.", email: "doneren@thuisindebuurt.org", icon: "♥", visible: true },
     ],
   },
@@ -1250,7 +1250,7 @@ const NAV = [
   ]},
   { group: "Inhoud", items: [
     { id: "pages", label: "Pagina's", icon: "pages" },
-    { id: "clubjes", label: "Clubjes", icon: "club", count: 9 },
+    { id: "clubjes", label: "Buurtgroepen", icon: "club", count: 9 },
     { id: "activiteiten", label: "Activiteiten", icon: "activity", count: 12 },
     { id: "weekagenda", label: "Weekagenda", icon: "calendar" },
     { id: "agenda", label: "Agenda", icon: "calendar", count: 7 },
@@ -1487,7 +1487,7 @@ Object.assign(window, { NAV, NAV_LOOKUP, Sidebar, Topbar, PageHead, Pill, Toggle
 // Dashboard screen
 function Dashboard({ onNav, onPreview }) {
   const quickActions = [
-    { id: 'clubjes', icon: 'club', title: 'Nieuw clubje', sub: 'Verschijnt in de Clubjes-cards' },
+    { id: 'clubjes', icon: 'club', title: 'Nieuwe buurtgroep', sub: 'Verschijnt in de Buurtgroepen-cards' },
     { id: 'activiteiten', icon: 'activity', title: 'Nieuwe activiteit', sub: 'Wekelijks of eenmalig' },
     { id: 'agenda', icon: 'calendar', title: 'Agenda-item', sub: 'Komt direct in /agenda' },
     { id: 'nieuws', icon: 'news', title: 'Nieuwsbericht', sub: 'Met intro, foto en tekst' },
@@ -1520,7 +1520,7 @@ function Dashboard({ onNav, onPreview }) {
       {/* Tiles */}
       <div className="grid grid-4" style={{ marginBottom: 24 }}>
         <div className="tile">
-          <div className="tile-label">Gepubliceerde clubjes</div>
+          <div className="tile-label">Gepubliceerde buurtgroepen</div>
           <div className="tile-value">9</div>
           <div className="tile-delta flat">Live op /clubjes</div>
         </div>
@@ -1579,7 +1579,7 @@ function Dashboard({ onNav, onPreview }) {
         <div>
           {(() => {
             const concepten = [
-              ...DATA.clubjes.filter(c => c.status === 'Concept').map(c => ({ t: c.naam, k: 'Clubje', id: 'clubjes' })),
+              ...DATA.clubjes.filter(c => c.status === 'Concept').map(c => ({ t: c.naam, k: 'Buurtgroep', id: 'clubjes' })),
               ...DATA.activiteiten.filter(a => a.status === 'Concept').map(a => ({ t: a.naam, k: 'Activiteit', id: 'activiteiten' })),
               ...DATA.nieuws.filter(n => n.status === 'Concept').map(n => ({ t: n.titel, k: 'Nieuws', id: 'nieuws' })),
             ];
@@ -1666,11 +1666,11 @@ function ClubjesList({ onNav, onEdit }) {
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
 
   function handleDelete(id, naam) {
-    if (!window.confirm('Clubje "' + naam + '" definitief verwijderen?')) return;
+    if (!window.confirm('Buurtgroep "' + naam + '" definitief verwijderen?')) return;
     const idx = DATA.clubjes.findIndex(c => c.id === id);
     if (idx >= 0) DATA.clubjes.splice(idx, 1);
     window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast('Clubje verwijderd');
+    window.__showToast && window.__showToast('Buurtgroep verwijderd');
     forceUpdate();
   }
   const cats = ['Alle', 'Sport', 'Cultuur', 'Sociaal', 'Buiten', 'Lezen & leren'];
@@ -1680,10 +1680,10 @@ function ClubjesList({ onNav, onEdit }) {
   return (
     <>
       <PageHead
-        title="Clubjes"
-        sub="Beheer de buurtclubjes die op de website staan. Klik op een rij om aan te passen."
+        title="Buurtgroepen"
+        sub="Beheer de buurtgroepen die op de website staan. Klik op een rij om aan te passen."
         actions={<>
-          <button className="btn btn-primary" onClick={() => onEdit('new')}><Icon name="plus" size={14} /> Nieuw clubje</button>
+          <button className="btn btn-primary" onClick={() => onEdit('new')}><Icon name="plus" size={14} /> Nieuwe buurtgroep</button>
         </>}
       />
 
@@ -1696,7 +1696,7 @@ function ClubjesList({ onNav, onEdit }) {
           <button key={c} className={"chip" + (filter === c ? " active" : "")} onClick={() => setFilter(c)}>{c}</button>
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', color: 'var(--ink-soft)', fontSize: 12.5 }}>
-          {rows.length} clubjes
+          {rows.length} buurtgroepen
         </div>
       </div>
 
@@ -1752,7 +1752,7 @@ function ClubjesList({ onNav, onEdit }) {
 
 function ClubjeEdit({ id, onBack }) {
   const existing = DATA.clubjes.find(c => c.id === id);
-  const defaults = existing || { naam: 'Nieuw clubje', categorie: 'Sociaal', wijk: '', omschrijving: '', voorWie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', adres: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false };
+  const defaults = existing || { naam: 'Nieuwe buurtgroep', categorie: 'Sociaal', wijk: '', omschrijving: '', voorWie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', adres: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false };
   const [fd, setFd] = React.useState({ ...defaults });
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [uitgelicht, setUitgelicht] = React.useState(!!defaults.uitgelicht);
@@ -1769,15 +1769,15 @@ function ClubjeEdit({ id, onBack }) {
       DATA.clubjes.push({ ...toSave, id: newId });
     }
     window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast('Clubje opgeslagen!');
+    window.__showToast && window.__showToast('Buurtgroep opgeslagen!');
   }
 
   function handleDelete() {
-    if (!window.confirm('Clubje "' + fd.naam + '" definitief verwijderen?')) return;
+    if (!window.confirm('Buurtgroep "' + fd.naam + '" definitief verwijderen?')) return;
     const idx = DATA.clubjes.findIndex(c => c.id === id);
     if (idx >= 0) DATA.clubjes.splice(idx, 1);
     window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast('Clubje verwijderd');
+    window.__showToast && window.__showToast('Buurtgroep verwijderd');
     onBack();
   }
 
@@ -1785,7 +1785,7 @@ function ClubjeEdit({ id, onBack }) {
     <>
       <PageHead
         title={fd.naam}
-        sub={<><a href="#" onClick={onBack} style={{ color: 'var(--accent-2)' }}>← Terug naar clubjes</a></>}
+        sub={<><a href="#" onClick={onBack} style={{ color: 'var(--accent-2)' }}>← Terug naar buurtgroepen</a></>}
         actions={<>
           {id != null && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
           <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
@@ -1798,8 +1798,8 @@ function ClubjeEdit({ id, onBack }) {
         <div>
           <div className="form-section">
             <h3>Basisgegevens</h3>
-            <div className="sec-sub">Wat ziet de bezoeker als eerste op de clubje-pagina?</div>
-            <Field label="Naam van het clubje">
+            <div className="sec-sub">Wat ziet de bezoeker als eerste op de buurtgroep-pagina?</div>
+            <Field label="Naam van de buurtgroep">
               <input type="text" value={fd.naam} onChange={e => up('naam', e.target.value)} />
             </Field>
             <div className="row-2">
@@ -1954,7 +1954,7 @@ function ClubjeEdit({ id, onBack }) {
 
           <div className="side-card">
             <h4>Uitlichten</h4>
-            <Toggle on={uitgelicht} label="Toon op de homepagina" sub="Verschijnt in de sectie 'Uitgelichte clubjes'" onChange={setUitgelicht} />
+            <Toggle on={uitgelicht} label="Toon op de homepagina" sub="Verschijnt in de sectie 'Uitgelichte buurtgroepen'" onChange={setUitgelicht} />
           </div>
 
           <div className="side-card">
@@ -2798,7 +2798,7 @@ function BuurtatlasScreen() {
     const pins = [];
     if (layers.clubjes) {
       DATA.clubjes.forEach(c => {
-        if (c.lat && c.lng) pins.push({ id: 'c' + c.id, naam: c.naam, lat: c.lat, lng: c.lng, type: 'Clubje', cat: c.categorie || '', sub: c.wijk || '' });
+        if (c.lat && c.lng) pins.push({ id: 'c' + c.id, naam: c.naam, lat: c.lat, lng: c.lng, type: 'Buurtgroep', cat: c.categorie || '', sub: c.wijk || '' });
       });
     }
     if (layers.activiteiten) {
@@ -2854,7 +2854,7 @@ function BuurtatlasScreen() {
     <>
       <PageHead
         title="Buurtatlas"
-        sub="Alle locaties op één kaart — live data uit clubjes, activiteiten en partners."
+        sub="Alle locaties op één kaart — live data uit buurtgroepen, activiteiten en partners."
         actions={<>
           <button className="btn" onClick={handleZoomOut} title="Zoom uit"><Icon name="minus" size={14} /> −</button>
           <span style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: '34px', minWidth: 56, textAlign: 'center' }}>Zoom {zoomLevel}</span>
@@ -2867,7 +2867,7 @@ function BuurtatlasScreen() {
         <div>
           <div className="toolbar" style={{ borderRadius: 'var(--radius) var(--radius) 0 0', borderBottom: '1px solid var(--line)' }}>
             <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginRight: 6 }}>Tonen:</div>
-            {Object.entries({ clubjes: 'Clubjes', activiteiten: 'Activiteiten', partners: 'Partners' }).map(([k, v]) => (
+            {Object.entries({ clubjes: 'Buurtgroepen', activiteiten: 'Activiteiten', partners: 'Partners' }).map(([k, v]) => (
               <button key={k} className={"chip" + (layers[k] ? " active" : "")} onClick={() => setLayers(s => ({ ...s, [k]: !s[k] }))}>
                 {layers[k] && <Icon name="check" size={11} />} {v}
               </button>
@@ -2881,7 +2881,7 @@ function BuurtatlasScreen() {
             style={{ height: 520, borderRadius: '0 0 var(--radius) var(--radius)', border: '1px solid var(--line)', borderTop: 0, zIndex: 0 }}
           />
           <div style={{ display: 'flex', gap: 16, padding: '8px 12px', background: 'var(--paper)', border: '1px solid var(--line)', borderTop: 0, borderRadius: '0 0 var(--radius) var(--radius)', fontSize: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#2a6fb5', display: 'inline-block' }}></span> Clubje</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#2a6fb5', display: 'inline-block' }}></span> Buurtgroep</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#3f8f7a', display: 'inline-block' }}></span> Activiteit</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#d97a2c', display: 'inline-block' }}></span> Partner</div>
           </div>
@@ -2917,7 +2917,7 @@ function BuurtatlasScreen() {
           )}
 
           <HintCard variant="info" icon="info" style={{ marginTop: 14 }}>
-            Markers met een <strong>lat/lng</strong> in clubjes of activiteiten verschijnen automatisch op de kaart. Voeg coördinaten toe via het bewerkscherm van elk item.
+            Markers met een <strong>lat/lng</strong> in buurtgroepen of activiteiten verschijnen automatisch op de kaart. Voeg coördinaten toe via het bewerkscherm van elk item.
           </HintCard>
         </div>
       </div>
@@ -3056,8 +3056,8 @@ function PagesScreen() {
           <div className="card-pad" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {[
               { t: "Hero met foto", u: "Home, Boek" },
-              { t: "Uitgelichte clubjes", u: "Home" },
-              { t: "Agenda preview", u: "Home, Clubjes" },
+              { t: "Uitgelichte buurtgroepen", u: "Home" },
+              { t: "Agenda preview", u: "Home, Buurtgroepen" },
               { t: "Nieuws preview", u: "Home" },
               { t: "Partner-strook", u: "Home, Partners" },
               { t: "Doneerblok", u: "Home, Doneren" },
@@ -3696,7 +3696,7 @@ function CategoriesScreen() {
   const [newNaam, setNewNaam] = React.useState('');
   const [newIcoon, setNewIcoon] = React.useState('users');
   const [newKleurIdx, setNewKleurIdx] = React.useState(2);
-  const [newKoppeling, setNewKoppeling] = React.useState({ Clubjes: true, Activiteiten: true, Agenda: false, Nieuws: false });
+  const [newKoppeling, setNewKoppeling] = React.useState({ Buurtgroepen: true, Activiteiten: true, Agenda: false, Nieuws: false });
   const kleuren = ['oklch(0.65 0.13 25)','oklch(0.65 0.13 65)','oklch(0.65 0.13 145)','oklch(0.55 0.13 250)','oklch(0.55 0.13 295)','oklch(0.55 0.04 250)'];
 
   function startEdit(c) {
@@ -3726,7 +3726,7 @@ function CategoriesScreen() {
     <>
       <PageHead
         title="Categorieën"
-        sub="Categorieën worden gedeeld door clubjes, activiteiten, agenda en nieuws. Kleuren tonen op kaarten en filters."
+        sub="Categorieën worden gedeeld door buurtgroepen, activiteiten, agenda en nieuws. Kleuren tonen op kaarten en filters."
         actions={<button className="btn btn-primary" onClick={handleCreate}><Icon name="plus" size={14} /> Nieuwe categorie</button>}
       />
 
@@ -4053,7 +4053,7 @@ function HuisstijlScreen() {
   const [secties, setSecties] = React.useState([
     { name: 'Hero met foto', sub: 'Bovenste blok met titel en knop', on: true },
     { name: 'Intro / welkomsttekst', sub: 'Korte uitleg over TIB', on: true },
-    { name: 'Uitgelichte clubjes', sub: 'Toont 3 uitgelichte clubjes', on: true },
+    { name: 'Uitgelichte buurtgroepen', sub: 'Toont 3 uitgelichte buurtgroepen', on: true },
     { name: 'Agenda preview', sub: 'Komende 5 agenda-items', on: true },
     { name: 'Activiteiten preview', sub: 'Wekelijkse activiteiten', on: true },
     { name: 'Nieuws preview', sub: 'Laatste 3 nieuwsberichten', on: true },
@@ -4192,7 +4192,7 @@ function HuisstijlScreen() {
                 Welkom in {tone === 'je' ? 'jouw' : 'uw'} buurt
               </div>
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>
-                Ontdek clubjes, activiteiten en evenementen bij {tone === 'je' ? 'jou' : 'u'} om de hoek.
+                Ontdek buurtgroepen, activiteiten en evenementen bij {tone === 'je' ? 'jou' : 'u'} om de hoek.
               </p>
               <button style={{ background: accent, color: 'white', border: 0, padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>Doe mee →</button>
             </div>
@@ -4465,7 +4465,7 @@ function FormulierenScreen() {
               <Field label="E-mail voor contactformulier" hint="Inzendingen via het contactformulier worden hier naartoe gestuurd.">
                 <input type="email" value={instEmail} onChange={e => setInstEmail(e.target.value)} />
               </Field>
-              <Field label="E-mail voor clubje aanmeldingen" hint="Aanmeldingen voor clubjes worden hier naartoe gestuurd.">
+              <Field label="E-mail voor buurtgroep aanmeldingen" hint="Aanmeldingen voor buurtgroepen worden hier naartoe gestuurd.">
                 <input type="email" value={instEmailClubje} onChange={e => setInstEmailClubje(e.target.value)} />
               </Field>
               <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={saveInstellingen}>
@@ -4792,7 +4792,7 @@ function App() {
   const screens = {
     dashboard: { crumbs: ['Dashboard'], render: () => <Dashboard onNav={setRoute} onPreview={() => setPreviewOn(true)} /> },
     pages: { crumbs: ["Pagina's"], render: () => <PagesScreen /> },
-    clubjes: { crumbs: ['Clubjes'], render: () => <ClubjesScreen onNav={setRoute} /> },
+    clubjes: { crumbs: ['Buurtgroepen'], render: () => <ClubjesScreen onNav={setRoute} /> },
     activiteiten: { crumbs: ['Activiteiten'], render: () => <ActiviteitenScreen /> },
     weekagenda:   { crumbs: ['Weekagenda'],   render: () => <WeekagendaScreen /> },
     agenda: { crumbs: ['Agenda'], render: () => <AgendaScreen /> },
