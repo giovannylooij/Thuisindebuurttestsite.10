@@ -1785,7 +1785,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
 
 function ClubjeEdit({ id, onBack }) {
   const existing = DATA.clubjes.find(c => c.id === id);
-  const defaults = existing || { naam: 'Nieuwe buurtgroep', categorie: 'Sociaal', wijk: '', omschrijving: '', voorWie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', adres: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false };
+  const defaults = existing || { naam: 'Nieuwe buurtgroep', categorie: 'Sociaal', wijk: '', omschrijving: '', voor_wie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false };
   const [fd, setFd] = React.useState({ ...defaults });
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [uitgelicht, setUitgelicht] = React.useState(!!defaults.uitgelicht);
@@ -1793,13 +1793,14 @@ function ClubjeEdit({ id, onBack }) {
 
   function handleSave(pubOverride) {
     const isPublished = pubOverride !== undefined ? pubOverride : published;
-    const toSave = { ...fd, uitgelicht, status: isPublished ? 'Gepubliceerd' : 'Concept' };
+    let toSave = { ...fd, uitgelicht, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     const idx = DATA.clubjes.findIndex(c => c.id === id);
     if (idx >= 0) {
       DATA.clubjes[idx] = toSave;
     } else {
       const newId = DATA.clubjes.length > 0 ? Math.max(...DATA.clubjes.map(c => Number(c.id) || 0)) + 1 : 1;
-      DATA.clubjes.push({ ...toSave, id: newId });
+      toSave = { ...toSave, id: newId };
+      DATA.clubjes.push(toSave);
     }
     window.__syncToSite && window.__syncToSite();
     window.__supabaseUpsert('clubjes', toSave);
@@ -1871,7 +1872,7 @@ function ClubjeEdit({ id, onBack }) {
             <h3>Praktische informatie</h3>
             <div className="sec-sub">Deze velden vullen automatisch de "Voor wie / Wat / Waar / Wanneer / Kosten"-blokjes op de pagina.</div>
             <div className="row-2">
-              <Field label="Voor wie"><input type="text" value={fd.voorWie} onChange={e => up('voorWie', e.target.value)} /></Field>
+              <Field label="Voor wie"><input type="text" value={fd.voor_wie} onChange={e => up('voor_wie', e.target.value)} /></Field>
               <Field label="Wat"><input type="text" value={fd.categorie} onChange={e => up('categorie', e.target.value)} /></Field>
             </div>
             <div className="row-2">
@@ -2177,13 +2178,14 @@ function ActiviteitEdit({ item, onBack }) {
 
   function handleSave(pubOverride) {
     const isPublished = pubOverride !== undefined ? pubOverride : gepubliceerd;
-    const toSave = { ...fd, herhalend, status: isPublished ? 'Gepubliceerd' : 'Concept' };
+    let toSave = { ...fd, herhalend, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     const idx = DATA.activiteiten.findIndex(a => a.id === item.id);
     if (idx >= 0) {
       DATA.activiteiten[idx] = toSave;
     } else {
       const newId = DATA.activiteiten.length > 0 ? Math.max(...DATA.activiteiten.map(a => Number(a.id) || 0)) + 1 : 1;
-      DATA.activiteiten.push({ ...toSave, id: newId });
+      toSave = { ...toSave, id: newId };
+      DATA.activiteiten.push(toSave);
     }
     window.__syncToSite && window.__syncToSite();
     window.__supabaseUpsert('activiteiten', toSave);
@@ -2361,13 +2363,14 @@ function AgendaEdit({ item, onBack }) {
 
   function handleSave(pubOverride) {
     const isPublished = pubOverride !== undefined ? pubOverride : gepubliceerd;
-    const toSave = { ...fd, uitgelicht, status: isPublished ? 'Gepubliceerd' : 'Concept' };
+    let toSave = { ...fd, uitgelicht, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     const idx = DATA.agenda.findIndex(a => a.id === item.id);
     if (idx >= 0) {
       DATA.agenda[idx] = toSave;
     } else {
       const newId = DATA.agenda.length > 0 ? Math.max(...DATA.agenda.map(a => Number(a.id) || 0)) + 1 : 1;
-      DATA.agenda.push({ ...toSave, id: newId });
+      toSave = { ...toSave, id: newId };
+      DATA.agenda.push(toSave);
     }
     window.__syncToSite && window.__syncToSite();
     window.__supabaseUpsert('agenda', toSave);
@@ -2591,13 +2594,14 @@ function NieuwsEdit({ item, onBack }) {
 
   function handleSave(pubOverride) {
     const isPublished = pubOverride !== undefined ? pubOverride : gepubliceerd;
-    const toSave = { ...fd, uitgelicht, status: isPublished ? 'Gepubliceerd' : 'Concept' };
+    let toSave = { ...fd, uitgelicht, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     const idx = DATA.nieuws.findIndex(n => n.id === item.id);
     if (idx >= 0) {
       DATA.nieuws[idx] = toSave;
     } else {
       const newId = DATA.nieuws.length > 0 ? Math.max(...DATA.nieuws.map(n => Number(n.id) || 0)) + 1 : 1;
-      DATA.nieuws.push({ ...toSave, id: newId });
+      toSave = { ...toSave, id: newId };
+      DATA.nieuws.push(toSave);
     }
     window.__syncToSite && window.__syncToSite();
     window.__supabaseUpsert('nieuws', toSave);
@@ -3119,13 +3123,14 @@ function PartnerEdit({ item, onBack }) {
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
 
   function handleSave() {
-    const toSave = { ...fd };
+    let toSave = { ...fd };
     const idx = DATA.partners.findIndex(p => p.id === item.id);
     if (idx >= 0) {
       DATA.partners[idx] = toSave;
     } else {
       const newId = DATA.partners.length > 0 ? Math.max(...DATA.partners.map(p => Number(p.id) || 0)) + 1 : 1;
-      DATA.partners.push({ ...toSave, id: newId, zichtbaar: true });
+      toSave = { ...toSave, id: newId };
+      DATA.partners.push(toSave);
     }
     window.__syncToSite && window.__syncToSite();
     window.__supabaseUpsert('partners', toSave);
@@ -3254,13 +3259,14 @@ function NetwerkEdit({ item, onBack }) {
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
 
   function handleSave() {
-    const toSave = { ...fd };
+    let toSave = { ...fd };
     const idx = DATA.netwerken.findIndex(n => n.id === item.id);
     if (idx >= 0) {
       DATA.netwerken[idx] = toSave;
     } else {
       const newId = DATA.netwerken.length > 0 ? Math.max(...DATA.netwerken.map(n => Number(n.id) || 0)) + 1 : 1;
-      DATA.netwerken.push({ ...toSave, id: newId });
+      toSave = { ...toSave, id: newId };
+      DATA.netwerken.push(toSave);
     }
     window.__syncToSite && window.__syncToSite();
     window.__supabaseUpsert('netwerken', toSave);
