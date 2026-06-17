@@ -4849,22 +4849,34 @@ function App() {
 window.__supabaseUpsert = async function(tabel, item) {
   try {
     const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
-    await window.supabase.from(dbTabel).upsert(item, { onConflict: 'id' });
-  } catch(e) { console.warn('Supabase upsert mislukt:', tabel, e); }
+    const { error } = await window.supabase.from(dbTabel).upsert(item, { onConflict: 'id' });
+    if (error) throw error;
+  } catch(e) {
+    console.warn('Supabase upsert mislukt:', tabel, e);
+    window.__showToast && window.__showToast('Opslaan mislukt — controleer je verbinding en probeer het opnieuw.');
+  }
 };
 
 window.__supabaseDelete = async function(tabel, id) {
   try {
     const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
-    await window.supabase.from(dbTabel).delete().eq('id', id);
-  } catch(e) { console.warn('Supabase delete mislukt:', tabel, e); }
+    const { error } = await window.supabase.from(dbTabel).delete().eq('id', id);
+    if (error) throw error;
+  } catch(e) {
+    console.warn('Supabase delete mislukt:', tabel, e);
+    window.__showToast && window.__showToast('Verwijderen mislukt — controleer je verbinding en probeer het opnieuw.');
+  }
 };
 
 window.__supabaseBulkUpsert = async function(tabel, items) {
   try {
     const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
-    await window.supabase.from(dbTabel).upsert(items, { onConflict: 'id' });
-  } catch(e) { console.warn('Supabase bulk upsert mislukt:', tabel, e); }
+    const { error } = await window.supabase.from(dbTabel).upsert(items, { onConflict: 'id' });
+    if (error) throw error;
+  } catch(e) {
+    console.warn('Supabase bulk upsert mislukt:', tabel, e);
+    window.__showToast && window.__showToast('Opslaan mislukt — controleer je verbinding en probeer het opnieuw.');
+  }
 };
 
 async function loadFromSupabase() {
