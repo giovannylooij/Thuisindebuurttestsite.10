@@ -4550,27 +4550,26 @@ function Toast({ message, onDone }) {
 }
 
 /* === login.jsx === */
-const ADMIN_EMAIL    = 'admin@thuisindebuurt.nl';
-const ADMIN_PASSWORD = 'TIB2025!';
-
 function LoginScreen({ onLogin }) {
   const [email, setEmail]       = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError]       = React.useState('');
   const [loading, setLoading]   = React.useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setTimeout(() => {
-      if (email.trim() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        onLogin();
-      } else {
-        setError('E-mailadres of wachtwoord onjuist');
-      }
+    const { data, error: authError } = await window.supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    if (authError) {
+      setError('E-mailadres of wachtwoord onjuist');
       setLoading(false);
-    }, 400);
+    } else {
+      onLogin(data.session);
+    }
   }
 
   return (
@@ -4665,14 +4664,38 @@ function LoginScreen({ onLogin }) {
 // Main app + routing
 
 function App() {
-  const [loggedIn, setLoggedIn] = React.useState(false);
+  // session: undefined = controleren, null = niet ingelogd, object = ingelogd
+  const [session, setSession] = React.useState(undefined);
   const [route, setRoute] = React.useState('dashboard');
   const [previewOn, setPreviewOn] = React.useState(false);
   const [toast, setToast] = React.useState(null);
   window.__showToast = (msg) => setToast(msg);
 
-  if (!loggedIn) {
-    return <LoginScreen onLogin={() => setLoggedIn(true)} />;
+  React.useEffect(() => {
+    window.supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session ?? null);
+    });
+    const { data: { subscription } } = window.supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function handleLogout() {
+    await window.supabase.auth.signOut();
+    setSession(null);
+  }
+
+  if (session === undefined) {
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', fontFamily:'sans-serif', fontSize:16, color:'#555' }}>
+        Sessie controleren…
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <LoginScreen onLogin={(s) => setSession(s)} />;
   }
 
   // Sync CMS data to site via shared localStorage
@@ -4829,7 +4852,7 @@ function App() {
 
   return (
     <div className={"app" + (previewOn ? " preview-on" : "")}>
-      <Sidebar active={route} onNav={setRoute} onLogout={() => setLoggedIn(false)} />
+      <Sidebar active={route} onNav={setRoute} onLogout={handleLogout} />
       <div className="main">
         <Topbar
           crumbs={current.crumbs}
