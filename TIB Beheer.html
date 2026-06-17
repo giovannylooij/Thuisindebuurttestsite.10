@@ -163,6 +163,8 @@ a { color: inherit; text-decoration: none; }
   min-width: 18px;
   text-align: center;
 }
+.badge-red { background: #e53e3e; color: white; }
+
 .sidebar-foot {
   margin-top: auto;
   padding-top: 14px;
@@ -1274,6 +1276,12 @@ const NAV = [
     { id: "menu", label: "Navigatie", icon: "menu" },
     { id: "formulieren", label: "Formulieren", icon: "inbox", badge: 0 },
   ]},
+  { group: "Inzendingen", items: [
+    { id: "aanmeldingen",   label: "Aanmeldingen",       icon: "inbox" },
+    { id: "bg-aanvragen",   label: "Buurtgroep aanvragen", icon: "club" },
+    { id: "berichten",      label: "Berichten",           icon: "mail" },
+    { id: "bestellingen",   label: "Bestellingen",        icon: "heart" },
+  ]},
   { group: "Instellingen", items: [
     { id: "huisstijl", label: "Huisstijl", icon: "palette" },
     { id: "gebruikers", label: "Gebruikers", icon: "users" },
@@ -1287,7 +1295,7 @@ NAV.forEach(g => g.items.forEach(i => { NAV_LOOKUP[i.id] = i; }));
 // Welke menu-items mogen een beheerder zien
 const BEHEERDER_ROUTES = new Set(['dashboard', 'clubjes']);
 
-function Sidebar({ active, onNav, onLogout, profile, userEmail }) {
+function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
   const isSuperadmin = profile?.role === 'superadmin';
   const visibleNav = NAV.map(group => ({
     ...group,
@@ -1328,7 +1336,9 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail }) {
             >
               <Icon name={item.icon} size={15} />
               <span>{item.label}</span>
-              {item.badge && <span className="badge">{item.badge}</span>}
+              {(badges && badges[item.id] > 0)
+                ? <span className="badge badge-red">{badges[item.id]}</span>
+                : item.badge ? <span className="badge">{item.badge}</span> : null}
             </div>
           ))}
         </React.Fragment>
@@ -4565,6 +4575,187 @@ function Toast({ message, onDone }) {
   );
 }
 
+
+/* === screens/aanmeldingen.jsx === */
+const TD = { padding: '10px 12px', borderTop: '1px solid var(--line)', fontSize: 13, verticalAlign: 'top' };
+const TH = { padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--ink-soft)', background: 'var(--surface-2)', textTransform: 'uppercase', letterSpacing: '.04em' };
+
+function StatusSelect({ value, options, onChange }) {
+  const colors = { nieuw: '#e57a00', gezien: '#4a7ab5', afgehandeld: '#3f8f7a', goedgekeurd: '#3f8f7a', afgewezen: '#c0392b', verzonden: '#3f8f7a' };
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      style={{ fontSize: 12, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--line)', color: colors[value] || 'inherit', fontWeight: 600 }}
+    >
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  );
+}
+
+function InzendingTable({ columns, items, statusOptions, onStatusChange }) {
+  if (!items) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-soft)' }}>Laden…</div>;
+  if (items.length === 0) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-soft)' }}>Nog geen inzendingen.</div>;
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>{columns.map(col => <th key={col.key} style={TH}>{col.label}</th>)}<th style={TH}>Status</th></tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id}>
+              {columns.map(col => (
+                <td key={col.key} style={{ ...TD, maxWidth: col.maxWidth || 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: col.wrap ? 'normal' : 'nowrap' }}>
+                  {col.render ? col.render(item) : (item[col.key] || '—')}
+                </td>
+              ))}
+              <td style={TD}>
+                <StatusSelect value={item.status} options={statusOptions} onChange={v => onStatusChange(item.id, v)} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AanmeldingenScreen({ onBadgeRefresh }) {
+  const [items, setItems] = React.useState(null);
+  React.useEffect(() => {
+    window.supabase.from('aanmeldingen').select('*').order('aangemeld_op', { ascending: false })
+      .then(({ data }) => setItems(data || []));
+  }, []);
+  async function updateStatus(id, status) {
+    await window.supabase.from('aanmeldingen').update({ status }).eq('id', id);
+    setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+    onBadgeRefresh && onBadgeRefresh();
+  }
+  const nieuw = items ? items.filter(i => i.status === 'nieuw').length : 0;
+  return (
+    <>
+      <PageHead title="Aanmeldingen" sub={`${items ? items.length : '…'} inzendingen${nieuw > 0 ? ` — ${nieuw} nieuw` : ''}`} />
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <InzendingTable
+          items={items}
+          statusOptions={[{value:'nieuw',label:'Nieuw'},{value:'gezien',label:'Gezien'},{value:'afgehandeld',label:'Afgehandeld'}]}
+          onStatusChange={updateStatus}
+          columns={[
+            { key: 'type', label: 'Type', maxWidth: 80, render: i => <span className="badge">{i.type}</span> },
+            { key: 'naam', label: 'Naam', maxWidth: 140 },
+            { key: 'email', label: 'E-mail', maxWidth: 180, render: i => <a href={"mailto:"+i.email}>{i.email}</a> },
+            { key: 'buurtgroep_keuze', label: 'Keuze/Bericht', maxWidth: 220, wrap: true, render: i => i.buurtgroep_keuze || i.bericht || '—' },
+            { key: 'aangemeld_op', label: 'Datum', maxWidth: 100, render: i => new Date(i.aangemeld_op).toLocaleDateString('nl') },
+          ]}
+        />
+      </div>
+    </>
+  );
+}
+
+function BgAanvragenScreen({ onBadgeRefresh }) {
+  const [items, setItems] = React.useState(null);
+  React.useEffect(() => {
+    window.supabase.from('buurtgroep_aanvragen').select('*').order('aangemeld_op', { ascending: false })
+      .then(({ data }) => setItems(data || []));
+  }, []);
+  async function updateStatus(id, status) {
+    await window.supabase.from('buurtgroep_aanvragen').update({ status }).eq('id', id);
+    setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+    onBadgeRefresh && onBadgeRefresh();
+  }
+  const nieuw = items ? items.filter(i => i.status === 'nieuw').length : 0;
+  return (
+    <>
+      <PageHead title="Buurtgroep aanvragen" sub={`${items ? items.length : '…'} aanvragen${nieuw > 0 ? ` — ${nieuw} nieuw` : ''}`} />
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <InzendingTable
+          items={items}
+          statusOptions={[{value:'nieuw',label:'Nieuw'},{value:'gezien',label:'Gezien'},{value:'goedgekeurd',label:'Goedgekeurd'},{value:'afgewezen',label:'Afgewezen'}]}
+          onStatusChange={updateStatus}
+          columns={[
+            { key: 'naam_buurtgroep', label: 'Naam', maxWidth: 160 },
+            { key: 'categorie', label: 'Categorie', maxWidth: 100 },
+            { key: 'contactpersoon', label: 'Contact', maxWidth: 140 },
+            { key: 'email_of_telefoon', label: 'E-mail / tel', maxWidth: 160, render: i => <a href={"mailto:"+i.email_of_telefoon}>{i.email_of_telefoon}</a> },
+            { key: 'beschrijving', label: 'Omschrijving', maxWidth: 200, wrap: true },
+            { key: 'aangemeld_op', label: 'Datum', maxWidth: 100, render: i => new Date(i.aangemeld_op).toLocaleDateString('nl') },
+          ]}
+        />
+      </div>
+    </>
+  );
+}
+
+function BerichtenScreen({ onBadgeRefresh }) {
+  const [items, setItems] = React.useState(null);
+  React.useEffect(() => {
+    window.supabase.from('contact_berichten').select('*').order('ontvangen_op', { ascending: false })
+      .then(({ data }) => setItems(data || []));
+  }, []);
+  async function updateStatus(id, status) {
+    await window.supabase.from('contact_berichten').update({ status }).eq('id', id);
+    setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+    onBadgeRefresh && onBadgeRefresh();
+  }
+  const nieuw = items ? items.filter(i => i.status === 'nieuw').length : 0;
+  return (
+    <>
+      <PageHead title="Berichten" sub={`${items ? items.length : '…'} berichten${nieuw > 0 ? ` — ${nieuw} nieuw` : ''}`} />
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <InzendingTable
+          items={items}
+          statusOptions={[{value:'nieuw',label:'Nieuw'},{value:'gezien',label:'Gezien'},{value:'afgehandeld',label:'Afgehandeld'}]}
+          onStatusChange={updateStatus}
+          columns={[
+            { key: 'naam', label: 'Naam', maxWidth: 140 },
+            { key: 'email', label: 'E-mail', maxWidth: 180, render: i => <a href={"mailto:"+i.email}>{i.email}</a> },
+            { key: 'onderwerp', label: 'Onderwerp', maxWidth: 120 },
+            { key: 'bericht', label: 'Bericht', maxWidth: 240, wrap: true },
+            { key: 'ontvangen_op', label: 'Datum', maxWidth: 100, render: i => new Date(i.ontvangen_op).toLocaleDateString('nl') },
+          ]}
+        />
+      </div>
+    </>
+  );
+}
+
+function BestellingenScreen({ onBadgeRefresh }) {
+  const [items, setItems] = React.useState(null);
+  React.useEffect(() => {
+    window.supabase.from('boek_bestellingen').select('*').order('besteld_op', { ascending: false })
+      .then(({ data }) => setItems(data || []));
+  }, []);
+  async function updateStatus(id, status) {
+    await window.supabase.from('boek_bestellingen').update({ status }).eq('id', id);
+    setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+    onBadgeRefresh && onBadgeRefresh();
+  }
+  const nieuw = items ? items.filter(i => i.status === 'nieuw').length : 0;
+  const totaalBedrag = items ? items.reduce((s, i) => s + (Number(i.totaal_bedrag) || 0), 0).toFixed(2) : '0.00';
+  return (
+    <>
+      <PageHead title="Bestellingen" sub={`${items ? items.length : '…'} bestellingen${nieuw > 0 ? ` — ${nieuw} nieuw` : ''} · totaal € ${totaalBedrag}`} />
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <InzendingTable
+          items={items}
+          statusOptions={[{value:'nieuw',label:'Nieuw'},{value:'gezien',label:'Gezien'},{value:'verzonden',label:'Verzonden'}]}
+          onStatusChange={updateStatus}
+          columns={[
+            { key: 'naam', label: 'Naam', maxWidth: 160, render: i => i.voornaam + ' ' + i.achternaam },
+            { key: 'email', label: 'E-mail', maxWidth: 180, render: i => <a href={"mailto:"+i.email}>{i.email}</a> },
+            { key: 'adres', label: 'Adres', maxWidth: 200, render: i => `${i.straat_huisnummer}, ${i.postcode} ${i.plaatsnaam}` },
+            { key: 'aantal', label: 'Aantal', maxWidth: 60 },
+            { key: 'totaal_bedrag', label: 'Totaal', maxWidth: 70, render: i => `€ ${Number(i.totaal_bedrag).toFixed(2)}` },
+            { key: 'besteld_op', label: 'Datum', maxWidth: 100, render: i => new Date(i.besteld_op).toLocaleDateString('nl') },
+          ]}
+        />
+      </div>
+    </>
+  );
+}
+
 /* === login.jsx === */
 function LoginScreen({ onLogin }) {
   const [email, setEmail]       = React.useState('');
@@ -4683,6 +4874,7 @@ function App() {
   // session: undefined = controleren, null = niet ingelogd, object = ingelogd
   const [session, setSession] = React.useState(undefined);
   const [profile, setProfile] = React.useState(null);
+  const [badges, setBadges] = React.useState({});
   const [route, setRoute] = React.useState('dashboard');
   const [previewOn, setPreviewOn] = React.useState(false);
   const [toast, setToast] = React.useState(null);
@@ -4717,6 +4909,27 @@ function App() {
     await window.supabase.auth.signOut();
     setSession(null);
   }
+
+  // Haal badge-tellingen op (aantal 'nieuw' per tabel) — alleen voor superadmin
+  async function loadBadges() {
+    if (!session || profile?.role !== 'superadmin') return;
+    const tables = [
+      { id: 'aanmeldingen',  tabel: 'aanmeldingen',      ts: 'aangemeld_op' },
+      { id: 'bg-aanvragen',  tabel: 'buurtgroep_aanvragen', ts: 'aangemeld_op' },
+      { id: 'berichten',     tabel: 'contact_berichten',  ts: 'ontvangen_op' },
+      { id: 'bestellingen',  tabel: 'boek_bestellingen',  ts: 'besteld_op' },
+    ];
+    const counts = {};
+    await Promise.all(tables.map(async ({ id, tabel }) => {
+      const { count } = await window.supabase
+        .from(tabel).select('*', { count: 'exact', head: true })
+        .eq('status', 'nieuw');
+      counts[id] = count || 0;
+    }));
+    setBadges(counts);
+  }
+
+  React.useEffect(() => { loadBadges(); }, [profile]);
 
   if (session === undefined) {
     return (
@@ -4886,13 +5099,17 @@ function App() {
     huisstijl: { crumbs: ['Huisstijl'], render: () => <HuisstijlScreen /> },
     gebruikers: { crumbs: ['Gebruikers'], render: () => <GebruikersScreen /> },
     domein: { crumbs: ['Website & domein'], render: () => <DomeinScreen /> },
+    aanmeldingen:  { crumbs: ['Aanmeldingen'],         render: () => <AanmeldingenScreen  onBadgeRefresh={loadBadges} /> },
+    'bg-aanvragen':{ crumbs: ['Buurtgroep aanvragen'],  render: () => <BgAanvragenScreen   onBadgeRefresh={loadBadges} /> },
+    berichten:     { crumbs: ['Berichten'],             render: () => <BerichtenScreen     onBadgeRefresh={loadBadges} /> },
+    bestellingen:  { crumbs: ['Bestellingen'],          render: () => <BestellingenScreen  onBadgeRefresh={loadBadges} /> },
   };
 
   const current = screens[route] || screens.dashboard;
 
   return (
     <div className={"app" + (previewOn ? " preview-on" : "")}>
-      <Sidebar active={route} onNav={setRoute} onLogout={handleLogout} profile={profile} userEmail={session?.user?.email} />
+      <Sidebar active={route} onNav={setRoute} onLogout={handleLogout} profile={profile} userEmail={session?.user?.email} badges={badges} />
       <div className="main">
         <Topbar
           crumbs={current.crumbs}
