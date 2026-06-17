@@ -4443,6 +4443,7 @@ function FormulierenScreen() {
           </div>
         </div>
 
+        {f ? (
         <div className="card">
           <div className="card-head">
             <h3 className="card-title">{f.onderwerp}</h3>
@@ -4491,6 +4492,11 @@ function FormulierenScreen() {
             </div>
           </div>
         </div>
+        ) : (
+        <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+          <div style={{ textAlign: 'center', color: 'var(--ink-soft)', fontSize: 14 }}>Nog geen inzendingen.</div>
+        </div>
+        )}
       </div>}
 
       {tab === 'inzendingen' && <HintCard variant="warn" icon="warn" style={{ marginTop: 16 }}>
