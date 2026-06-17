@@ -4589,295 +4589,334 @@ function Toast({ message, onDone }) {
 
 
 /* === screens/aanmeldingen.jsx === */
-const TD = { padding: '10px 12px', borderTop: '1px solid var(--line)', fontSize: 13, verticalAlign: 'top' };
-const TH = { padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--ink-soft)', background: 'var(--surface-2)', textTransform: 'uppercase', letterSpacing: '.04em' };
+
+const STATUS_COLORS = {
+  nieuw: { bg: '#fff3cd', color: '#856404' },
+  'in behandeling': { bg: '#cce5ff', color: '#004085' },
+  goedgekeurd: { bg: '#d4edda', color: '#155724' },
+  afgewezen: { bg: '#f8d7da', color: '#721c24' },
+  beantwoord: { bg: '#d4edda', color: '#155724' },
+  gearchiveerd: { bg: '#e2e3e5', color: '#383d41' },
+  betaald: { bg: '#d4edda', color: '#155724' },
+  verzonden: { bg: '#cce5ff', color: '#004085' },
+  geannuleerd: { bg: '#f8d7da', color: '#721c24' },
+};
+
+function StatusBadge({ status }) {
+  const s = STATUS_COLORS[status] || { bg: '#e9ecef', color: '#495057' };
+  return React.createElement('span', {
+    style: { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }
+  }, status);
+}
 
 function StatusSelect({ value, options, onChange }) {
-  const colors = { nieuw: '#e57a00', gezien: '#4a7ab5', afgehandeld: '#3f8f7a', goedgekeurd: '#3f8f7a', afgewezen: '#c0392b', verzonden: '#3f8f7a' };
-  return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      style={{ fontSize: 12, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--line)', color: colors[value] || 'inherit', fontWeight: 600 }}
-    >
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
+  const s = STATUS_COLORS[value] || { bg: '#e9ecef', color: '#495057' };
+  return React.createElement('select', {
+    value, onChange: e => onChange(e.target.value),
+    style: { padding: '4px 8px', borderRadius: 6, border: '1px solid var(--line)', background: s.bg, color: s.color, fontWeight: 600, fontSize: 13, cursor: 'pointer' }
+  }, options.map(o => React.createElement('option', { key: o, value: o }, o)));
+}
+
+function DetailField({ label, value }) {
+  if (!value && value !== 0) return null;
+  return React.createElement('div', { style: { marginBottom: 12 } },
+    React.createElement('div', { style: { fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 2 } }, label),
+    React.createElement('div', { style: { fontSize: 14, color: 'var(--text)' } }, String(value))
   );
 }
 
-function InzendingTable({ columns, items, statusOptions, onStatusChange }) {
-  if (!items) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-soft)' }}>Laden…</div>;
-  if (items.length === 0) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-soft)' }}>Nog geen inzendingen.</div>;
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>{columns.map(col => <th key={col.key} style={TH}>{col.label}</th>)}<th style={TH}>Status</th></tr>
-        </thead>
-        <tbody>
-          {items.map(item => (
-            <tr key={item.id}>
-              {columns.map(col => (
-                <td key={col.key} style={{ ...TD, maxWidth: col.maxWidth || 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: col.wrap ? 'normal' : 'nowrap' }}>
-                  {col.render ? col.render(item) : (item[col.key] || '—')}
-                </td>
-              ))}
-              <td style={TD}>
-                <StatusSelect value={item.status} options={statusOptions} onChange={v => onStatusChange(item.id, v)} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+function NotitieSectie({ type, id }) {
+  const [notities, setNotities] = React.useState([]);
+  const [tekst, setTekst] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!id) return;
+    window.supabase.from('inzending_notities')
+      .select('*')
+      .eq('inzending_type', type)
+      .eq('inzending_id', id)
+      .order('aangemaakt_op', { ascending: true })
+      .then(({ data }) => setNotities(data || []));
+  }, [id]);
+
+  async function verstuur() {
+    const t = tekst.trim();
+    if (!t) return;
+    setLoading(true);
+    const { data, error } = await window.supabase.from('inzending_notities').insert({
+      inzending_type: type, inzending_id: id, notitie: t
+    }).select().single();
+    if (!error && data) {
+      setNotities(prev => [...prev, data]);
+      setTekst('');
+    }
+    setLoading(false);
+  }
+
+  return React.createElement('div', { style: { marginTop: 24, borderTop: '1px solid var(--line)', paddingTop: 16 } },
+    React.createElement('div', { style: { fontWeight: 600, fontSize: 13, marginBottom: 12 } }, 'Notities'),
+    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12, maxHeight: 220, overflowY: 'auto' } },
+      notities.length === 0
+        ? React.createElement('div', { style: { fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' } }, 'Nog geen notities.')
+        : notities.map(n => React.createElement('div', { key: n.id, style: { background: '#f0f4ff', borderRadius: 8, padding: '8px 12px', fontSize: 13 } },
+            React.createElement('div', null, n.notitie),
+            React.createElement('div', { style: { fontSize: 11, color: 'var(--muted)', marginTop: 4 } },
+              new Date(n.aangemaakt_op).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            )
+          ))
+    ),
+    React.createElement('div', { style: { display: 'flex', gap: 8 } },
+      React.createElement('input', {
+        type: 'text', placeholder: 'Voeg notitie toe…', value: tekst,
+        onChange: e => setTekst(e.target.value),
+        onKeyDown: e => e.key === 'Enter' && verstuur(),
+        style: { flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line)', fontSize: 13 }
+      }),
+      React.createElement('button', {
+        onClick: verstuur, disabled: loading || !tekst.trim(),
+        style: { padding: '6px 14px', borderRadius: 6, background: 'var(--accent)', color: '#fff', border: 'none', fontSize: 13, cursor: 'pointer', opacity: loading || !tekst.trim() ? 0.5 : 1 }
+      }, 'Opslaan')
+    )
   );
 }
 
-function AanmeldingenScreen({ onBadgeRefresh }) {
-  const [items, setItems] = React.useState(null);
+function MasterDetail({ items, loading, selectedId, onSelect, renderListItem, renderDetail }) {
+  const selected = items.find(i => i.id === selectedId) || null;
+  return React.createElement('div', { style: { display: 'flex', height: 'calc(100vh - 140px)', gap: 0, background: '#fff', borderRadius: 10, border: '1px solid var(--line)', overflow: 'hidden' } },
+    React.createElement('div', { style: { width: 320, minWidth: 240, borderRight: '1px solid var(--line)', overflowY: 'auto', flexShrink: 0 } },
+      loading
+        ? React.createElement('div', { style: { padding: 24, color: 'var(--muted)', fontSize: 14 } }, 'Laden…')
+        : items.length === 0
+          ? React.createElement('div', { style: { padding: 24, color: 'var(--muted)', fontSize: 14 } }, 'Geen items gevonden.')
+          : items.map(item => React.createElement('div', {
+              key: item.id,
+              onClick: () => onSelect(item.id === selectedId ? null : item.id),
+              style: {
+                padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--line)',
+                background: item.id === selectedId ? 'var(--accent)' : 'transparent',
+                color: item.id === selectedId ? '#fff' : 'inherit',
+                transition: 'background 0.1s'
+              }
+            }, renderListItem(item, item.id === selectedId))
+          )
+    ),
+    React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: 24 } },
+      selected
+        ? renderDetail(selected)
+        : React.createElement('div', { style: { color: 'var(--muted)', fontSize: 14, marginTop: 40, textAlign: 'center' } }, 'Selecteer een item uit de lijst.')
+    )
+  );
+}
+
+/* Aanmeldingen */
+function AanmeldingenScreen() {
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [selectedId, setSelectedId] = React.useState(null);
+
   React.useEffect(() => {
     window.supabase.from('aanmeldingen').select('*').order('aangemeld_op', { ascending: false })
-      .then(({ data }) => setItems(data || []));
+      .then(({ data }) => { setItems(data || []); setLoading(false); });
   }, []);
+
   async function updateStatus(id, status) {
     await window.supabase.from('aanmeldingen').update({ status }).eq('id', id);
     setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
-    onBadgeRefresh && onBadgeRefresh();
   }
-  const nieuw = items ? items.filter(i => i.status === 'nieuw').length : 0;
-  return (
-    <>
-      <PageHead title="Aanmeldingen" sub={`${items ? items.length : '…'} inzendingen${nieuw > 0 ? ` — ${nieuw} nieuw` : ''}`} />
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <InzendingTable
-          items={items}
-          statusOptions={[{value:'nieuw',label:'Nieuw'},{value:'gezien',label:'Gezien'},{value:'afgehandeld',label:'Afgehandeld'}]}
-          onStatusChange={updateStatus}
-          columns={[
-            { key: 'type', label: 'Type', maxWidth: 80, render: i => <span className="badge">{i.type}</span> },
-            { key: 'naam', label: 'Naam', maxWidth: 140 },
-            { key: 'email', label: 'E-mail', maxWidth: 180, render: i => <a href={"mailto:"+i.email}>{i.email}</a> },
-            { key: 'buurtgroep_keuze', label: 'Keuze/Bericht', maxWidth: 220, wrap: true, render: i => i.buurtgroep_keuze || i.bericht || '—' },
-            { key: 'aangemeld_op', label: 'Datum', maxWidth: 100, render: i => new Date(i.aangemeld_op).toLocaleDateString('nl') },
-          ]}
-        />
-      </div>
-    </>
-  );
+
+  return React.createElement(MasterDetail, {
+    items, loading, selectedId, onSelect: setSelectedId,
+    renderListItem: (item, active) => React.createElement('div', null,
+      React.createElement('div', { style: { fontWeight: 600, fontSize: 13, marginBottom: 2, color: active ? '#fff' : 'var(--text)' } }, item.naam),
+      React.createElement('div', { style: { fontSize: 11, color: active ? 'rgba(255,255,255,0.8)' : 'var(--muted)', marginBottom: 4 } },
+        new Date(item.aangemeld_op).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' })
+      ),
+      active
+        ? React.createElement('span', { style: { fontSize: 11, fontWeight: 600 } }, item.status)
+        : React.createElement(StatusBadge, { status: item.status })
+    ),
+    renderDetail: (item) => React.createElement('div', null,
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 } },
+        React.createElement('div', null,
+          React.createElement('div', { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, item.naam),
+          React.createElement('div', { style: { fontSize: 13, color: 'var(--muted)' } },
+            new Date(item.aangemeld_op).toLocaleString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          )
+        ),
+        React.createElement(StatusSelect, {
+          value: item.status,
+          options: ['nieuw', 'in behandeling', 'goedgekeurd', 'afgewezen'],
+          onChange: s => updateStatus(item.id, s)
+        })
+      ),
+      React.createElement(DetailField, { label: 'E-mail', value: item.email }),
+      React.createElement(DetailField, { label: 'Type aanmelding', value: item.type }),
+      React.createElement(DetailField, { label: 'Buurtgroep keuze', value: item.buurtgroep_keuze }),
+      React.createElement(DetailField, { label: 'Bericht', value: item.bericht }),
+      React.createElement(NotitieSectie, { type: 'aanmeldingen', id: item.id })
+    )
+  });
 }
 
-function BgAanvragenScreen({ onBadgeRefresh }) {
-  const [items, setItems] = React.useState(null);
+/* Buurtgroep aanvragen */
+function BgAanvragenScreen() {
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [selectedId, setSelectedId] = React.useState(null);
+
   React.useEffect(() => {
     window.supabase.from('buurtgroep_aanvragen').select('*').order('aangemeld_op', { ascending: false })
-      .then(({ data }) => setItems(data || []));
+      .then(({ data }) => { setItems(data || []); setLoading(false); });
   }, []);
+
   async function updateStatus(id, status) {
     await window.supabase.from('buurtgroep_aanvragen').update({ status }).eq('id', id);
     setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
-    onBadgeRefresh && onBadgeRefresh();
   }
-  const nieuw = items ? items.filter(i => i.status === 'nieuw').length : 0;
-  return (
-    <>
-      <PageHead title="Buurtgroep aanvragen" sub={`${items ? items.length : '…'} aanvragen${nieuw > 0 ? ` — ${nieuw} nieuw` : ''}`} />
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <InzendingTable
-          items={items}
-          statusOptions={[{value:'nieuw',label:'Nieuw'},{value:'gezien',label:'Gezien'},{value:'goedgekeurd',label:'Goedgekeurd'},{value:'afgewezen',label:'Afgewezen'}]}
-          onStatusChange={updateStatus}
-          columns={[
-            { key: 'naam_buurtgroep', label: 'Naam', maxWidth: 160 },
-            { key: 'categorie', label: 'Categorie', maxWidth: 100 },
-            { key: 'contactpersoon', label: 'Contact', maxWidth: 140 },
-            { key: 'email_of_telefoon', label: 'E-mail / tel', maxWidth: 160, render: i => <a href={"mailto:"+i.email_of_telefoon}>{i.email_of_telefoon}</a> },
-            { key: 'beschrijving', label: 'Omschrijving', maxWidth: 200, wrap: true },
-            { key: 'aangemeld_op', label: 'Datum', maxWidth: 100, render: i => new Date(i.aangemeld_op).toLocaleDateString('nl') },
-          ]}
-        />
-      </div>
-    </>
-  );
+
+  return React.createElement(MasterDetail, {
+    items, loading, selectedId, onSelect: setSelectedId,
+    renderListItem: (item, active) => React.createElement('div', null,
+      React.createElement('div', { style: { fontWeight: 600, fontSize: 13, marginBottom: 2, color: active ? '#fff' : 'var(--text)' } }, item.naam_buurtgroep),
+      React.createElement('div', { style: { fontSize: 11, color: active ? 'rgba(255,255,255,0.8)' : 'var(--muted)', marginBottom: 4 } }, item.categorie),
+      active
+        ? React.createElement('span', { style: { fontSize: 11, fontWeight: 600 } }, item.status)
+        : React.createElement(StatusBadge, { status: item.status })
+    ),
+    renderDetail: (item) => React.createElement('div', null,
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 } },
+        React.createElement('div', null,
+          React.createElement('div', { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, item.naam_buurtgroep),
+          React.createElement('div', { style: { fontSize: 13, color: 'var(--muted)' } }, item.categorie)
+        ),
+        React.createElement(StatusSelect, {
+          value: item.status,
+          options: ['nieuw', 'in behandeling', 'goedgekeurd', 'afgewezen'],
+          onChange: s => updateStatus(item.id, s)
+        })
+      ),
+      React.createElement(DetailField, { label: 'Contactpersoon', value: item.contactpersoon }),
+      React.createElement(DetailField, { label: 'Contact', value: item.email_of_telefoon }),
+      React.createElement(DetailField, { label: 'Locatie', value: item.locatie }),
+      React.createElement(DetailField, { label: 'Beschrijving', value: item.beschrijving }),
+      item.foto_url && React.createElement('div', { style: { marginBottom: 12 } },
+        React.createElement('div', { style: { fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 4 } }, 'Foto'),
+        React.createElement('img', { src: item.foto_url, alt: 'foto', style: { maxWidth: '100%', borderRadius: 8, border: '1px solid var(--line)' } })
+      ),
+      React.createElement(DetailField, { label: 'Aangemeld op', value: new Date(item.aangemeld_op).toLocaleString('nl-NL') }),
+      React.createElement(NotitieSectie, { type: 'buurtgroep_aanvragen', id: item.id })
+    )
+  });
 }
 
-function BerichtenScreen({ onBadgeRefresh }) {
-  const [items, setItems] = React.useState(null);
+/* Berichten */
+function BerichtenScreen() {
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [selectedId, setSelectedId] = React.useState(null);
+
   React.useEffect(() => {
     window.supabase.from('contact_berichten').select('*').order('ontvangen_op', { ascending: false })
-      .then(({ data }) => setItems(data || []));
+      .then(({ data }) => { setItems(data || []); setLoading(false); });
   }, []);
+
   async function updateStatus(id, status) {
     await window.supabase.from('contact_berichten').update({ status }).eq('id', id);
     setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
-    onBadgeRefresh && onBadgeRefresh();
   }
-  const nieuw = items ? items.filter(i => i.status === 'nieuw').length : 0;
-  return (
-    <>
-      <PageHead title="Berichten" sub={`${items ? items.length : '…'} berichten${nieuw > 0 ? ` — ${nieuw} nieuw` : ''}`} />
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <InzendingTable
-          items={items}
-          statusOptions={[{value:'nieuw',label:'Nieuw'},{value:'gezien',label:'Gezien'},{value:'afgehandeld',label:'Afgehandeld'}]}
-          onStatusChange={updateStatus}
-          columns={[
-            { key: 'naam', label: 'Naam', maxWidth: 140 },
-            { key: 'email', label: 'E-mail', maxWidth: 180, render: i => <a href={"mailto:"+i.email}>{i.email}</a> },
-            { key: 'onderwerp', label: 'Onderwerp', maxWidth: 120 },
-            { key: 'bericht', label: 'Bericht', maxWidth: 240, wrap: true },
-            { key: 'ontvangen_op', label: 'Datum', maxWidth: 100, render: i => new Date(i.ontvangen_op).toLocaleDateString('nl') },
-          ]}
-        />
-      </div>
-    </>
-  );
+
+  return React.createElement(MasterDetail, {
+    items, loading, selectedId, onSelect: setSelectedId,
+    renderListItem: (item, active) => React.createElement('div', null,
+      React.createElement('div', { style: { fontWeight: 600, fontSize: 13, marginBottom: 2, color: active ? '#fff' : 'var(--text)' } }, item.naam),
+      React.createElement('div', { style: { fontSize: 11, color: active ? 'rgba(255,255,255,0.8)' : 'var(--muted)', marginBottom: 4 } }, item.onderwerp),
+      active
+        ? React.createElement('span', { style: { fontSize: 11, fontWeight: 600 } }, item.status)
+        : React.createElement(StatusBadge, { status: item.status })
+    ),
+    renderDetail: (item) => React.createElement('div', null,
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 } },
+        React.createElement('div', null,
+          React.createElement('div', { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, item.naam),
+          React.createElement('div', { style: { fontSize: 13, color: 'var(--muted)' } },
+            new Date(item.ontvangen_op).toLocaleString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          )
+        ),
+        React.createElement(StatusSelect, {
+          value: item.status,
+          options: ['nieuw', 'beantwoord', 'gearchiveerd'],
+          onChange: s => updateStatus(item.id, s)
+        })
+      ),
+      React.createElement(DetailField, { label: 'E-mail', value: item.email }),
+      React.createElement(DetailField, { label: 'Onderwerp', value: item.onderwerp }),
+      React.createElement('div', { style: { marginBottom: 12 } },
+        React.createElement('div', { style: { fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 4 } }, 'Bericht'),
+        React.createElement('div', { style: { fontSize: 14, color: 'var(--text)', background: '#f8f9fa', borderRadius: 8, padding: '12px 14px', whiteSpace: 'pre-wrap', lineHeight: 1.6 } }, item.bericht)
+      ),
+      React.createElement(NotitieSectie, { type: 'contact_berichten', id: item.id })
+    )
+  });
 }
 
-function BestellingenScreen({ onBadgeRefresh }) {
-  const [items, setItems] = React.useState(null);
+/* Bestellingen */
+function BestellingenScreen() {
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [selectedId, setSelectedId] = React.useState(null);
+
   React.useEffect(() => {
     window.supabase.from('boek_bestellingen').select('*').order('besteld_op', { ascending: false })
-      .then(({ data }) => setItems(data || []));
+      .then(({ data }) => { setItems(data || []); setLoading(false); });
   }, []);
+
   async function updateStatus(id, status) {
     await window.supabase.from('boek_bestellingen').update({ status }).eq('id', id);
     setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
-    onBadgeRefresh && onBadgeRefresh();
-  }
-  const nieuw = items ? items.filter(i => i.status === 'nieuw').length : 0;
-  const totaalBedrag = items ? items.reduce((s, i) => s + (Number(i.totaal_bedrag) || 0), 0).toFixed(2) : '0.00';
-  return (
-    <>
-      <PageHead title="Bestellingen" sub={`${items ? items.length : '…'} bestellingen${nieuw > 0 ? ` — ${nieuw} nieuw` : ''} · totaal € ${totaalBedrag}`} />
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <InzendingTable
-          items={items}
-          statusOptions={[{value:'nieuw',label:'Nieuw'},{value:'gezien',label:'Gezien'},{value:'verzonden',label:'Verzonden'}]}
-          onStatusChange={updateStatus}
-          columns={[
-            { key: 'naam', label: 'Naam', maxWidth: 160, render: i => i.voornaam + ' ' + i.achternaam },
-            { key: 'email', label: 'E-mail', maxWidth: 180, render: i => <a href={"mailto:"+i.email}>{i.email}</a> },
-            { key: 'adres', label: 'Adres', maxWidth: 200, render: i => `${i.straat_huisnummer}, ${i.postcode} ${i.plaatsnaam}` },
-            { key: 'aantal', label: 'Aantal', maxWidth: 60 },
-            { key: 'totaal_bedrag', label: 'Totaal', maxWidth: 70, render: i => `€ ${Number(i.totaal_bedrag).toFixed(2)}` },
-            { key: 'besteld_op', label: 'Datum', maxWidth: 100, render: i => new Date(i.besteld_op).toLocaleDateString('nl') },
-          ]}
-        />
-      </div>
-    </>
-  );
-}
-
-/* === login.jsx === */
-function LoginScreen({ onLogin }) {
-  const [email, setEmail]       = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [error, setError]       = React.useState('');
-  const [loading, setLoading]   = React.useState(false);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    const { data, error: authError } = await window.supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-    if (authError) {
-      setError('E-mailadres of wachtwoord onjuist');
-      setLoading(false);
-    } else {
-      onLogin(data.session);
-    }
   }
 
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--cream)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 24,
-    }}>
-      <div style={{ width: '100%', maxWidth: 380 }}>
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            background: 'var(--cream)',
-            borderRadius: 12,
-            display: 'inline-block',
-            padding: '10px 16px',
-            marginBottom: 14,
-          }}>
-            <img
-              src={window.TIB_LOGO_URL}
-              alt="Thuis in de Buurt"
-              style={{ maxWidth: 200, height: 'auto', display: 'block', mixBlendMode: 'multiply' }}
-            />
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 4 }}>Beheeromgeving</div>
-        </div>
-
-        {/* Card */}
-        <div className="card" style={{ padding: '28px 28px 24px' }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="field">
-              <label>E-mailadres</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setError(''); }}
-                placeholder="admin@thuisindebuurt.nl"
-                autoComplete="email"
-                autoFocus
-                required
-              />
-            </div>
-
-            <div className="field">
-              <label>Wachtwoord</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(''); }}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                required
-              />
-            </div>
-
-            {error && (
-              <div style={{
-                background: 'oklch(0.95 0.05 25)',
-                border: '1px solid oklch(0.85 0.07 25)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '9px 12px',
-                fontSize: 13,
-                color: 'var(--danger)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}>
-                <Icon name="warn" size={14} />
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading}
-              style={{ width: '100%', justifyContent: 'center', padding: '10px 0', fontSize: 14, marginTop: 4, opacity: loading ? 0.7 : 1 }}
-            >
-              {loading ? 'Bezig…' : 'Inloggen'}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
+  return React.createElement(MasterDetail, {
+    items, loading, selectedId, onSelect: setSelectedId,
+    renderListItem: (item, active) => React.createElement('div', null,
+      React.createElement('div', { style: { fontWeight: 600, fontSize: 13, marginBottom: 2, color: active ? '#fff' : 'var(--text)' } }, item.voornaam + ' ' + item.achternaam),
+      React.createElement('div', { style: { fontSize: 11, color: active ? 'rgba(255,255,255,0.8)' : 'var(--muted)', marginBottom: 4 } },
+        item.aantal + ' ex. — €' + Number(item.totaal_bedrag).toFixed(2)
+      ),
+      active
+        ? React.createElement('span', { style: { fontSize: 11, fontWeight: 600 } }, item.status)
+        : React.createElement(StatusBadge, { status: item.status })
+    ),
+    renderDetail: (item) => React.createElement('div', null,
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 } },
+        React.createElement('div', null,
+          React.createElement('div', { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, item.voornaam + ' ' + item.achternaam),
+          React.createElement('div', { style: { fontSize: 13, color: 'var(--muted)' } },
+            new Date(item.besteld_op).toLocaleString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          )
+        ),
+        React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' } },
+          React.createElement(StatusSelect, {
+            value: item.status,
+            options: ['nieuw', 'betaald', 'verzonden', 'geannuleerd'],
+            onChange: s => updateStatus(item.id, s)
+          }),
+          item.status === 'betaald' && React.createElement('button', {
+            onClick: () => updateStatus(item.id, 'verzonden'),
+            style: { padding: '4px 12px', borderRadius: 6, background: '#004085', color: '#fff', border: 'none', fontSize: 12, cursor: 'pointer' }
+          }, 'Markeer als verzonden')
+        )
+      ),
+      React.createElement(DetailField, { label: 'E-mail', value: item.email }),
+      React.createElement(DetailField, { label: 'Telefoon', value: item.telefoon }),
+      React.createElement(DetailField, { label: 'Adres', value: item.straat_huisnummer + ', ' + item.postcode + ' ' + item.plaatsnaam }),
+      React.createElement(DetailField, { label: 'Aantal exemplaren', value: item.aantal }),
+      React.createElement(DetailField, { label: 'Totaalbedrag', value: '€' + Number(item.totaal_bedrag).toFixed(2) }),
+      React.createElement(NotitieSectie, { type: 'boek_bestellingen', id: item.id })
+    )
+  });
 }
+
 
 /* === app.jsx === */
 // Main app + routing
