@@ -1284,7 +1284,21 @@ const NAV = [
 const NAV_LOOKUP = {};
 NAV.forEach(g => g.items.forEach(i => { NAV_LOOKUP[i.id] = i; }));
 
-function Sidebar({ active, onNav, onLogout }) {
+// Welke menu-items mogen een beheerder zien
+const BEHEERDER_ROUTES = new Set(['dashboard', 'clubjes']);
+
+function Sidebar({ active, onNav, onLogout, profile, userEmail }) {
+  const isSuperadmin = profile?.role === 'superadmin';
+  const visibleNav = NAV.map(group => ({
+    ...group,
+    items: isSuperadmin
+      ? group.items
+      : group.items.filter(item => BEHEERDER_ROUTES.has(item.id)),
+  })).filter(group => group.items.length > 0);
+
+  const initials = (userEmail || 'TB').slice(0, 2).toUpperCase();
+  const roleLabel = isSuperadmin ? 'Superadmin' : 'Buurtgroep-beheerder';
+
   return (
     <aside className="sidebar">
       <div className="brand" style={{ justifyContent: 'center', paddingBottom: 16 }}>
@@ -1303,7 +1317,7 @@ function Sidebar({ active, onNav, onLogout }) {
           />
         </div>
       </div>
-      {NAV.map(group => (
+      {visibleNav.map(group => (
         <React.Fragment key={group.group}>
           <div className="nav-group">{group.group}</div>
           {group.items.map(item => (
@@ -1320,10 +1334,10 @@ function Sidebar({ active, onNav, onLogout }) {
         </React.Fragment>
       ))}
       <div className="sidebar-foot">
-        <div className="avatar">TB</div>
+        <div className="avatar">{initials}</div>
         <div style={{ flex: 1 }}>
-          <div className="user-name">Beheerder</div>
-          <div className="user-role">TIB CMS</div>
+          <div className="user-name" style={{ fontSize: 11, wordBreak: 'break-all' }}>{userEmail || 'Beheerder'}</div>
+          <div className="user-role">{roleLabel}</div>
         </div>
         <button
           title="Uitloggen"
@@ -1667,10 +1681,11 @@ function MiniMap({ lat, lng, label }) {
 
 /* === screens/clubjes.jsx === */
 // Clubjes screen — list + edit detail
-function ClubjesList({ onNav, onEdit }) {
+function ClubjesList({ onNav, onEdit, profile }) {
   const [filter, setFilter] = React.useState('Alle');
   const [search, setSearch] = React.useState('');
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+  const isBeheerder = profile?.role === 'beheerder';
 
   function handleDelete(id, naam) {
     if (!window.confirm('Buurtgroep "' + naam + '" definitief verwijderen?')) return;
@@ -1682,6 +1697,7 @@ function ClubjesList({ onNav, onEdit }) {
   }
   const cats = ['Alle', 'Sport', 'Cultuur', 'Sociaal', 'Buiten', 'Lezen & leren'];
   const rows = DATA.clubjes
+    .filter(c => !isBeheerder || c.id === profile.club_id)
     .filter(c => filter === 'Alle' || c.categorie === filter)
     .filter(c => !search || [c.naam, c.wijk, c.contact, c.omschrijving].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
   return (
@@ -1993,10 +2009,10 @@ function ClubjeEdit({ id, onBack }) {
   );
 }
 
-function ClubjesScreen({ onNav }) {
+function ClubjesScreen({ onNav, profile }) {
   const [editing, setEditing] = React.useState(null);
   return editing == null
-    ? <ClubjesList onNav={onNav} onEdit={setEditing} />
+    ? <ClubjesList onNav={onNav} onEdit={setEditing} profile={profile} />
     : <ClubjeEdit id={editing === 'new' ? null : editing} onBack={() => setEditing(null)} />;
 }
 window.ClubjesScreen = ClubjesScreen;
@@ -4666,6 +4682,7 @@ function LoginScreen({ onLogin }) {
 function App() {
   // session: undefined = controleren, null = niet ingelogd, object = ingelogd
   const [session, setSession] = React.useState(undefined);
+  const [profile, setProfile] = React.useState(null);
   const [route, setRoute] = React.useState('dashboard');
   const [previewOn, setPreviewOn] = React.useState(false);
   const [toast, setToast] = React.useState(null);
@@ -4680,6 +4697,21 @@ function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Haal profiel (rol + club_id) op zodra de sessie bekend is
+  React.useEffect(() => {
+    if (!session) { setProfile(null); window._tibProfile = null; return; }
+    window.supabase
+      .from('profiles')
+      .select('role, club_id')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data }) => {
+        const p = data || { role: 'beheerder', club_id: null };
+        setProfile(p);
+        window._tibProfile = p;
+      });
+  }, [session?.user?.id]);
 
   async function handleLogout() {
     await window.supabase.auth.signOut();
@@ -4696,6 +4728,14 @@ function App() {
 
   if (!session) {
     return <LoginScreen onLogin={(s) => setSession(s)} />;
+  }
+
+  if (!profile) {
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', fontFamily:'sans-serif', fontSize:16, color:'#555' }}>
+        Profiel laden…
+      </div>
+    );
   }
 
   // Sync CMS data to site via shared localStorage
@@ -4829,7 +4869,7 @@ function App() {
   const screens = {
     dashboard: { crumbs: ['Dashboard'], render: () => <Dashboard onNav={setRoute} onPreview={() => setPreviewOn(true)} /> },
     pages: { crumbs: ["Pagina's"], render: () => <PagesScreen /> },
-    clubjes: { crumbs: ['Buurtgroepen'], render: () => <ClubjesScreen onNav={setRoute} /> },
+    clubjes: { crumbs: ['Buurtgroepen'], render: () => <ClubjesScreen onNav={setRoute} profile={profile} /> },
     activiteiten: { crumbs: ['Activiteiten'], render: () => <ActiviteitenScreen /> },
     weekagenda:   { crumbs: ['Weekagenda'],   render: () => <WeekagendaScreen /> },
     agenda: { crumbs: ['Agenda'], render: () => <AgendaScreen /> },
@@ -4852,7 +4892,7 @@ function App() {
 
   return (
     <div className={"app" + (previewOn ? " preview-on" : "")}>
-      <Sidebar active={route} onNav={setRoute} onLogout={handleLogout} />
+      <Sidebar active={route} onNav={setRoute} onLogout={handleLogout} profile={profile} userEmail={session?.user?.email} />
       <div className="main">
         <Topbar
           crumbs={current.crumbs}
