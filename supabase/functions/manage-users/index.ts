@@ -95,7 +95,10 @@ Deno.serve(async (req) => {
       const { email, club_id, role } = body
       if (!email) return json({ error: 'E-mailadres is verplicht' }, 400)
 
-      const { data, error } = await admin.auth.admin.inviteUserByEmail(email as string)
+      const { data, error } = await admin.auth.admin.inviteUserByEmail(email as string, {
+        data: { club_id: club_id ?? null, role: role ?? 'beheerder' },
+        redirectTo: 'http://localhost:3000/TIB%20Beheer.html',
+      })
       if (error) throw error
 
       // Trigger-fallback: voeg profile direct in zodat rechten direct kloppen
