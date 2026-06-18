@@ -5200,6 +5200,61 @@ function BestellingenScreen() {
 }
 
 
+/* === login.jsx === */
+
+function LoginScreen({ onLogin }) {
+  const [email, setEmail]       = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [error, setError]       = React.useState(null);
+  const [loading, setLoading]   = React.useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const { data, error: err } = await window.supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (err) { setError(err.message); return; }
+    onLogin(data.session);
+  }
+
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'var(--cream, #faf9f6)', fontFamily:'sans-serif' }}>
+      <div style={{ background:'#fff', borderRadius:12, boxShadow:'0 2px 24px rgba(0,0,0,0.08)', padding:'40px 36px', width:'100%', maxWidth:380 }}>
+        <div style={{ marginBottom:28, textAlign:'center' }}>
+          <div style={{ fontWeight:700, fontSize:22, color:'var(--tib-blue, #1a3a5c)', marginBottom:4 }}>TIB Beheer</div>
+          <div style={{ fontSize:13, color:'var(--ink-soft, #888)' }}>Log in om door te gaan</div>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom:14 }}>
+            <label style={{ display:'block', fontSize:12, fontWeight:600, marginBottom:4, color:'var(--ink, #222)' }}>E-mailadres</label>
+            <input
+              type="email" required autoFocus
+              value={email} onChange={e => setEmail(e.target.value)}
+              style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px', border:'1px solid var(--line, #ddd)', borderRadius:7, fontSize:14 }}
+            />
+          </div>
+          <div style={{ marginBottom:20 }}>
+            <label style={{ display:'block', fontSize:12, fontWeight:600, marginBottom:4, color:'var(--ink, #222)' }}>Wachtwoord</label>
+            <input
+              type="password" required
+              value={password} onChange={e => setPassword(e.target.value)}
+              style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px', border:'1px solid var(--line, #ddd)', borderRadius:7, fontSize:14 }}
+            />
+          </div>
+          {error && <div style={{ fontSize:12, color:'#c0392b', marginBottom:14, background:'#fdf0f0', borderRadius:6, padding:'8px 12px' }}>{error}</div>}
+          <button
+            type="submit" disabled={loading}
+            style={{ width:'100%', padding:'10px 0', background:'var(--tib-blue, #1a3a5c)', color:'#fff', border:'none', borderRadius:7, fontSize:15, fontWeight:600, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}
+          >
+            {loading ? 'Bezig…' : 'Inloggen'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* === app.jsx === */
 // Main app + routing
 
