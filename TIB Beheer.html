@@ -4256,18 +4256,300 @@ function HuisstijlScreen() {
 }
 
 function GebruikersScreen() {
+  const EDGE_URL = 'https://bxklumejqczcmhrpzstt.supabase.co/functions/v1/manage-users';
+  const isSuperadmin = window._tibProfile?.role === 'superadmin';
+
+  // Haal de access token op en roep de Edge Function aan
+  async function callEdge(body) {
+    const { data: { session } } = await window.supabase.auth.getSession();
+    const res = await fetch(EDGE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token,
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Onbekende fout');
+    return data;
+  }
+
+  // Huidig ingelogde gebruikers-id (om zichzelf te herkennen in de lijst)
+  const [currentUserId, setCurrentUserId] = React.useState(null);
+
+  // Uitnodigingsformulier
+  const [inviteEmail, setInviteEmail] = React.useState('');
+  const [inviteClubId, setInviteClubId] = React.useState('');
+  const [inviting, setInviting] = React.useState(false);
+
+  // Gebruikersoverzicht
+  const [users, setUsers] = React.useState(null); // null = laden
+  const [loadError, setLoadError] = React.useState(null);
+
+  // Verwijderbevestiging
+  const [toDelete, setToDelete] = React.useState(null); // { id, email }
+  const [deleting, setDeleting] = React.useState(false);
+
+  async function loadUsers() {
+    setLoadError(null);
+    setUsers(null);
+    try {
+      const { users: list } = await callEdge({ action: 'list' });
+      setUsers(list);
+    } catch (e) {
+      setLoadError(e.message);
+      setUsers([]);
+    }
+  }
+
+  React.useEffect(() => {
+    if (!isSuperadmin) return;
+    window.supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUserId(session?.user?.id ?? null);
+    });
+    loadUsers();
+  }, []);
+
+  async function handleInvite(e) {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    try {
+      await callEdge({
+        action: 'invite',
+        email: inviteEmail.trim(),
+        club_id: inviteClubId ? Number(inviteClubId) : null,
+        role: 'beheerder',
+      });
+      window.__showToast && window.__showToast('Uitnodiging verzonden naar ' + inviteEmail.trim());
+      setInviteEmail('');
+      setInviteClubId('');
+      loadUsers();
+    } catch (e) {
+      window.__showToast && window.__showToast('Fout: ' + e.message);
+    }
+    setInviting(false);
+  }
+
+  async function handleRoleChange(userId, newRole) {
+    try {
+      await callEdge({ action: 'update', user_id: userId, role: newRole });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    } catch (e) {
+      window.__showToast && window.__showToast('Opslaan mislukt: ' + e.message);
+    }
+  }
+
+  async function handleClubChange(userId, newClubId) {
+    const club_id = newClubId ? Number(newClubId) : null;
+    try {
+      await callEdge({ action: 'update', user_id: userId, club_id });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, club_id } : u));
+    } catch (e) {
+      window.__showToast && window.__showToast('Opslaan mislukt: ' + e.message);
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await callEdge({ action: 'delete', user_id: toDelete.id });
+      setUsers(prev => prev.filter(u => u.id !== toDelete.id));
+      window.__showToast && window.__showToast(toDelete.email + ' is verwijderd');
+      setToDelete(null);
+    } catch (e) {
+      window.__showToast && window.__showToast('Verwijderen mislukt: ' + e.message);
+    }
+    setDeleting(false);
+  }
+
+  if (!isSuperadmin) {
+    return (
+      <>
+        <PageHead title="Gebruikers" sub="Beheer wie mag inloggen en welke rechten ze hebben." />
+        <HintCard icon="info">Alleen superadmins kunnen gebruikers beheren.</HintCard>
+      </>
+    );
+  }
+
+  const clubs = window.DATA?.clubjes ?? [];
+
   return (
     <>
+      {/* Verwijderbevestiging */}
+      {toDelete && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.45)',
+          display: 'grid', placeItems: 'center',
+          zIndex: 999,
+        }}>
+          <div className="card card-pad" style={{ maxWidth: 420, width: '90%' }}>
+            <h3 style={{ marginTop: 0, fontFamily: 'var(--serif)', fontSize: 17 }}>Gebruiker verwijderen</h3>
+            <p style={{ fontSize: 14, color: 'var(--ink-soft)' }}>
+              Weet je zeker dat je <strong style={{ color: 'var(--ink)' }}>{toDelete.email}</strong> wilt verwijderen?
+              Dit kan niet ongedaan worden gemaakt.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="btn btn-sm" onClick={() => setToDelete(null)} disabled={deleting}>
+                Annuleren
+              </button>
+              <button className="btn btn-sm btn-ghost btn-danger" onClick={handleDeleteConfirm} disabled={deleting}>
+                <Icon name="trash" size={13} /> {deleting ? 'Bezig…' : 'Definitief verwijderen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHead
         title="Gebruikers"
         sub="Beheer wie mag inloggen en welke rechten ze hebben."
-        actions={<button className="btn btn-primary" onClick={() => window.__showToast && window.__showToast('Nieuwe gebruiker uitnodigen…')}><Icon name="plus" size={14} /> Nieuwe gebruiker</button>}
       />
-      <EmptyState
-        title="Nog geen gebruikers toegevoegd"
-        sub="Voeg een gebruiker toe via de knop rechtsboven."
-        action={<button className="btn btn-primary" onClick={() => window.__showToast && window.__showToast('Nieuwe gebruiker uitnodigen…')}><Icon name="plus" size={14} /> Nieuwe gebruiker</button>}
-      />
+
+      {/* --- Sectie 1: Uitnodiging --- */}
+      <div className="card card-pad" style={{ marginBottom: 22 }}>
+        <h2 style={{ marginTop: 0, marginBottom: 16, fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 600 }}>
+          Nieuwe beheerder uitnodigen
+        </h2>
+        <form onSubmit={handleInvite}>
+          <div className="grid grid-2" style={{ gap: 16, marginBottom: 16 }}>
+            <Field label="E-mailadres">
+              <input
+                type="email"
+                required
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+                placeholder="naam@voorbeeld.nl"
+              />
+            </Field>
+            <Field label="Buurtgroep" hint="Laat leeg voor een algemene beheerder zonder clubkoppeling.">
+              <select value={inviteClubId} onChange={e => setInviteClubId(e.target.value)}>
+                <option value="">Geen club — algemene beheerder</option>
+                {clubs.map(c => (
+                  <option key={c.id} value={c.id}>{c.naam}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <button className="btn btn-primary" type="submit" disabled={inviting}>
+            {inviting
+              ? 'Bezig…'
+              : <><Icon name="plus" size={14} /> Uitnodiging versturen</>
+            }
+          </button>
+        </form>
+      </div>
+
+      {/* --- Sectie 2: Beheerders overzicht --- */}
+      <div className="card" style={{ overflow: 'hidden' }}>
+        <div style={{
+          padding: '14px 20px',
+          borderBottom: '1px solid var(--line)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 600 }}>
+            Beheerders overzicht
+          </h2>
+          <button className="icon-btn" onClick={loadUsers} title="Vernieuwen">
+            <Icon name="refresh" size={14} />
+          </button>
+        </div>
+
+        {users === null ? (
+          <div style={{ padding: 48, textAlign: 'center', color: 'var(--ink-mute)', fontSize: 14 }}>
+            Laden…
+          </div>
+        ) : loadError ? (
+          <div style={{ padding: 20 }}>
+            <HintCard icon="info">Kon gebruikers niet laden: {loadError}</HintCard>
+          </div>
+        ) : users.length === 0 ? (
+          <EmptyState
+            title="Geen gebruikers gevonden"
+            sub="Nodig een beheerder uit via het formulier hierboven."
+          />
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--line)' }}>
+                {['E-mail', 'Rol', 'Buurtgroep', 'Acties'].map(h => (
+                  <th key={h} style={{
+                    padding: '9px 20px', textAlign: 'left',
+                    fontSize: 11.5, fontWeight: 600,
+                    color: 'var(--ink-mute)', textTransform: 'uppercase', letterSpacing: '0.05em',
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(u => {
+                const isSelf = u.id === currentUserId;
+                const clubNaam = u.club_id
+                  ? (clubs.find(c => String(c.id) === String(u.club_id))?.naam ?? `Club ${u.club_id}`)
+                  : null;
+                return (
+                  <tr key={u.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                    <td style={{ padding: '11px 20px' }}>
+                      <div style={{ fontSize: 14, fontWeight: 500 }}>{u.email}</div>
+                      {isSelf && (
+                        <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 1 }}>dit ben jij</div>
+                      )}
+                    </td>
+                    <td style={{ padding: '11px 20px' }}>
+                      {isSelf ? (
+                        <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                          {u.role === 'superadmin' ? 'Superadmin' : 'Beheerder'}
+                        </span>
+                      ) : (
+                        <select
+                          value={u.role}
+                          onChange={e => handleRoleChange(u.id, e.target.value)}
+                          style={{ fontSize: 13 }}
+                        >
+                          <option value="superadmin">Superadmin</option>
+                          <option value="beheerder">Beheerder</option>
+                        </select>
+                      )}
+                    </td>
+                    <td style={{ padding: '11px 20px' }}>
+                      {isSelf ? (
+                        <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                          {clubNaam ?? '—'}
+                        </span>
+                      ) : (
+                        <select
+                          value={u.club_id ?? ''}
+                          onChange={e => handleClubChange(u.id, e.target.value)}
+                          style={{ fontSize: 13 }}
+                        >
+                          <option value="">Geen</option>
+                          {clubs.map(c => (
+                            <option key={c.id} value={c.id}>{c.naam}</option>
+                          ))}
+                        </select>
+                      )}
+                    </td>
+                    <td style={{ padding: '11px 20px' }}>
+                      {!isSelf && (
+                        <button
+                          className="icon-btn btn-danger"
+                          title={'Verwijder ' + u.email}
+                          onClick={() => setToDelete({ id: u.id, email: u.email })}
+                        >
+                          <Icon name="trash" size={14} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
     </>
   );
 }
