@@ -263,6 +263,26 @@ window.TIB_HERO_URL = "data:image/jpeg;base64,/9j/4RtLRXhpZgAATU0AKgAAAAgACQEOAA
       grid-column: 2;
     }
   }
+
+  /* === TIB Nav-fix: alle menu-items op één regel op desktop (>768px) ===
+     Probleem: flex-wrap:wrap laat "Contact" op een tweede regel vallen bij ~1080px.
+     Oplossing: nowrap + kleinere font-size/padding/gap in de 769-1180px range. */
+
+  /* Altijd nowrap voor de nav-items zelf (hamburger werkt via topbar-inner wrap) */
+  .tib-nav { flex-wrap: nowrap !important; }
+
+  /* Bij 769–1180px: compactere spacing zodat alle items op één regel passen */
+  @media (min-width: 769px) and (max-width: 1180px) {
+    .tib-topbar-inner { gap: 10px !important; padding: 12px 16px !important; }
+    .tib-nav { gap: 2px !important; }
+    .tib-nav button { font-size: 0.83rem !important; padding: 5px 8px !important; white-space: nowrap; }
+    .tib-topbar-cta { gap: 6px !important; }
+    .tib-topbar-cta .btn {
+      padding: 8px 14px !important;
+      font-size: 0.83rem !important;
+      min-height: 36px !important;
+    }
+  }
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
