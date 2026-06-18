@@ -5177,10 +5177,36 @@ function App() {
   );
 }
 
+function __mapClubjesToDb(item) {
+  const mapped = {
+    id:            item.id,
+    naam:          item.naam,
+    categorie:     item.categorie,
+    wijk:          item.wijk,
+    omschrijving:  item.omschrijving,
+    voor_wie:      item.voorWie,
+    waar:          item.waar,
+    wanneer:       item.wanneer,
+    kosten:        item.kosten,
+    contact:       item.contact,
+    email:         item.email,
+    telefoon:      item.telefoon,
+    foto_url:      item.fotoUrl || item.foto_url || null,
+    lat:           item.lat,
+    lng:           item.lng,
+    status:        item.status,
+    uitgelicht:    item.uitgelicht,
+    leden:         item.leden,
+    aangemaakt_op: item.aangemaakt_op || null,
+  };
+  return mapped;
+}
+
 window.__supabaseUpsert = async function(tabel, item) {
   try {
     const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
-    const { error } = await window.supabase.from(dbTabel).upsert(item, { onConflict: 'id' });
+    const dbItem = tabel === 'clubjes' ? __mapClubjesToDb(item) : item;
+    const { error } = await window.supabase.from(dbTabel).upsert(dbItem, { onConflict: 'id' });
     if (error) throw error;
   } catch(e) {
     console.warn('Supabase upsert mislukt:', tabel, e);
