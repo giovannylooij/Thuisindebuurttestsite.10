@@ -67,7 +67,203 @@ window.TIB_HERO_URL = "data:image/jpeg;base64,/9j/4RtLRXhpZgAATU0AKgAAAAgACQEOAA
     top: 72px !important;
     z-index: 10 !important;
   }
-  </style>
+  
+  /* ============================================================
+     MOBILE RESPONSIVE — alles tot en met 768px (tablet/telefoon)
+     Desktop (>768px) blijft ongewijzigd.
+     ============================================================ */
+  @media (max-width: 768px) {
+
+    /* === Body: geen horizontale scroll === */
+    body { overflow-x: hidden; }
+
+    /* === Container: kleinere padding op smal scherm === */
+    .tib-container { padding: 0 16px !important; }
+
+    /* === Secties: minder adembreedte === */
+    .section, .section-tight { padding: 36px 0; }
+    .section-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+    .section-head h2 { max-width: 100%; }
+
+    /* === Afbeeldingen: nooit breder dan scherm === */
+    img, image-slot { max-width: 100%; height: auto; }
+
+    /* === Hero === */
+    .hero { padding: 28px 0 40px; }
+    .hero-grid { grid-template-columns: 1fr !important; gap: 24px; }
+    .hero-cta { flex-direction: column; align-items: stretch; }
+    .hero-cta .btn { justify-content: center; width: 100%; }
+
+    /* ---------------------------------------------------------
+       BUURTGROEPEN HOME: parent-div heeft inline-style
+       (display:grid + gridTemplateColumns:"1.4fr 1fr").
+       !important is nodig om inline styles te overrulen.
+       --------------------------------------------------------- */
+    div:has(> .cards-row):has(> .mini-map-wrap) {
+      display: flex !important;
+      flex-direction: column !important;
+      grid-template-columns: unset !important;
+      min-height: 0 !important;
+      gap: 20px !important;
+      align-items: stretch !important;
+    }
+    div:has(> .cards-row):has(> .mini-map-wrap) > .cards-row {
+      order: 1 !important;
+      width: 100% !important;
+      grid-template-columns: 1fr !important;
+    }
+    div:has(> .cards-row):has(> .mini-map-wrap) > .mini-map-wrap {
+      order: 2 !important;
+      width: 100% !important;
+      height: 260px !important;
+      min-height: 0 !important;
+      position: static !important;
+      align-self: auto !important;
+      top: auto !important;
+    }
+
+    /* ---------------------------------------------------------
+       CARDS-ROW: altijd 1 kolom — ook als inline-style anders zegt
+       --------------------------------------------------------- */
+    .cards-row,
+    .cards-row.cards-4 {
+      grid-template-columns: 1fr !important;
+      gap: 14px;
+    }
+
+    /* ---------------------------------------------------------
+       MINI-MAP ALGEMEEN: static + full-width op mobile
+       Overschrijft Kaart-fix 1 sticky-positioning.
+       --------------------------------------------------------- */
+    .mini-map-wrap {
+      position: static !important;
+      top: auto !important;
+      align-self: auto !important;
+      width: 100% !important;
+      height: 260px !important;
+      min-height: 0 !important;
+    }
+    .tib-container > div:has(> .mini-map-wrap):has(> div > .cards-row) > .mini-map-wrap {
+      height: 240px !important;
+      position: static !important;
+      top: auto !important;
+    }
+
+    /* ---------------------------------------------------------
+       AGENDA
+       --------------------------------------------------------- */
+    .agenda-row { grid-template-columns: 1fr; }
+
+    /* ---------------------------------------------------------
+       PARTNER GRID: 2 kolommen — logo's zijn klein genoeg
+       --------------------------------------------------------- */
+    .partner-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* ---------------------------------------------------------
+       KALENDER: 1 kolom (was 7 dagen naast elkaar)
+       --------------------------------------------------------- */
+    .kalender-grid { grid-template-columns: 1fr; }
+
+    /* ---------------------------------------------------------
+       DONEREN
+       --------------------------------------------------------- */
+    .donate-card { grid-template-columns: 1fr !important; padding: 22px; }
+
+    /* ---------------------------------------------------------
+       FORMULIEREN: full-width, font-size 16px stopt iOS auto-zoom
+       --------------------------------------------------------- */
+    .form-grid { grid-template-columns: 1fr; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      font-size: 16px;
+    }
+
+    /* ---------------------------------------------------------
+       FOOTER: 1 kolom + nieuwsbrief-form gestapeld
+       --------------------------------------------------------- */
+    .tib-footer { padding: 36px 0 20px; }
+    .tib-footer-grid {
+      grid-template-columns: 1fr !important;
+      gap: 24px;
+    }
+    .tib-footer .nl-form {
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tib-footer .nl-form input {
+      width: 100%;
+      min-width: 0;
+    }
+    .tib-footer .nl-form button {
+      width: 100%;
+      padding: 14px;
+      min-height: 44px;
+      font-size: 1rem;
+      border-radius: 10px;
+    }
+    .tib-footer-bottom {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    /* ---------------------------------------------------------
+       DETAIL-PAGINA'S
+       --------------------------------------------------------- */
+    .detail-head { grid-template-columns: 1fr; }
+    .detail-grid { grid-template-columns: 1fr; gap: 20px; }
+    .detail-aside { position: static; top: auto; }
+
+    /* ---------------------------------------------------------
+       BOEK-PAGINA
+       --------------------------------------------------------- */
+    .boek-intro { grid-template-columns: 1fr; gap: 22px; }
+    .boek-cover-wrap { position: static; top: auto; }
+
+    /* ---------------------------------------------------------
+       NETWERKEN
+       --------------------------------------------------------- */
+    .netwerk-info { grid-template-columns: 1fr; }
+
+    /* ---------------------------------------------------------
+       VORIGE/VOLGENDE NAVIGATIE
+       --------------------------------------------------------- */
+    .prev-next { grid-template-columns: 1fr; }
+
+    /* ---------------------------------------------------------
+       TERUG-KNOP
+       --------------------------------------------------------- */
+    .tib-back-btn { top: 68px; left: 12px; }
+
+    /* ---------------------------------------------------------
+       PILL ROW: wrappen op mobile (was nowrap)
+       --------------------------------------------------------- */
+    .pill-row { flex-wrap: wrap !important; }
+
+    /* ---------------------------------------------------------
+       KNOPPEN: minimaal 44px touch-target
+       --------------------------------------------------------- */
+    .btn { min-height: 44px; }
+
+    /* ---------------------------------------------------------
+       ATLAS PLACE-LIST: 2-koloms layout → stapelen
+       --------------------------------------------------------- */
+    .place-item {
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      padding: 14px 16px;
+    }
+    .place-item > *:nth-child(3),
+    .place-item > *:nth-child(4) {
+      grid-column: 2;
+    }
+  }
+</style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
