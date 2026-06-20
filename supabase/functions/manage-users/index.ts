@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
 
       const { data, error } = await admin.auth.admin.inviteUserByEmail(email as string, {
         data: { club_id: club_id ?? null, role: role ?? 'beheerder' },
-        redirectTo: 'https://www.thuisindebuurt.nl/TIB%20Wachtwoord.html',
+        redirectTo: 'https://thuisindebuurttestsite-10-x4gf.vercel.app/TIB%20Wachtwoord.html',
       })
       if (error) throw error
 
