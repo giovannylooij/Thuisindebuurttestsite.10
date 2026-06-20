@@ -3804,132 +3804,155 @@ function CategoriesScreen() {
   const [loading, setLoading] = React.useState(true);
   const [editingId, setEditingId] = React.useState(null);
   const [editNaam, setEditNaam] = React.useState('');
-  const [editVolgorde, setEditVolgorde] = React.useState(0);
+  const [editKleurIdx, setEditKleurIdx] = React.useState(0);
   const [newNaam, setNewNaam] = React.useState('');
-  const [newVolgorde, setNewVolgorde] = React.useState(0);
+  const [newIcoon, setNewIcoon] = React.useState('users');
+  const [newKleurIdx, setNewKleurIdx] = React.useState(2);
+  const [newKoppeling, setNewKoppeling] = React.useState({ Buurtgroepen: true, Activiteiten: true, Agenda: false, Nieuws: false });
   const [saving, setSaving] = React.useState(false);
+  const kleuren = ['oklch(0.65 0.13 25)','oklch(0.65 0.13 65)','oklch(0.65 0.13 145)','oklch(0.55 0.13 250)','oklch(0.55 0.13 295)','oklch(0.55 0.04 250)'];
 
   async function laad() {
     setLoading(true);
-    const { data } = await window.supabase.from('categorieen').select('*').order('volgorde');
-    setCats(data || []);
+    const { data: catData } = await window.supabase.from('categorieen').select('*').order('volgorde');
+    const { data: clubData } = await window.supabase.from('clubjes').select('categorie');
+    const counts = {};
+    (clubData || []).forEach(c => { counts[c.categorie] = (counts[c.categorie] || 0) + 1; });
+    setCats((catData || []).map(c => ({ ...c, aantal: counts[c.naam] || 0 })));
     setLoading(false);
   }
 
   React.useEffect(() => { laad(); }, []);
 
+  function startEdit(c) {
+    setEditingId(c.id);
+    setEditNaam(c.naam);
+    setEditKleurIdx(kleuren.indexOf(c.kleur) >= 0 ? kleuren.indexOf(c.kleur) : 0);
+  }
+
+  async function saveEdit(id, origIcoon) {
+    if (!editNaam.trim()) return;
+    setSaving(true);
+    const { error } = await window.supabase.from('categorieen').update({
+      naam: editNaam.trim(),
+      kleur: kleuren[editKleurIdx],
+      icoon: origIcoon
+    }).eq('id', id);
+    if (error) { window.__showToast && window.__showToast('Fout: ' + error.message); }
+    else { window.__showToast && window.__showToast('Categorie opgeslagen: ' + editNaam.trim()); setEditingId(null); await laad(); }
+    setSaving(false);
+  }
+
   async function handleCreate() {
     if (!newNaam.trim()) return;
     setSaving(true);
     const maxVolgorde = cats.length > 0 ? Math.max(...cats.map(c => c.volgorde || 0)) + 1 : 1;
-    const { error } = await window.supabase.from('categorieen').insert({ naam: newNaam.trim(), volgorde: newVolgorde || maxVolgorde });
+    const { error } = await window.supabase.from('categorieen').insert({
+      naam: newNaam.trim(),
+      icoon: newIcoon,
+      kleur: kleuren[newKleurIdx],
+      volgorde: maxVolgorde
+    });
     if (error) { window.__showToast && window.__showToast('Fout: ' + error.message); }
-    else { window.__showToast && window.__showToast('Categorie aangemaakt: ' + newNaam.trim()); setNewNaam(''); setNewVolgorde(0); await laad(); }
+    else { window.__showToast && window.__showToast('Categorie aangemaakt: ' + newNaam.trim()); setNewNaam(''); await laad(); }
     setSaving(false);
   }
 
-  async function handleSaveEdit(id) {
-    if (!editNaam.trim()) return;
-    setSaving(true);
-    const { error } = await window.supabase.from('categorieen').update({ naam: editNaam.trim(), volgorde: editVolgorde }).eq('id', id);
-    if (error) { window.__showToast && window.__showToast('Fout: ' + error.message); }
-    else { window.__showToast && window.__showToast('Opgeslagen'); setEditingId(null); await laad(); }
-    setSaving(false);
-  }
-
-  async function handleDelete(cat) {
-    const { count } = await window.supabase.from('clubjes').select('id', { count: 'exact', head: true }).eq('categorie', cat.naam);
+  async function handleDelete(c) {
+    const { count } = await window.supabase.from('clubjes').select('id', { count: 'exact', head: true }).eq('categorie', c.naam);
     const aantal = count || 0;
     const msg = aantal > 0
-      ? `${aantal} buurtgroep${aantal !== 1 ? 'en' : ''} gebruik${aantal !== 1 ? 'en' : 't'} categorie "${cat.naam}". Toch verwijderen?`
-      : `Categorie "${cat.naam}" definitief verwijderen?`;
+      ? `${aantal} buurtgroep${aantal !== 1 ? 'en' : ''} gebruik${aantal !== 1 ? 'en' : 't'} categorie "${c.naam}". Toch verwijderen?`
+      : `Categorie "${c.naam}" definitief verwijderen?`;
     if (!window.confirm(msg)) return;
-    const { error } = await window.supabase.from('categorieen').delete().eq('id', cat.id);
+    const { error } = await window.supabase.from('categorieen').delete().eq('id', c.id);
     if (error) { window.__showToast && window.__showToast('Fout: ' + error.message); }
-    else { window.__showToast && window.__showToast('Verwijderd: ' + cat.naam); await laad(); }
+    else { window.__showToast && window.__showToast('Verwijderd: ' + c.naam); await laad(); }
   }
 
-  function startEdit(c) { setEditingId(c.id); setEditNaam(c.naam); setEditVolgorde(c.volgorde || 0); }
+  if (loading) return <div style={{ padding: 24, color: 'var(--muted)' }}>Laden…</div>;
 
   return (
     <>
       <PageHead
         title="Categorieën"
-        sub="Beheer de categorieën voor buurtgroepen en activiteiten. Wijzigingen zijn direct zichtbaar in alle formulieren."
+        sub="Categorieën worden gedeeld door buurtgroepen, activiteiten, agenda en nieuws. Kleuren tonen op kaarten en filters."
+        actions={<button className="btn btn-primary" onClick={handleCreate} disabled={saving}><Icon name="plus" size={14} /> Nieuwe categorie</button>}
       />
 
-      <div className="toolbar">
-        <div style={{ color: 'var(--ink-soft)', fontSize: 12.5 }}>
-          {loading ? 'Laden…' : `${cats.length} categorie${cats.length !== 1 ? 'ën' : ''}`}
-        </div>
-      </div>
-
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Naam</th>
-              <th style={{ width: 110 }}>Volgorde</th>
-              <th style={{ width: 80 }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {!loading && cats.map(c => (
-              <tr key={c.id}>
-                {editingId === c.id ? (
-                  <>
-                    <td><input type="text" value={editNaam} onChange={e => setEditNaam(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveEdit(c.id)} autoFocus style={{ width: '100%' }} /></td>
-                    <td><input type="number" value={editVolgorde} onChange={e => setEditVolgorde(Number(e.target.value))} style={{ width: 70 }} /></td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <button className="btn btn-sm btn-primary" onClick={() => handleSaveEdit(c.id)} disabled={saving}><Icon name="check" size={12} /></button>
-                      {' '}
-                      <button className="btn btn-sm" onClick={() => setEditingId(null)}>✕</button>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td>
-                      <div className="cell-flex">
-                        <div className="activity-icon-badge" title={c.naam}><Icon name="tag" size={16} /></div>
-                        <div className="strong">{c.naam}</div>
-                      </div>
-                    </td>
-                    <td style={{ color: 'var(--ink-soft)' }}>{c.volgorde}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <button className="icon-btn" title="Bewerken" onClick={() => startEdit(c)}><Icon name="edit" size={15} /></button>
-                      <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => handleDelete(c)}><Icon name="trash" size={15} /></button>
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))}
-            {!loading && cats.length === 0 && (
-              <tr><td colSpan={3} style={{ color: 'var(--muted)', padding: '20px 0', textAlign: 'center' }}>Nog geen categorieën aangemaakt.</td></tr>
+      <div className="grid grid-2">
+        {cats.map(c => (
+          <div key={c.id} className="card card-pad">
+            {editingId === c.id ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Field label="Naam">
+                  <input type="text" value={editNaam} onChange={e => setEditNaam(e.target.value)} autoFocus />
+                </Field>
+                <Field label="Kleur">
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', height: 38 }}>
+                    {kleuren.map((k, i) => (
+                      <span key={i} className={"swatch" + (i === editKleurIdx ? ' selected' : '')} style={{ background: k, cursor: 'pointer' }} onClick={() => setEditKleurIdx(i)}></span>
+                    ))}
+                  </div>
+                </Field>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-sm btn-primary" onClick={() => saveEdit(c.id, c.icoon)} disabled={saving}><Icon name="check" size={12} /> Opslaan</button>
+                  <button className="btn btn-sm" onClick={() => setEditingId(null)}>Annuleren</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: c.kleur || kleuren[2], display: 'grid', placeItems: 'center', color: 'white', flexShrink: 0 }}>
+                  <Icon name={c.icoon || 'users'} size={18} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'var(--serif)', fontSize: 15.5, fontWeight: 600 }}>{c.naam}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{c.aantal} items gekoppeld</div>
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button className="icon-btn" onClick={() => startEdit(c)}><Icon name="edit" size={14} /></button>
+                  <button className="icon-btn" onClick={() => handleDelete(c)}><Icon name="trash" size={14} /></button>
+                </div>
+              </div>
             )}
-          </tbody>
-        </table>
+          </div>
+        ))}
       </div>
 
       <div className="form-section" style={{ marginTop: 24 }}>
         <h3>Nieuwe categorie</h3>
-        <div className="sec-sub">Voeg een categorie toe — ze verschijnen direct in de dropdowns van buurtgroepen en activiteiten.</div>
-        <div className="row-2">
-          <Field label="Naam">
-            <input
-              type="text"
-              placeholder="bijv. Eten & drinken"
-              value={newNaam}
-              onChange={e => setNewNaam(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-            />
+        <div className="row-3">
+          <Field label="Naam"><input type="text" placeholder="bijv. Eten & drinken" value={newNaam} onChange={e => setNewNaam(e.target.value)} /></Field>
+          <Field label="Icoon">
+            <select value={newIcoon} onChange={e => setNewIcoon(e.target.value)}>
+              <option value="users">users (Sociaal)</option>
+              <option value="activity">activity (Sport)</option>
+              <option value="book">book (Lezen)</option>
+              <option value="map">map (Buiten)</option>
+              <option value="image">image (Cultuur)</option>
+              <option value="heart">heart (Zorg)</option>
+              <option value="music">music (Muziek)</option>
+              <option value="coffee">coffee (Eten)</option>
+            </select>
           </Field>
-          <Field label="Volgorde" hint="Bepaalt de volgorde in dropdowns en filters.">
-            <input type="number" value={newVolgorde} onChange={e => setNewVolgorde(Number(e.target.value))} style={{ width: 90 }} />
+          <Field label="Kleur">
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', height: 38 }}>
+              {kleuren.map((k, i) => (
+                <span key={i} className={"swatch" + (i === newKleurIdx ? ' selected' : '')} style={{ background: k, cursor: 'pointer' }} onClick={() => setNewKleurIdx(i)}></span>
+              ))}
+            </div>
           </Field>
         </div>
-        <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={handleCreate} disabled={saving || !newNaam.trim()}>
-          <Icon name="plus" size={14} /> Categorie aanmaken
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Field label="Koppelen aan">
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {Object.keys(newKoppeling).map(k => (
+                <button key={k} className={"chip" + (newKoppeling[k] ? ' active' : '')} onClick={() => setNewKoppeling(s => ({ ...s, [k]: !s[k] }))}>{k}</button>
+              ))}
+            </div>
+          </Field>
+        </div>
+        <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={handleCreate} disabled={saving || !newNaam.trim()}>Categorie aanmaken</button>
       </div>
     </>
   );
