@@ -1689,6 +1689,77 @@ function MiniMap({ lat, lng, label }) {
   return <div ref={ref} style={{ height: 200, marginTop: 8, borderRadius: 8, border: '1px solid var(--line)', zIndex: 0 }} />;
 }
 
+/* === CategorieSelect — herbruikbare combobox === */
+function CategorieSelect({ table, value, onChange }) {
+  const [opties, setOpties] = React.useState(null);
+  const [nieuwModus, setNieuwModus] = React.useState(false);
+  const [nieuwWaarde, setNieuwWaarde] = React.useState('');
+
+  React.useEffect(() => {
+    window.supabase
+      .from(table)
+      .select('categorie')
+      .not('categorie', 'is', null)
+      .then(({ data }) => {
+        const uniek = data
+          ? [...new Set(data.map(r => r.categorie).filter(Boolean))].sort()
+          : [];
+        setOpties(uniek);
+        if (value && !uniek.includes(value)) {
+          setNieuwModus(true);
+          setNieuwWaarde(value);
+        }
+      });
+  }, [table]);
+
+  function terugNaarDropdown() {
+    if (nieuwWaarde && !opties.includes(nieuwWaarde)) {
+      setOpties(prev => [...prev, nieuwWaarde].sort());
+    }
+    setNieuwModus(false);
+  }
+
+  if (opties === null) return <select disabled><option>Laden…</option></select>;
+
+  if (nieuwModus) {
+    return (
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input
+          type="text"
+          value={nieuwWaarde}
+          onChange={e => { setNieuwWaarde(e.target.value); onChange(e.target.value); }}
+          placeholder="Typ nieuwe categorie…"
+          autoFocus
+        />
+        <button
+          type="button"
+          onClick={terugNaarDropdown}
+          title="Terug naar dropdown"
+          style={{ background: 'none', border: '1px solid var(--line)', borderRadius: 6, cursor: 'pointer', padding: '0 10px', color: 'var(--muted)', fontSize: 18, lineHeight: 1, flexShrink: 0 }}
+        >×</button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      value={opties.includes(value) ? value : (opties[0] || '')}
+      onChange={e => {
+        if (e.target.value === '__nieuw__') {
+          setNieuwModus(true);
+          setNieuwWaarde('');
+        } else {
+          onChange(e.target.value);
+        }
+      }}
+    >
+      {opties.map(c => <option key={c} value={c}>{c}</option>)}
+      <option disabled>──────────</option>
+      <option value="__nieuw__">+ Nieuwe categorie toevoegen…</option>
+    </select>
+  );
+}
+
 /* === screens/clubjes.jsx === */
 // Clubjes screen — list + edit detail
 function ClubjesList({ onNav, onEdit, profile }) {
@@ -1839,9 +1910,7 @@ function ClubjeEdit({ id, onBack }) {
             </Field>
             <div className="row-2">
               <Field label="Categorie">
-                <select value={fd.categorie} onChange={e => up('categorie', e.target.value)}>
-                  {DATA.categories.map(c => <option key={c.naam}>{c.naam}</option>)}
-                </select>
+                <CategorieSelect table="clubjes" value={fd.categorie} onChange={v => up('categorie', v)} />
               </Field>
               <Field label="Wijk / gebied">
                 <input type="text" value={fd.wijk} onChange={e => up('wijk', e.target.value)} placeholder="bijv. Centrum, Noord, Strand" />
@@ -2224,9 +2293,7 @@ function ActiviteitEdit({ item, onBack }) {
                 </select>
               </Field>
               <Field label="Categorie">
-                <select value={fd.categorie} onChange={e => up('categorie', e.target.value)}>
-                  {DATA.categories.map(c => <option key={c.naam}>{c.naam}</option>)}
-                </select>
+                <CategorieSelect table="activiteiten" value={fd.categorie} onChange={v => up('categorie', v)} />
               </Field>
             </div>
             <div className="row-2">
