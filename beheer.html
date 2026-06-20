@@ -3858,56 +3858,61 @@ function CategoriesScreen() {
         sub="Beheer de categorieën voor buurtgroepen en activiteiten. Wijzigingen zijn direct zichtbaar in alle formulieren."
       />
 
-      {loading ? (
-        <div style={{ padding: 24, color: 'var(--muted)' }}>Laden…</div>
-      ) : (
-        <div className="form-section">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Naam</th>
-                <th style={{ width: 100 }}>Volgorde</th>
-                <th style={{ width: 90 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {cats.map(c => (
-                <tr key={c.id}>
-                  {editingId === c.id ? (
-                    <>
-                      <td><input type="text" value={editNaam} onChange={e => setEditNaam(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveEdit(c.id)} autoFocus style={{ width: '100%' }} /></td>
-                      <td><input type="number" value={editVolgorde} onChange={e => setEditVolgorde(Number(e.target.value))} style={{ width: 70 }} /></td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button className="btn btn-sm btn-primary" onClick={() => handleSaveEdit(c.id)} disabled={saving}><Icon name="check" size={12} /></button>
-                          <button className="btn btn-sm" onClick={() => setEditingId(null)}>✕</button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td style={{ fontWeight: 500 }}>{c.naam}</td>
-                      <td style={{ color: 'var(--muted)' }}>{c.volgorde}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button className="icon-btn" title="Bewerken" onClick={() => startEdit(c)}><Icon name="edit" size={14} /></button>
-                          <button className="icon-btn" title="Verwijderen" onClick={() => handleDelete(c)}><Icon name="trash" size={14} /></button>
-                        </div>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
-              {cats.length === 0 && (
-                <tr><td colSpan={3} style={{ color: 'var(--muted)', padding: '16px 0' }}>Nog geen categorieën aangemaakt.</td></tr>
-              )}
-            </tbody>
-          </table>
+      <div className="toolbar">
+        <div style={{ color: 'var(--ink-soft)', fontSize: 12.5 }}>
+          {loading ? 'Laden…' : `${cats.length} categorie${cats.length !== 1 ? 'ën' : ''}`}
         </div>
-      )}
+      </div>
+
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Naam</th>
+              <th style={{ width: 110 }}>Volgorde</th>
+              <th style={{ width: 80 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {!loading && cats.map(c => (
+              <tr key={c.id}>
+                {editingId === c.id ? (
+                  <>
+                    <td><input type="text" value={editNaam} onChange={e => setEditNaam(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveEdit(c.id)} autoFocus style={{ width: '100%' }} /></td>
+                    <td><input type="number" value={editVolgorde} onChange={e => setEditVolgorde(Number(e.target.value))} style={{ width: 70 }} /></td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <button className="btn btn-sm btn-primary" onClick={() => handleSaveEdit(c.id)} disabled={saving}><Icon name="check" size={12} /></button>
+                      {' '}
+                      <button className="btn btn-sm" onClick={() => setEditingId(null)}>✕</button>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td>
+                      <div className="cell-flex">
+                        <div className="activity-icon-badge" title={c.naam}><Icon name="tag" size={16} /></div>
+                        <div className="strong">{c.naam}</div>
+                      </div>
+                    </td>
+                    <td style={{ color: 'var(--ink-soft)' }}>{c.volgorde}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <button className="icon-btn" title="Bewerken" onClick={() => startEdit(c)}><Icon name="edit" size={15} /></button>
+                      <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => handleDelete(c)}><Icon name="trash" size={15} /></button>
+                    </td>
+                  </>
+                )}
+              </tr>
+            ))}
+            {!loading && cats.length === 0 && (
+              <tr><td colSpan={3} style={{ color: 'var(--muted)', padding: '20px 0', textAlign: 'center' }}>Nog geen categorieën aangemaakt.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <div className="form-section" style={{ marginTop: 24 }}>
         <h3>Nieuwe categorie</h3>
+        <div className="sec-sub">Voeg een categorie toe — ze verschijnen direct in de dropdowns van buurtgroepen en activiteiten.</div>
         <div className="row-2">
           <Field label="Naam">
             <input
