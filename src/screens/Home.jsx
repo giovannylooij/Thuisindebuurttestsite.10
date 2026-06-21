@@ -145,7 +145,7 @@ function Home({ setPage, voice, tweaks, hideSection, showSection }) {
 
       {/* ============ CLUBJES — Desire ============ */}
       {t.showClubjes !== false && (
-      <section className="section removable">
+      <section className="section removable" style={{ background: '#ffffff' }}>
         <button className="section-remove" onClick={(e) => { e.stopPropagation(); hide('showClubjes'); }} title="Verberg sectie" aria-label="Verberg deze sectie"></button>
         <div className="tib-container">
           <div className="section-head">
@@ -202,7 +202,7 @@ function Home({ setPage, voice, tweaks, hideSection, showSection }) {
 
       {/* ============ AGENDA preview ============ */}
       {t.showAgenda !== false && (
-      <section className="section section-band removable">
+      <section className="section section-band removable" style={{ background: 'var(--tib-cream)' }}>
         <button className="section-remove" onClick={(e) => { e.stopPropagation(); hide('showAgenda'); }} title="Verberg sectie" aria-label="Verberg deze sectie"></button>
         <div className="tib-container">
           <div className="section-head">
@@ -238,7 +238,7 @@ function Home({ setPage, voice, tweaks, hideSection, showSection }) {
 
       {/* ============ ACTIVITEITEN samenvatting ============ */}
       {t.showActiviteiten !== false && (
-      <section className="section removable">
+      <section className="section removable" style={{ background: '#ffffff' }}>
         <button className="section-remove" onClick={(e) => { e.stopPropagation(); hide('showActiviteiten'); }} title="Verberg sectie" aria-label="Verberg deze sectie"></button>
         <div className="tib-container">
           <div className="section-head">
@@ -270,7 +270,7 @@ function Home({ setPage, voice, tweaks, hideSection, showSection }) {
 
       {/* ============ PARTNERS ============ */}
       {t.showPartners !== false && (
-      <section className="section section-band removable">
+      <section className="section section-band removable" style={{ background: 'var(--tib-cream)' }}>
         <button className="section-remove" onClick={(e) => { e.stopPropagation(); hide('showPartners'); }} title="Verberg sectie" aria-label="Verberg deze sectie"></button>
         <div className="tib-container">
           <div className="section-head">
@@ -301,7 +301,7 @@ function Home({ setPage, voice, tweaks, hideSection, showSection }) {
 
       {/* ============ DONATE — Action ============ */}
       {t.showDonate !== false && (
-      <section className="section removable">
+      <section className="section removable" style={{ background: '#ffffff' }}>
         <button className="section-remove" onClick={(e) => { e.stopPropagation(); hide('showDonate'); }} title="Verberg sectie" aria-label="Verberg deze sectie"></button>
         <div className="tib-container">
           <div className="donate-card">
