@@ -89,11 +89,18 @@ function Buurtatlas({ voice }) {
   useEffectBa(() => {
     const sb = window._tibSupabase;
     if (!sb) return;
-    sb.from('partners').select('naam').eq('actief', true).then(({ data, error }) => {
+    sb.from('partners').select('naam, adres, lat, lng').eq('actief', true).then(({ data, error }) => {
       if (error || !data) return;
       setPlaces(prev => prev.map(p => {
-        const isPartner = data.some(partner => matchPartner(p.name, partner.naam));
-        return isPartner ? { ...p, cat: 'org' } : p;
+        const match = data.find(partner => matchPartner(p.name, partner.naam));
+        if (!match) return p;
+        return {
+          ...p,
+          cat: 'org',
+          addr: match.adres || p.addr,
+          lat: match.lat ? parseFloat(match.lat) : p.lat,
+          lng: match.lng ? parseFloat(match.lng) : p.lng,
+        };
       }));
     });
   }, []);
