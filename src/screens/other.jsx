@@ -149,11 +149,24 @@ function Agenda({ voice, setPage }) {
           }));
         }
         if (!actRes.error && actRes.data) {
+          const cats = (window.CATEGORIES || []);
+          function resolvecat(raw) {
+            if (!raw) return cats[0]?.id || 'sociaal';
+            const lower = raw.toLowerCase().trim();
+            // exact id match
+            const byId = cats.find(c => c.id === lower);
+            if (byId) return byId.id;
+            // label match (case-insensitive, partial)
+            const byLabel = cats.find(c => c.label && c.label.toLowerCase().includes(lower.split(/[\s-]/)[0]));
+            if (byLabel) return byLabel.id;
+            // fallback: first available
+            return cats[0]?.id || 'sociaal';
+          }
           window.ACTIVITIES = actData.map(r => ({
             ...r,
             name: r.naam || r.name,
             group: r.type || r.group,
-            cat: r.categorie || r.cat,
+            cat: resolvecat(r.categorie || r.cat),
             phone: r.contact || r.phone,
             desc: r.omschrijving || r.beschrijving || r.desc,
           }));
