@@ -2,7 +2,7 @@
 const { useState: useStateOt, useEffect: useEffectOt } = React;
 
 /* ============ WEEKKALENDER ============ */
-function WeekKalender({ agendaItems, activiteitenItems }) {
+function WeekKalender({ agendaItems, activiteitenItems, setPage }) {
   const [weekOffset, setWeekOffset] = useStateOt(0);
 
   const today = new Date();
@@ -88,18 +88,20 @@ function WeekKalender({ agendaItems, activiteitenItems }) {
                 <span style={{ fontSize: "1rem", color: isVandaag ? "var(--tib-green)" : "var(--tib-ink)" }}>{datum.getDate()}</span>
               </div>
               {agItems.map(e => (
-                <div key={e.id} style={{ background: "var(--tib-green)", borderRadius: 8, padding: "8px 4px", textAlign: "center", color: "white" }}>
+                <button key={e.id} onClick={() => setPage && setPage({ kind: "agenda", id: e.id })}
+                  style={{ background: "var(--tib-green)", borderRadius: 8, padding: "8px 4px", textAlign: "center", color: "white", border: "none", cursor: "pointer", width: "100%" }}>
                   <div style={{ fontSize: "1.3rem", fontWeight: 700, lineHeight: 1 }}>{dagStr}</div>
                   <div style={{ fontSize: "0.62rem", opacity: 0.85, marginBottom: 3 }}>{maandStr}</div>
                   <div style={{ fontSize: "0.67rem", fontWeight: 600, lineHeight: 1.2 }}>{(e.titel || e.t || '').slice(0, 20)}</div>
-                </div>
+                </button>
               ))}
               {actItems.map(a => (
-                <div key={a.id} style={{ background: "#E07A3A", borderRadius: 8, padding: "8px 4px", textAlign: "center", color: "white" }}>
+                <button key={a.id} onClick={() => setPage && setPage({ kind: "activiteit", id: a.id })}
+                  style={{ background: "#E07A3A", borderRadius: 8, padding: "8px 4px", textAlign: "center", color: "white", border: "none", cursor: "pointer", width: "100%" }}>
                   <div style={{ fontSize: "1.3rem", fontWeight: 700, lineHeight: 1 }}>{dagStr}</div>
                   <div style={{ fontSize: "0.62rem", opacity: 0.85, marginBottom: 3 }}>{maandStr}</div>
                   <div style={{ fontSize: "0.67rem", fontWeight: 600, lineHeight: 1.2 }}>{(a.naam || a.name || '').slice(0, 20)}</div>
-                </div>
+                </button>
               ))}
               {agItems.length === 0 && actItems.length === 0 && (
                 <div style={{ textAlign: "center", color: "var(--tib-line)", fontSize: "1rem" }}>·</div>
@@ -246,7 +248,7 @@ function Agenda({ voice, setPage }) {
       <section style={{ paddingBottom: 60 }}>
         <div className="tib-container">
           {!laden && (
-            <WeekKalender agendaItems={agendaItems} activiteitenItems={activiteitenItems} />
+            <WeekKalender agendaItems={agendaItems} activiteitenItems={activiteitenItems} setPage={setPage} />
           )}
           <div className="agenda-split-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
             <div>
