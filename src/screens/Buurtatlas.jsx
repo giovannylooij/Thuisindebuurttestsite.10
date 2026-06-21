@@ -7,7 +7,7 @@ const ATLAS_CATEGORIES = [
   { id: "zorg", label: "Zorg & Welzijn", color: "#b94842" },
   { id: "vereniging", label: "Verenigingen", color: "#7e4ca3" },
   { id: "eten", label: "Eten & Drinken", color: "#d97a2c" },
-  { id: "org", label: "Organisaties", color: "#7a7363" },
+  { id: "org", label: "Partners", color: "#7a7363" },
   { id: "kunst", label: "Kunst & Cultuur", color: "#a8729a" },
 ];
 
@@ -30,11 +30,14 @@ const ATLAS_PLACES = [
 
 function atlasCat(id) { return ATLAS_CATEGORIES.find((c) => c.id === id) || ATLAS_CATEGORIES[6]; }
 
-// Re-bereken automatisch hoeveel items er per categorie zijn, in plaats van
-// vaste cijfers in ATLAS_CATEGORIES. Zo klopt het altijd.
-ATLAS_CATEGORIES.forEach((c) => {
-  c.count = ATLAS_PLACES.filter((p) => p.cat === c.id).length;
-});
+function matchPartner(atlasName, partnerNaam) {
+  const a = atlasName.toLowerCase();
+  const p = (partnerNaam || '').toLowerCase().trim();
+  if (!p) return false;
+  if (a === p || a.includes(p) || p.includes(a)) return true;
+  const firstWord = p.split(/\s+/)[0];
+  return firstWord.length >= 2 && a.includes(firstWord);
+}
 
 function AtlasMap({ items }) {
   const ref = useRefBa(null);
@@ -79,9 +82,30 @@ function AtlasMap({ items }) {
 }
 
 function Buurtatlas({ voice }) {
+  const [places, setPlaces] = useStateBa(() => ATLAS_PLACES.map(p => ({ ...p })));
   const [active, setActive] = useStateBa(new Set(ATLAS_CATEGORIES.map((c) => c.id)));
-  const items = useMemoBa(() => ATLAS_PLACES.filter((p) => active.has(p.cat)), [active]);
   const you = voice === "u" ? "u" : "je";
+
+  useEffectBa(() => {
+    const sb = window._tibSupabase;
+    if (!sb) return;
+    sb.from('partners').select('naam').eq('actief', true).then(({ data, error }) => {
+      if (error || !data) return;
+      setPlaces(prev => prev.map(p => {
+        const isPartner = data.some(partner => matchPartner(p.name, partner.naam));
+        return isPartner ? { ...p, cat: 'org' } : p;
+      }));
+    });
+  }, []);
+
+  const counts = useMemoBa(() => {
+    const m = {};
+    ATLAS_CATEGORIES.forEach(c => { m[c.id] = 0; });
+    places.forEach(p => { if (m[p.cat] !== undefined) m[p.cat]++; });
+    return m;
+  }, [places]);
+
+  const items = useMemoBa(() => places.filter((p) => active.has(p.cat)), [active, places]);
   function only(id) { setActive(new Set([id])); }
   function toggle(id) {
     setActive((s) => {
@@ -111,7 +135,7 @@ function Buurtatlas({ voice }) {
           <div style={{ marginTop: 24 }}>
             <div className="chip-row">
               <button className={"chip " + (active.size === ATLAS_CATEGORIES.length ? "active" : "")} onClick={all}>
-                Alle categorieën · {ATLAS_PLACES.length}
+                Alle categorieën · {places.length}
               </button>
               {ATLAS_CATEGORIES.map((c) => (
                 <button
@@ -120,7 +144,7 @@ function Buurtatlas({ voice }) {
                   onClick={() => toggle(c.id)}
                 >
                   <span className="swatch" style={{ background: c.color }}></span>
-                  {c.label} · {c.count}
+                  {c.label} · {counts[c.id] || 0}
                 </button>
               ))}
             </div>
