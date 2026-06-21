@@ -57,7 +57,7 @@ function AtlasMap({ items }) {
   useEffectBa(() => {
     if (!layerRef.current) return;
     layerRef.current.clearLayers();
-    items.forEach((p) => {
+    items.filter(p => p && p.lat != null && p.lng != null).forEach((p) => {
       const c = atlasCat(p.cat);
       L.circleMarker([p.lat, p.lng], {
         radius: 8, color: "white", weight: 2,

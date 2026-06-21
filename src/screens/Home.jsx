@@ -16,7 +16,7 @@ function MiniMap({ height }) {
       maxZoom: 18
     }).addTo(map);
     // sample dots — sla items zonder coördinaten over
-    CLUBJES.filter(c => c.lat != null && c.lng != null).slice(0, 9).forEach((c) => {
+    CLUBJES.filter(c => c && c.lat != null && c.lng != null).slice(0, 9).forEach((c) => {
       const color = catOf(c.cat).color;
       L.circleMarker([c.lat, c.lng], {
         radius: 7,
