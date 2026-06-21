@@ -223,6 +223,20 @@ function Agenda({ voice, setPage }) {
     );
   }
 
+  function volgendeDate(wanneer) {
+    const w = (wanneer || '').toLowerCase();
+    const dagNamen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+    let weekdag = -1;
+    dagNamen.forEach((n, i) => { if (w.includes(n)) weekdag = i; });
+    if (weekdag === -1) return new Date(9999, 0, 1);
+    const nu = new Date();
+    let daysUntil = (weekdag - nu.getDay() + 7) % 7;
+    if (daysUntil === 0) daysUntil = 7;
+    const next = new Date(nu);
+    next.setDate(nu.getDate() + daysUntil);
+    return next;
+  }
+
   function TerugkerendCard({ a }) {
     const naam = a.naam || a.name || '';
     const wanneer = a.wanneer || '';
@@ -230,22 +244,10 @@ function Agenda({ voice, setPage }) {
     const type = a.type || a.group || '';
     const kosten = a.kosten || '';
 
-    function volgendeOccurrence() {
-      const w = wanneer.toLowerCase();
-      const dagNamen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
-      let weekdag = -1;
-      dagNamen.forEach((n, i) => { if (w.includes(n)) weekdag = i; });
-      if (weekdag === -1) return { dag: '—', maand: '' };
-      const nu = new Date();
-      let daysUntil = (weekdag - nu.getDay() + 7) % 7;
-      if (daysUntil === 0) daysUntil = 7;
-      const next = new Date(nu);
-      next.setDate(nu.getDate() + daysUntil);
-      const mn = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
-      return { dag: String(next.getDate()).padStart(2, '0'), maand: mn[next.getMonth()] };
-    }
-
-    const { dag, maand } = volgendeOccurrence();
+    const next = volgendeDate(wanneer);
+    const mn = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+    const dag = next.getFullYear() === 9999 ? '—' : String(next.getDate()).padStart(2, '0');
+    const maand = next.getFullYear() === 9999 ? '' : mn[next.getMonth()];
 
     return (
       <article
@@ -293,7 +295,7 @@ function Agenda({ voice, setPage }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: 600, overflowY: "auto", paddingRight: 4 }}>
                 {laden ? <p className="muted">Laden…</p>
                   : agendaItems.length === 0 ? <p className="muted">Geen evenementen gevonden.</p>
-                  : agendaItems.map(e => <EenmaligCard key={e.id} e={e} />)}
+                  : [...agendaItems].sort((a, b) => new Date(a.datum) - new Date(b.datum)).map(e => <EenmaligCard key={e.id} e={e} />)}
               </div>
             </div>
             <div>
@@ -301,7 +303,7 @@ function Agenda({ voice, setPage }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: 600, overflowY: "auto", paddingRight: 4 }}>
                 {laden ? <p className="muted">Laden…</p>
                   : activiteitenItems.length === 0 ? <p className="muted">Geen activiteiten gevonden.</p>
-                  : activiteitenItems.map(a => <TerugkerendCard key={a.id} a={a} />)}
+                  : [...activiteitenItems].sort((a, b) => volgendeDate(a.wanneer) - volgendeDate(b.wanneer)).map(a => <TerugkerendCard key={a.id} a={a} />)}
               </div>
             </div>
           </div>
