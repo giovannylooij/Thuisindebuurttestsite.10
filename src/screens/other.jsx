@@ -132,8 +132,32 @@ function Agenda({ voice, setPage }) {
           sb.from('agenda').select('*').order('datum', { ascending: true }),
           sb.from('activiteiten').select('*'),
         ]);
-        setAgendaItems(!agRes.error && agRes.data ? agRes.data : (window.AGENDA || []));
-        setActiviteitenItems(!actRes.error && actRes.data ? actRes.data : (window.ACTIVITIES || []));
+        const agData = !agRes.error && agRes.data ? agRes.data : (window.AGENDA || []);
+        const actData = !actRes.error && actRes.data ? actRes.data : (window.ACTIVITIES || []);
+        setAgendaItems(agData);
+        setActiviteitenItems(actData);
+        // Schrijf Supabase-data naar globals zodat Detail.jsx items kan vinden via id
+        if (!agRes.error && agRes.data) {
+          window.AGENDA = agData.map(r => ({
+            ...r,
+            t: r.titel || r.t,
+            title: r.titel || r.title,
+            waar: r.locatie || r.waar,
+            w: r.locatie || r.w,
+            time: r.tijd || r.time,
+            desc: r.omschrijving || r.beschrijving || r.desc,
+          }));
+        }
+        if (!actRes.error && actRes.data) {
+          window.ACTIVITIES = actData.map(r => ({
+            ...r,
+            name: r.naam || r.name,
+            group: r.type || r.group,
+            cat: r.categorie || r.cat,
+            phone: r.contact || r.phone,
+            desc: r.omschrijving || r.beschrijving || r.desc,
+          }));
+        }
       } else {
         setAgendaItems(window.AGENDA || []);
         setActiviteitenItems(window.ACTIVITIES || []);
