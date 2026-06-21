@@ -1261,7 +1261,6 @@ const NAV = [
     { id: "pages", label: "Pagina's", icon: "pages" },
     { id: "clubjes", label: "Buurtgroepen", icon: "club", count: 9 },
     { id: "activiteiten", label: "Activiteiten", icon: "activity", count: 12 },
-    { id: "weekagenda", label: "Weekagenda", icon: "calendar" },
     { id: "agenda", label: "Agenda", icon: "calendar", count: 7 },
     { id: "nieuws", label: "Nieuws", icon: "news", count: 18 },
     { id: "partners", label: "Partners", icon: "partners" },
@@ -2094,145 +2093,6 @@ function ClubjesScreen({ onNav, profile }) {
     : <ClubjeEdit id={editing === 'new' ? null : editing} onBack={() => setEditing(null)} />;
 }
 window.ClubjesScreen = ClubjesScreen;
-
-/* === screens/weekagenda.jsx === */
-function WeekagendaScreen() {
-  const [rows, setRows] = React.useState(() =>
-    (DATA.weekagenda || []).map(r => ({ ...r }))
-  );
-
-  function update(idx, key, value) {
-    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [key]: value } : r));
-  }
-
-  function handleSave() {
-    DATA.weekagenda = rows.map(r => ({ ...r }));
-    window.__syncToSite && window.__syncToSite();
-    window.__supabaseBulkUpsert('weekagenda', DATA.weekagenda);
-    window.__showToast && window.__showToast('Weekagenda opgeslagen!');
-  }
-
-  const DAYS_SHORT = { Maandag: 'ma', Dinsdag: 'di', Woensdag: 'wo', Donderdag: 'do', Vrijdag: 'vr', Zaterdag: 'za', Zondag: 'zo' };
-
-  return (
-    <>
-      <PageHead
-        title="Weekagenda"
-        sub="Stel per dag in welke terugkerende activiteit er plaatsvindt. Vink een dag aan om hem actief te maken."
-        actions={
-          <button className="btn btn-primary" onClick={handleSave}>
-            <Icon name="save" size={14} /> Opslaan
-          </button>
-        }
-      />
-
-      <div className="card">
-        <div className="card-head">
-          <h3 className="card-title">Terugkerende activiteiten per dag</h3>
-        </div>
-        <div style={{ padding: '8px 0' }}>
-          {rows.map((row, idx) => (
-            <div
-              key={row.dag}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '40px 120px 1fr 160px',
-                alignItems: 'center',
-                gap: 16,
-                padding: '12px 20px',
-                borderBottom: idx < rows.length - 1 ? '1px solid var(--line-soft)' : 'none',
-                background: row.actief ? 'var(--paper)' : 'transparent',
-                transition: 'background .12s',
-              }}
-            >
-              {/* Checkbox */}
-              <input
-                type="checkbox"
-                checked={row.actief}
-                onChange={e => update(idx, 'actief', e.target.checked)}
-                style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent)' }}
-              />
-
-              {/* Dag label */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{
-                  fontFamily: 'var(--mono)',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: 'var(--ink-mute)',
-                  background: 'var(--cream-2)',
-                  border: '1px solid var(--line)',
-                  borderRadius: 4,
-                  padding: '2px 6px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}>
-                  {DAYS_SHORT[row.dag]}
-                </span>
-                <span style={{
-                  fontWeight: 500,
-                  fontSize: 13.5,
-                  color: row.actief ? 'var(--ink)' : 'var(--ink-mute)',
-                }}>
-                  {row.dag}
-                </span>
-              </div>
-
-              {/* Naam */}
-              <input
-                type="text"
-                placeholder="Naam activiteit…"
-                value={row.naam}
-                disabled={!row.actief}
-                onChange={e => update(idx, 'naam', e.target.value)}
-                style={{
-                  border: '1px solid var(--line)',
-                  background: row.actief ? 'var(--paper)' : 'var(--cream-2)',
-                  padding: '7px 10px',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: 13.5,
-                  outline: 'none',
-                  color: row.actief ? 'var(--ink)' : 'var(--ink-mute)',
-                  fontFamily: 'var(--sans)',
-                  width: '100%',
-                  cursor: row.actief ? 'text' : 'not-allowed',
-                }}
-              />
-
-              {/* Tijdstip */}
-              <input
-                type="text"
-                placeholder="bijv. 10:00 – 11:30"
-                value={row.tijdstip}
-                disabled={!row.actief}
-                onChange={e => update(idx, 'tijdstip', e.target.value)}
-                style={{
-                  border: '1px solid var(--line)',
-                  background: row.actief ? 'var(--paper)' : 'var(--cream-2)',
-                  padding: '7px 10px',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: 13.5,
-                  outline: 'none',
-                  color: row.actief ? 'var(--ink)' : 'var(--ink-mute)',
-                  fontFamily: 'var(--mono)',
-                  width: '100%',
-                  cursor: row.actief ? 'text' : 'not-allowed',
-                }}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        <HintCard icon="info">
-          Vink een dag aan en vul een naam en tijdstip in. Klik <strong>Opslaan</strong> om de weekagenda op te slaan.
-        </HintCard>
-      </div>
-    </>
-  );
-}
-window.WeekagendaScreen = WeekagendaScreen;
 
 /* === screens/content.jsx === */
 // Activiteiten, Agenda, Nieuws — list views (compact, share style)
@@ -5630,7 +5490,6 @@ function App() {
     pages: { crumbs: ["Pagina's"], render: () => <PagesScreen /> },
     clubjes: { crumbs: ['Buurtgroepen'], render: () => <ClubjesScreen onNav={setRoute} profile={profile} /> },
     activiteiten: { crumbs: ['Activiteiten'], render: () => <ActiviteitenScreen /> },
-    weekagenda:   { crumbs: ['Weekagenda'],   render: () => <WeekagendaScreen /> },
     agenda: { crumbs: ['Agenda'], render: () => <AgendaScreen /> },
     nieuws: { crumbs: ['Nieuws'], render: () => <NieuwsScreen /> },
     partners: { crumbs: ['Partners'], render: () => <PartnersScreen /> },
