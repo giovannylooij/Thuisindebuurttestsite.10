@@ -326,7 +326,7 @@ function Activiteiten({ voice, setPage }) {
       <section className="page-head">
         <div className="tib-container">
           <span className="eyebrow">Activiteiten</span>
-          <h1>Elke week iets te doen.</h1>
+          <h1>Altijd iets te doen in de buurt.</h1>
           <p>Terugkerende activiteiten van TIB en haar partners, gesorteerd op type.</p>
           <div className="seg" style={{ marginTop: 18 }}>
             <button className={view === "rubriek" ? "active" : ""} onClick={() => setView("rubriek")}>Per rubriek</button>
