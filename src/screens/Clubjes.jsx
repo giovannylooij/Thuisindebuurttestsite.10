@@ -21,28 +21,53 @@ function ClubjesMap({ items, onOpen }) {
   useEffectCl(() => {
     if (!layerRef.current) return;
     layerRef.current.clearLayers();
+
+    // Groepeer per uniek adres (zelfde lat/lng)
+    const groups = {};
     items.forEach((c) => {
-      const color = catOf(c.cat).color;
-      const marker = L.circleMarker([c.lat, c.lng], {
-        radius: 9,
+      if (!c.lat || !c.lng) return;
+      const key = parseFloat(c.lat).toFixed(5) + ',' + parseFloat(c.lng).toFixed(5);
+      if (!groups[key]) groups[key] = { lat: parseFloat(c.lat), lng: parseFloat(c.lng), clubs: [] };
+      groups[key].clubs.push(c);
+    });
+
+    Object.values(groups).forEach(({ lat, lng, clubs }) => {
+      const firstCat = catOf(clubs[0].cat);
+      const markerColor = clubs.length > 1 ? '#4a5563' : firstCat.color;
+
+      const marker = L.circleMarker([lat, lng], {
+        radius: clubs.length > 1 ? 11 : 9,
         color: "white",
         weight: 2,
-        fillColor: color,
+        fillColor: markerColor,
         fillOpacity: 0.95,
       });
+
       const popupDiv = document.createElement("div");
       popupDiv.style.fontFamily = "'Source Sans 3', sans-serif";
-      popupDiv.style.minWidth = "200px";
+      popupDiv.style.minWidth = "220px";
+
+      const adres = clubs[0].waar || '';
+      const clubsHtml = clubs.map(c => {
+        const cc = catOf(c.cat);
+        return `<div class="js-open-club" data-id="${c.id}" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #e5e7eb;cursor:pointer;">
+          <span style="width:9px;height:9px;border-radius:50%;background:${cc.color};flex-shrink:0;"></span>
+          <span style="color:#1a4a7a;font-weight:600;font-size:0.92rem;text-decoration:underline;">${c.name}</span>
+        </div>`;
+      }).join('');
+
       popupDiv.innerHTML = `
-        <div style="display:inline-block; padding:3px 10px; border-radius:999px; background:${color}; color:white; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;">${catOf(c.cat).label}</div>
-        <h4 style="margin:8px 0 4px; font-family:'Lora',serif; font-size:1.05rem;">${c.name}</h4>
-        <p style="margin:0 0 8px; font-size:0.92rem; color:#4a5563;">${c.desc}</p>
-        <div style="font-size:0.82rem; color:#7a8392; margin-bottom: 10px;">${c.area} · ${c.contact}</div>
-        <button class="js-open-club" style="background:${color}; color:white; border:none; padding:8px 14px; border-radius:999px; font-weight:600; cursor:pointer; font-family:inherit; font-size:0.9rem;">Bekijk clubje →</button>
+        <div style="font-size:11px;font-weight:700;color:#7a8392;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">
+          ${clubs.length} buurtgroep${clubs.length !== 1 ? 'en' : ''}
+        </div>
+        ${clubsHtml}
+        <div style="font-size:0.82rem;color:#7a8392;margin-top:8px;">📍 ${adres}</div>
       `;
-      popupDiv.querySelector(".js-open-club").addEventListener("click", () => {
-        onOpen && onOpen(c.id);
+
+      popupDiv.querySelectorAll('.js-open-club').forEach(el => {
+        el.addEventListener('click', () => onOpen && onOpen(parseInt(el.dataset.id, 10)));
       });
+
       marker.bindPopup(popupDiv);
       marker.addTo(layerRef.current);
     });
@@ -148,8 +173,8 @@ function Clubjes({ setPage, voice }) {
         email: c.email || '',
         phone: c.telefoon || '',
         area: c.wijk || '',
-        lat: c.lat ? parseFloat(c.lat) : 52.103,
-        lng: c.lng ? parseFloat(c.lng) : 4.282,
+        lat: c.lat != null ? parseFloat(c.lat) : null,
+        lng: c.lng != null ? parseFloat(c.lng) : null,
         photo: null,
         voorWie: c.voor_wie || '',
         wat: c.categorie || '',
