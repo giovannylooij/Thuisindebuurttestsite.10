@@ -1,41 +1,50 @@
 // screens/other.jsx — Agenda, Activiteiten, Partners, Netwerken, Nieuws, Doe mee, Doneren
 const { useState: useStateOt, useEffect: useEffectOt } = React;
 
-/* ============ MAANDKALENDER ============ */
-function MaandKalender({ agendaItems, activiteitenItems }) {
-  const [huidigeMaand, setHuidigeMaand] = useStateOt(new Date());
-  const jaar = huidigeMaand.getFullYear();
-  const maand = huidigeMaand.getMonth();
-  const eerstedag = new Date(jaar, maand, 1);
-  const aantalDagen = new Date(jaar, maand + 1, 0).getDate();
-  let startDag = eerstedag.getDay();
-  startDag = startDag === 0 ? 6 : startDag - 1;
+/* ============ WEEKKALENDER ============ */
+function WeekKalender({ agendaItems, activiteitenItems }) {
+  const [weekOffset, setWeekOffset] = useStateOt(0);
 
-  const agendaDatums = new Set();
-  agendaItems.forEach(item => {
-    if (item.datum) {
-      const d = new Date(item.datum);
-      if (d.getFullYear() === jaar && d.getMonth() === maand) agendaDatums.add(d.getDate());
-    } else if (item.monthNum && item.day && item.monthNum - 1 === maand && item.year === jaar) {
-      agendaDatums.add(item.day);
-    }
+  const today = new Date();
+  const todayDow = today.getDay();
+  const daysToMonday = todayDow === 0 ? -6 : 1 - todayDow;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + daysToMonday + weekOffset * 7);
+  monday.setHours(0, 0, 0, 0);
+
+  const weekDagen = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
   });
 
-  const activiteitenDatums = new Set();
-  activiteitenItems.forEach(item => {
-    const wanneer = (item.wanneer || '').toLowerCase();
-    let weekdag = -1;
-    if (wanneer.includes('maandag')) weekdag = 0;
-    else if (wanneer.includes('dinsdag')) weekdag = 1;
-    else if (wanneer.includes('woensdag')) weekdag = 2;
-    else if (wanneer.includes('donderdag')) weekdag = 3;
-    else if (wanneer.includes('vrijdag')) weekdag = 4;
-    else if (wanneer.includes('zaterdag')) weekdag = 5;
-    else if (wanneer.includes('zondag')) weekdag = 6;
-    if (weekdag === -1) return;
-    const nthMatch = wanneer.match(/(\d+)e\b|eerste|tweede|derde|vierde/);
-    const isElke = wanneer.includes('iedere') || wanneer.includes('elke');
-    if (nthMatch) {
+  const dagLabels = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+  const maandAfk = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+
+  const start = weekDagen[0], end = weekDagen[6];
+  const weekTitel = start.getMonth() === end.getMonth()
+    ? `${start.getDate()} – ${end.getDate()} ${maandAfk[end.getMonth()]} ${end.getFullYear()}`
+    : `${start.getDate()} ${maandAfk[start.getMonth()]} – ${end.getDate()} ${maandAfk[end.getMonth()]} ${end.getFullYear()}`;
+
+  function agendaOpDag(datum) {
+    return agendaItems.filter(item => {
+      if (item.datum) {
+        const d = new Date(item.datum);
+        return d.getDate() === datum.getDate() && d.getMonth() === datum.getMonth() && d.getFullYear() === datum.getFullYear();
+      }
+      return item.day === datum.getDate() && item.monthNum - 1 === datum.getMonth() && item.year === datum.getFullYear();
+    });
+  }
+
+  function activiteitenOpDag(datum) {
+    const dow = datum.getDay();
+    const ma0 = dow === 0 ? 6 : dow - 1;
+    const dagNaamArr = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
+    return activiteitenItems.filter(item => {
+      const w = (item.wanneer || '').toLowerCase();
+      if (!w.includes(dagNaamArr[ma0])) return false;
+      const nthMatch = w.match(/(\d+)e\b|eerste|tweede|derde|vierde/);
+      if (!nthMatch) return true;
       let n = 1;
       const nm = nthMatch[0];
       if (nm.startsWith('tweede') || nm === '2e') n = 2;
@@ -43,63 +52,63 @@ function MaandKalender({ agendaItems, activiteitenItems }) {
       else if (nm.startsWith('vierde') || nm === '4e') n = 4;
       else if (nthMatch[1]) n = parseInt(nthMatch[1]);
       let teller = 0;
-      for (let d = 1; d <= aantalDagen; d++) {
-        const dow = new Date(jaar, maand, d).getDay();
-        if ((dow === 0 ? 6 : dow - 1) === weekdag && ++teller === n) { activiteitenDatums.add(d); break; }
+      for (let d = 1; d <= datum.getDate(); d++) {
+        if ((new Date(datum.getFullYear(), datum.getMonth(), d).getDay() === 0 ? 6 : new Date(datum.getFullYear(), datum.getMonth(), d).getDay() - 1) === ma0) teller++;
       }
-    } else if (isElke) {
-      for (let d = 1; d <= aantalDagen; d++) {
-        const dow = new Date(jaar, maand, d).getDay();
-        if ((dow === 0 ? 6 : dow - 1) === weekdag) activiteitenDatums.add(d);
-      }
-    }
-  });
+      return teller === n;
+    });
+  }
 
-  const cellen = [];
-  for (let i = 0; i < startDag; i++) cellen.push(null);
-  for (let d = 1; d <= aantalDagen; d++) cellen.push(d);
-
-  const maandNamen = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
-  const dagNamen = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+  const navBtnStyle = { background: "none", border: "1px solid var(--tib-line)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" };
 
   return (
     <div style={{ background: "white", borderRadius: 16, padding: 24, border: "1px solid var(--tib-line)", marginBottom: 32 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
-        <button onClick={() => setHuidigeMaand(new Date(jaar, maand - 1, 1))}
-          style={{ background: "none", border: "1px solid var(--tib-line)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          ‹
-        </button>
-        <strong style={{ flex: 1, textAlign: "center", fontFamily: "var(--font-display)", fontSize: "1.1rem" }}>
-          {maandNamen[maand]} {jaar}
+        <button onClick={() => setWeekOffset(o => o - 1)} style={navBtnStyle}>‹</button>
+        <strong style={{ flex: 1, textAlign: "center", fontFamily: "var(--font-display)", fontSize: "1.05rem" }}>
+          Week van {weekTitel}
         </strong>
-        <button onClick={() => setHuidigeMaand(new Date(jaar, maand + 1, 1))}
-          style={{ background: "none", border: "1px solid var(--tib-line)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          ›
-        </button>
+        <button onClick={() => setWeekOffset(o => o + 1)} style={navBtnStyle}>›</button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3, marginBottom: 12 }}>
-        {dagNamen.map(d => (
-          <div key={d} style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--tib-ink-soft)", fontWeight: 600, padding: "4px 0" }}>{d}</div>
-        ))}
-        {cellen.map((dag, i) => {
-          const heeftAgenda = dag && agendaDatums.has(dag);
-          const heeftActiviteit = dag && activiteitenDatums.has(dag);
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+        {weekDagen.map((datum, i) => {
+          const isVandaag = datum.toDateString() === new Date().toDateString();
+          const agItems = agendaOpDag(datum);
+          const actItems = activiteitenOpDag(datum);
+          const dagStr = String(datum.getDate()).padStart(2, '0');
+          const maandStr = maandAfk[datum.getMonth()];
           return (
-            <div key={i} style={{
-              textAlign: "center",
-              padding: "5px 2px",
-              borderRadius: 6,
-              fontSize: "0.85rem",
-              background: heeftAgenda ? "var(--tib-green)" : heeftActiviteit ? "#E07A3A" : "transparent",
-              color: (heeftAgenda || heeftActiviteit) ? "white" : "var(--tib-ink)",
-              fontWeight: (heeftAgenda || heeftActiviteit) ? 700 : 400,
-            }}>
-              {dag || ""}
+            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{
+                textAlign: "center", fontSize: "0.72rem", fontWeight: 600,
+                color: isVandaag ? "var(--tib-green)" : "var(--tib-ink-soft)",
+                padding: "4px 0", borderBottom: "1px solid var(--tib-line)", marginBottom: 4,
+              }}>
+                {dagLabels[i]}<br/>
+                <span style={{ fontSize: "1rem", color: isVandaag ? "var(--tib-green)" : "var(--tib-ink)" }}>{datum.getDate()}</span>
+              </div>
+              {agItems.map(e => (
+                <div key={e.id} style={{ background: "var(--tib-green)", borderRadius: 8, padding: "8px 4px", textAlign: "center", color: "white" }}>
+                  <div style={{ fontSize: "1.3rem", fontWeight: 700, lineHeight: 1 }}>{dagStr}</div>
+                  <div style={{ fontSize: "0.62rem", opacity: 0.85, marginBottom: 3 }}>{maandStr}</div>
+                  <div style={{ fontSize: "0.67rem", fontWeight: 600, lineHeight: 1.2 }}>{(e.titel || e.t || '').slice(0, 20)}</div>
+                </div>
+              ))}
+              {actItems.map(a => (
+                <div key={a.id} style={{ background: "#E07A3A", borderRadius: 8, padding: "8px 4px", textAlign: "center", color: "white" }}>
+                  <div style={{ fontSize: "1.3rem", fontWeight: 700, lineHeight: 1 }}>{dagStr}</div>
+                  <div style={{ fontSize: "0.62rem", opacity: 0.85, marginBottom: 3 }}>{maandStr}</div>
+                  <div style={{ fontSize: "0.67rem", fontWeight: 600, lineHeight: 1.2 }}>{(a.naam || a.name || '').slice(0, 20)}</div>
+                </div>
+              ))}
+              {agItems.length === 0 && actItems.length === 0 && (
+                <div style={{ textAlign: "center", color: "var(--tib-line)", fontSize: "1rem" }}>·</div>
+              )}
             </div>
           );
         })}
       </div>
-      <div style={{ display: "flex", gap: 20, fontSize: "0.8rem", color: "var(--tib-ink-soft)", paddingTop: 10, borderTop: "1px solid var(--tib-line)" }}>
+      <div style={{ display: "flex", gap: 20, fontSize: "0.8rem", color: "var(--tib-ink-soft)", paddingTop: 10, borderTop: "1px solid var(--tib-line)", marginTop: 12 }}>
         <span><span style={{ color: "var(--tib-green)", fontSize: "1rem" }}>●</span> Eenmalig</span>
         <span><span style={{ color: "#E07A3A", fontSize: "1rem" }}>●</span> Terugkerend</span>
       </div>
@@ -181,6 +190,24 @@ function Agenda({ voice, setPage }) {
     const waar = a.waar || '';
     const type = a.type || a.group || '';
     const kosten = a.kosten || '';
+
+    function volgendeOccurrence() {
+      const w = wanneer.toLowerCase();
+      const dagNamen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+      let weekdag = -1;
+      dagNamen.forEach((n, i) => { if (w.includes(n)) weekdag = i; });
+      if (weekdag === -1) return { dag: '—', maand: '' };
+      const nu = new Date();
+      let daysUntil = (weekdag - nu.getDay() + 7) % 7;
+      if (daysUntil === 0) daysUntil = 7;
+      const next = new Date(nu);
+      next.setDate(nu.getDate() + daysUntil);
+      const mn = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+      return { dag: String(next.getDate()).padStart(2, '0'), maand: mn[next.getMonth()] };
+    }
+
+    const { dag, maand } = volgendeOccurrence();
+
     return (
       <article
         className="agenda-card is-clickable"
@@ -190,8 +217,8 @@ function Agenda({ voice, setPage }) {
         onKeyDown={(ev) => { if (ev.key === "Enter" && setPage) setPage({ kind: "activiteit", id: a.id }); }}
       >
         <div className="agenda-date" style={{ background: "#E07A3A" }}>
-          <div className="day" style={{ fontSize: "1.2rem" }}>↻</div>
-          <div className="mo" style={{ fontSize: "0.65rem" }}>terugk.</div>
+          <div className="day">{dag}</div>
+          <div className="mo">{maand}</div>
         </div>
         <div style={{ flex: 1 }}>
           {type && <div style={{ marginBottom: 4 }}><span className="badge">{type}</span></div>}
@@ -219,7 +246,7 @@ function Agenda({ voice, setPage }) {
       <section style={{ paddingBottom: 60 }}>
         <div className="tib-container">
           {!laden && (
-            <MaandKalender agendaItems={agendaItems} activiteitenItems={activiteitenItems} />
+            <WeekKalender agendaItems={agendaItems} activiteitenItems={activiteitenItems} />
           )}
           <div className="agenda-split-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
             <div>
