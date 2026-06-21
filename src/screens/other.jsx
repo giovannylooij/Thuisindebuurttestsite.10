@@ -1,12 +1,152 @@
 // screens/other.jsx — Agenda, Activiteiten, Partners, Netwerken, Nieuws, Doe mee, Doneren
-const { useState: useStateOt } = React;
+const { useState: useStateOt, useEffect: useEffectOt } = React;
+
+/* ============ MAANDKALENDER ============ */
+function MaandKalender({ agendaItems, activiteitenItems }) {
+  const [huidigeMaand, setHuidigeMaand] = useStateOt(new Date());
+  const jaar = huidigeMaand.getFullYear();
+  const maand = huidigeMaand.getMonth();
+  const eerstedag = new Date(jaar, maand, 1);
+  const aantalDagen = new Date(jaar, maand + 1, 0).getDate();
+  let startDag = eerstedag.getDay();
+  startDag = startDag === 0 ? 6 : startDag - 1;
+
+  const agendaDatums = new Set();
+  agendaItems.forEach(item => {
+    if (item.datum) {
+      const d = new Date(item.datum);
+      if (d.getFullYear() === jaar && d.getMonth() === maand) agendaDatums.add(d.getDate());
+    } else if (item.monthNum && item.day && item.monthNum - 1 === maand && item.year === jaar) {
+      agendaDatums.add(item.day);
+    }
+  });
+
+  const activiteitenDatums = new Set();
+  activiteitenItems.forEach(item => {
+    const wanneer = (item.wanneer || '').toLowerCase();
+    let weekdag = -1;
+    if (wanneer.includes('maandag')) weekdag = 0;
+    else if (wanneer.includes('dinsdag')) weekdag = 1;
+    else if (wanneer.includes('woensdag')) weekdag = 2;
+    else if (wanneer.includes('donderdag')) weekdag = 3;
+    else if (wanneer.includes('vrijdag')) weekdag = 4;
+    else if (wanneer.includes('zaterdag')) weekdag = 5;
+    else if (wanneer.includes('zondag')) weekdag = 6;
+    if (weekdag === -1) return;
+    const nthMatch = wanneer.match(/(\d+)e\b|eerste|tweede|derde|vierde/);
+    const isElke = wanneer.includes('iedere') || wanneer.includes('elke');
+    if (nthMatch) {
+      let n = 1;
+      const nm = nthMatch[0];
+      if (nm.startsWith('tweede') || nm === '2e') n = 2;
+      else if (nm.startsWith('derde') || nm === '3e') n = 3;
+      else if (nm.startsWith('vierde') || nm === '4e') n = 4;
+      else if (nthMatch[1]) n = parseInt(nthMatch[1]);
+      let teller = 0;
+      for (let d = 1; d <= aantalDagen; d++) {
+        const dow = new Date(jaar, maand, d).getDay();
+        if ((dow === 0 ? 6 : dow - 1) === weekdag && ++teller === n) { activiteitenDatums.add(d); break; }
+      }
+    } else if (isElke) {
+      for (let d = 1; d <= aantalDagen; d++) {
+        const dow = new Date(jaar, maand, d).getDay();
+        if ((dow === 0 ? 6 : dow - 1) === weekdag) activiteitenDatums.add(d);
+      }
+    }
+  });
+
+  const cellen = [];
+  for (let i = 0; i < startDag; i++) cellen.push(null);
+  for (let d = 1; d <= aantalDagen; d++) cellen.push(d);
+
+  const maandNamen = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+  const dagNamen = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+
+  return (
+    <div style={{ background: "white", borderRadius: 16, padding: 24, border: "1px solid var(--tib-line)", marginBottom: 32 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
+        <button onClick={() => setHuidigeMaand(new Date(jaar, maand - 1, 1))}
+          style={{ background: "none", border: "1px solid var(--tib-line)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          ‹
+        </button>
+        <strong style={{ flex: 1, textAlign: "center", fontFamily: "var(--font-display)", fontSize: "1.1rem" }}>
+          {maandNamen[maand]} {jaar}
+        </strong>
+        <button onClick={() => setHuidigeMaand(new Date(jaar, maand + 1, 1))}
+          style={{ background: "none", border: "1px solid var(--tib-line)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          ›
+        </button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3, marginBottom: 12 }}>
+        {dagNamen.map(d => (
+          <div key={d} style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--tib-ink-soft)", fontWeight: 600, padding: "4px 0" }}>{d}</div>
+        ))}
+        {cellen.map((dag, i) => {
+          const heeftAgenda = dag && agendaDatums.has(dag);
+          const heeftActiviteit = dag && activiteitenDatums.has(dag);
+          return (
+            <div key={i} style={{
+              textAlign: "center",
+              padding: "5px 2px",
+              borderRadius: 6,
+              fontSize: "0.85rem",
+              background: heeftAgenda ? "var(--tib-green)" : heeftActiviteit ? "#E07A3A" : "transparent",
+              color: (heeftAgenda || heeftActiviteit) ? "white" : "var(--tib-ink)",
+              fontWeight: (heeftAgenda || heeftActiviteit) ? 700 : 400,
+            }}>
+              {dag || ""}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 20, fontSize: "0.8rem", color: "var(--tib-ink-soft)", paddingTop: 10, borderTop: "1px solid var(--tib-line)" }}>
+        <span><span style={{ color: "var(--tib-green)", fontSize: "1rem" }}>●</span> Eenmalig</span>
+        <span><span style={{ color: "#E07A3A", fontSize: "1rem" }}>●</span> Terugkerend</span>
+      </div>
+    </div>
+  );
+}
 
 /* ============ AGENDA ============ */
 function Agenda({ voice, setPage }) {
   const you = voice === "u" ? "u" : "je";
-  const terugkerend = AGENDA.filter(e => ["Terugkerend", "Jaarlijks"].includes(e.tag));
-  const eenmalig = AGENDA.filter(e => !["Terugkerend", "Jaarlijks"].includes(e.tag));
-  function AgendaCard({ e, accentKleur }) {
+  const [agendaItems, setAgendaItems] = useStateOt(null);
+  const [activiteitenItems, setActiviteitenItems] = useStateOt(null);
+
+  useEffectOt(() => {
+    async function laadData() {
+      const sb = window._tibSupabase;
+      if (sb) {
+        const [agRes, actRes] = await Promise.all([
+          sb.from('agenda').select('*').order('datum', { ascending: true }),
+          sb.from('activiteiten').select('*'),
+        ]);
+        setAgendaItems(!agRes.error && agRes.data ? agRes.data : (window.AGENDA || []));
+        setActiviteitenItems(!actRes.error && actRes.data ? actRes.data : (window.ACTIVITIES || []));
+      } else {
+        setAgendaItems(window.AGENDA || []);
+        setActiviteitenItems(window.ACTIVITIES || []);
+      }
+    }
+    laadData();
+  }, []);
+
+  function formatDatum(item) {
+    if (item.datum) {
+      const d = new Date(item.datum);
+      const mn = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+      return { dag: String(d.getDate()).padStart(2, '0'), maand: mn[d.getMonth()] };
+    }
+    return { dag: item.d || '', maand: item.m || '' };
+  }
+
+  function EenmaligCard({ e }) {
+    const { dag, maand } = formatDatum(e);
+    const titel = e.titel || e.t || '';
+    const locatie = e.locatie || e.w || '';
+    const tijd = e.tijd || e.time || '';
+    const tag = e.tag || '';
+    const desc = e.omschrijving || e.beschrijving || e.desc || '';
     return (
       <article
         className="agenda-card is-clickable"
@@ -15,23 +155,58 @@ function Agenda({ voice, setPage }) {
         tabIndex={0}
         onKeyDown={(ev) => { if (ev.key === "Enter" && setPage) setPage({ kind: "agenda", id: e.id }); }}
       >
-        <div className="agenda-date" style={accentKleur ? { background: accentKleur } : {}}>
-          <div className="day">{e.d}</div>
-          <div className="mo">{e.m}</div>
+        <div className="agenda-date">
+          <div className="day">{dag}</div>
+          <div className="mo">{maand}</div>
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 4 }}>
-            <span className="badge">{e.tag}</span>
-            <span className="muted" style={{ fontSize: "0.9rem" }}>{e.time}</span>
-          </div>
-          <h3>{e.t}</h3>
-          <div className="where" style={{ marginBottom: 8 }}>{e.w}</div>
-          <p style={{ margin: 0, color: "var(--tib-ink-soft)" }}>{e.desc}</p>
+          {(tag || tijd) && (
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 4 }}>
+              {tag && <span className="badge">{tag}</span>}
+              {tijd && <span className="muted" style={{ fontSize: "0.9rem" }}>{tijd}</span>}
+            </div>
+          )}
+          <h3>{titel}</h3>
+          {locatie && <div className="where" style={{ marginBottom: 8 }}>{locatie}</div>}
+          {desc && <p style={{ margin: 0, color: "var(--tib-ink-soft)" }}>{desc}</p>}
         </div>
         <span className="btn btn-ghost btn-sm" style={{ alignSelf: "center" }}>Meer info →</span>
       </article>
     );
   }
+
+  function TerugkerendCard({ a }) {
+    const naam = a.naam || a.name || '';
+    const wanneer = a.wanneer || '';
+    const waar = a.waar || '';
+    const type = a.type || a.group || '';
+    const kosten = a.kosten || '';
+    return (
+      <article
+        className="agenda-card is-clickable"
+        style={{ alignItems: "flex-start", cursor: "pointer" }}
+        onClick={() => setPage && setPage({ kind: "activiteit", id: a.id })}
+        tabIndex={0}
+        onKeyDown={(ev) => { if (ev.key === "Enter" && setPage) setPage({ kind: "activiteit", id: a.id }); }}
+      >
+        <div className="agenda-date" style={{ background: "#E07A3A" }}>
+          <div className="day" style={{ fontSize: "1.2rem" }}>↻</div>
+          <div className="mo" style={{ fontSize: "0.65rem" }}>terugk.</div>
+        </div>
+        <div style={{ flex: 1 }}>
+          {type && <div style={{ marginBottom: 4 }}><span className="badge">{type}</span></div>}
+          <h3>{naam}</h3>
+          {wanneer && <div className="where" style={{ marginBottom: 4 }}>{wanneer}</div>}
+          {waar && <div className="muted" style={{ fontSize: "0.9rem", marginBottom: 4 }}>{waar}</div>}
+          {kosten && <div className="muted" style={{ fontSize: "0.85rem" }}>{kosten}</div>}
+        </div>
+        <span className="btn btn-ghost btn-sm" style={{ alignSelf: "center" }}>Meer info →</span>
+      </article>
+    );
+  }
+
+  const laden = agendaItems === null || activiteitenItems === null;
+
   return (
     <main>
       <section className="page-head">
@@ -43,17 +218,24 @@ function Agenda({ voice, setPage }) {
       </section>
       <section style={{ paddingBottom: 60 }}>
         <div className="tib-container">
+          {!laden && (
+            <MaandKalender agendaItems={agendaItems} activiteitenItems={activiteitenItems} />
+          )}
           <div className="agenda-split-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
             <div>
-              <h2 style={{ fontSize: "1.3rem", marginBottom: 18, fontFamily: "var(--font-display)" }}>Terugkerende Activiteiten</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {terugkerend.map(e => <AgendaCard key={e.id} e={e} accentKleur="#E07B39" />)}
+              <h2 style={{ fontSize: "1.3rem", marginBottom: 18, fontFamily: "var(--font-display)" }}>Eenmalige Activiteiten</h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: 600, overflowY: "auto", paddingRight: 4 }}>
+                {laden ? <p className="muted">Laden…</p>
+                  : agendaItems.length === 0 ? <p className="muted">Geen evenementen gevonden.</p>
+                  : agendaItems.map(e => <EenmaligCard key={e.id} e={e} />)}
               </div>
             </div>
             <div>
-              <h2 style={{ fontSize: "1.3rem", marginBottom: 18, fontFamily: "var(--font-display)" }}>Alle Evenementen</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {eenmalig.map(e => <AgendaCard key={e.id} e={e} accentKleur={null} />)}
+              <h2 style={{ fontSize: "1.3rem", marginBottom: 18, fontFamily: "var(--font-display)" }}>Terugkerende Activiteiten</h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: 600, overflowY: "auto", paddingRight: 4 }}>
+                {laden ? <p className="muted">Laden…</p>
+                  : activiteitenItems.length === 0 ? <p className="muted">Geen activiteiten gevonden.</p>
+                  : activiteitenItems.map(a => <TerugkerendCard key={a.id} a={a} />)}
               </div>
             </div>
           </div>
