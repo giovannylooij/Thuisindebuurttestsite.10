@@ -164,7 +164,7 @@ function Clubjes({ setPage, voice }) {
     sb.from('clubjes').select('*').eq('status', 'Gepubliceerd').then(({ data, error }) => {
       if (error || !data || data.length === 0) return;
       // Vervang statische data volledig door Supabase data
-      setClubs(data.map(c => ({
+      const mapped = data.map(c => ({
         id: c.id,
         name: c.naam || 'Nieuw clubje',
         desc: c.omschrijving || '',
@@ -181,7 +181,12 @@ function Clubjes({ setPage, voice }) {
         waar: c.waar || '',
         wanneer: c.wanneer || '',
         kosten: c.kosten || '',
-      })));
+        contact_zichtbaar: c.contact_zichtbaar === true,
+      }));
+      setClubs(mapped);
+      // Update window.CLUBJES zodat Detail component actuele data heeft
+      window.CLUBJES && (window.CLUBJES.length = 0);
+      if (window.CLUBJES) mapped.forEach(c => window.CLUBJES.push(c));
     });
   }, []);
 

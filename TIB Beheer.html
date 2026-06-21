@@ -1853,7 +1853,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
 
 function ClubjeEdit({ id, onBack }) {
   const existing = DATA.clubjes.find(c => c.id === id);
-  const defaults = existing || { naam: 'Nieuwe buurtgroep', categorie: 'Sociaal', wijk: '', omschrijving: '', voor_wie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false };
+  const defaults = existing || { naam: 'Nieuwe buurtgroep', categorie: 'Sociaal', wijk: '', omschrijving: '', voor_wie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false, contact_zichtbaar: false };
   const [fd, setFd] = React.useState({ ...defaults });
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [uitgelicht, setUitgelicht] = React.useState(!!defaults.uitgelicht);
@@ -1950,6 +1950,17 @@ function ClubjeEdit({ id, onBack }) {
 
           <div className="form-section">
             <h3>Contact</h3>
+            <Field label="Contact weergeven op website">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={!!fd.contact_zichtbaar}
+                  onChange={e => up('contact_zichtbaar', e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: 'var(--accent-1)', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.92rem' }}>Toon Contact-tab op de buurtgroep detailpagina</span>
+              </label>
+            </Field>
             <div className="row-2">
               <Field label="Contactpersoon"><input type="text" value={fd.contact} onChange={e => up('contact', e.target.value)} /></Field>
               <Field label="E-mailadres"><input type="email" value={fd.email} onChange={e => up('email', e.target.value)} /></Field>
@@ -5549,9 +5560,10 @@ function __mapClubjesToDb(item) {
     lat:           item.lat,
     lng:           item.lng,
     status:        item.status,
-    uitgelicht:    item.uitgelicht,
-    leden:         item.leden,
-    aangemaakt_op: item.aangemaakt_op || null,
+    uitgelicht:       item.uitgelicht,
+    leden:            item.leden,
+    aangemaakt_op:    item.aangemaakt_op || null,
+    contact_zichtbaar: item.contact_zichtbaar === true,
   };
   return mapped;
 }
