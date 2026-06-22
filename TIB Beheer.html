@@ -1407,15 +1407,6 @@ function Topbar({ crumbs, previewOn, onTogglePreview }) {
         >
           💾 Backup JSON
         </button>
-        <button
-          className="btn btn-primary"
-          title="Download de website als één HTML-bestand met alle CMS-aanpassingen hardcoded — werkt in elke browser"
-          onClick={() => window.__exportWebsite && window.__exportWebsite()}
-          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-        >
-          <Icon name="download" size={14} />
-          Download website (alle aanpassingen inbegrepen)
-        </button>
       </div>
     </div>
   );
