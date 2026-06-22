@@ -1295,16 +1295,21 @@ NAV.forEach(g => g.items.forEach(i => { NAV_LOOKUP[i.id] = i; }));
 const BEHEERDER_ROUTES = new Set(['dashboard', 'clubjes']);
 
 function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
-  const isSuperadmin = profile?.role === 'superadmin';
+  const role = profile?.role || 'beheerder';
+  const HIDDEN = {
+    redactie: ['gebruikers', 'huisstijl', 'domein'],
+    beheerder: ['clubjes', 'activiteiten', 'agenda', 'nieuws', 'partners',
+                'netwerken', 'buurtatlas', 'categorieen', 'media', 'menu',
+                'gebruikers', 'huisstijl', 'domein'],
+  };
+  const hidden = HIDDEN[role] || [];
   const visibleNav = NAV.map(group => ({
     ...group,
-    items: isSuperadmin
-      ? group.items
-      : group.items.filter(item => BEHEERDER_ROUTES.has(item.id)),
+    items: group.items.filter(item => !hidden.includes(item.id)),
   })).filter(group => group.items.length > 0);
 
   const initials = (userEmail || 'TB').slice(0, 2).toUpperCase();
-  const roleLabel = isSuperadmin ? 'Superadmin' : 'Buurtgroep-beheerder';
+  const roleLabel = role === 'superadmin' ? 'Superadmin' : role === 'redactie' ? 'Redactie' : 'Buurtgroep-beheerder';
 
   return (
     <aside className="sidebar">
@@ -4588,6 +4593,9 @@ function FormulierenScreen() {
 
   const [inzendingen, setInzendingen] = React.useState(() => [...DATA.formulieren]);
 
+  const role = window._tibProfile?.role || 'beheerder';
+  const clubId = window._tibProfile?.club_id || null;
+
   function handleArchiveer(id) {
     const updated = inzendingen
       .map(f => f.id === id ? { ...f, status: 'Gearchiveerd' } : f)
@@ -4614,10 +4622,16 @@ function FormulierenScreen() {
     window.__showToast && window.__showToast('Inzending verwijderd');
   }
 
-  const visibleItems = inzendingen.filter(item =>
+  const baseInzendingen = (role === 'beheerder' && clubId !== null)
+    ? inzendingen.filter(i => String(i.club_id) === String(clubId))
+    : inzendingen;
+  const visibleItems = baseInzendingen.filter(item =>
     !search || [item.naam, item.onderwerp, item.bericht].some(v => v && v.toLowerCase().includes(search.toLowerCase()))
   );
   const f = inzendingen.find(x => x.id === selected);
+  if (role === 'beheerder' && clubId === null) {
+    return <div style={{ padding: 40, color: '#888', fontSize: 16 }}>Je bent nog niet gekoppeld aan een buurtgroep.</div>;
+  }
   const fStatus = statuses[selected] || (f && f.status);
   const handleSend = () => {
     if (!reply.trim()) return;
@@ -5521,6 +5535,12 @@ function App() {
     bestellingen:  { crumbs: ['Bestellingen'],          render: () => <BestellingenScreen  onBadgeRefresh={loadBadges} /> },
   };
 
+  const role = profile?.role || 'beheerder';
+  const REDACTIE_BLOCKED = ['gebruikers', 'huisstijl', 'domein'];
+  const isBlocked =
+    (role === 'beheerder' && route !== 'formulieren') ||
+    (role === 'redactie' && REDACTIE_BLOCKED.includes(route));
+
   const current = screens[route] || screens.dashboard;
 
   return (
@@ -5533,7 +5553,9 @@ function App() {
           onTogglePreview={() => setPreviewOn(v => !v)}
         />
         <div className="content" data-screen-label={route}>
-          {current.render()}
+          {isBlocked
+            ? <div style={{ padding: 40, color: '#888', fontSize: 16 }}>Je hebt geen toegang tot dit scherm.</div>
+            : current.render()}
         </div>
       </div>
       {previewOn && <PreviewPane onClose={() => setPreviewOn(false)} />}
