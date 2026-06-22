@@ -5782,15 +5782,82 @@ async function loadFromSupabase() {
   }));
 }
 
+function toonWachtwoordResetFormulier() {
+  document.body.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f5f5f0;font-family:sans-serif;">
+      <div style="background:white;padding:40px;border-radius:12px;box-shadow:0 2px 20px rgba(0,0,0,0.1);width:360px;text-align:center;">
+        <div style="background:#f5f5f0;border-radius:10px;display:inline-block;padding:10px 16px;margin-bottom:20px;">
+          <img src="${window.TIB_LOGO_URL}" style="max-width:180px;height:auto;display:block;mix-blend-mode:multiply;">
+        </div>
+        <h2 style="margin:0 0 8px;color:#1a1a1a;">Nieuw wachtwoord instellen</h2>
+        <p style="color:#666;margin-bottom:24px;font-size:14px;">Kies een sterk wachtwoord van minimaal 8 tekens.</p>
+        <input type="password" id="nieuw-wachtwoord" placeholder="Nieuw wachtwoord"
+          style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:12px;">
+        <input type="password" id="bevestig-wachtwoord" placeholder="Bevestig wachtwoord"
+          style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:16px;">
+        <button onclick="slaWachtwoordOp()"
+          style="width:100%;padding:12px;background:#2d6a4f;color:white;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">
+          Wachtwoord opslaan
+        </button>
+        <p id="reset-melding" style="margin-top:12px;font-size:13px;color:#666;"></p>
+      </div>
+    </div>
+  `;
+}
+
+window.slaWachtwoordOp = async function() {
+  const nieuw = document.getElementById('nieuw-wachtwoord').value;
+  const bevestig = document.getElementById('bevestig-wachtwoord').value;
+  const melding = document.getElementById('reset-melding');
+  if (!nieuw || nieuw.length < 8) {
+    melding.style.color = '#dc2626';
+    melding.textContent = 'Wachtwoord moet minimaal 8 tekens zijn.';
+    return;
+  }
+  if (nieuw !== bevestig) {
+    melding.style.color = '#dc2626';
+    melding.textContent = 'Wachtwoorden komen niet overeen.';
+    return;
+  }
+  const { error } = await window.supabase.auth.updateUser({ password: nieuw });
+  if (error) {
+    melding.style.color = '#dc2626';
+    melding.textContent = 'Fout: ' + error.message;
+  } else {
+    melding.style.color = '#2d6a4f';
+    melding.textContent = '✓ Wachtwoord opgeslagen! Je wordt doorgestuurd...';
+    await window.supabase.auth.signOut();
+    setTimeout(() => { window.location.href = '/beheer.html'; }, 2000);
+  }
+};
+
 const rootEl = document.getElementById('root');
 const reactRoot = ReactDOM.createRoot(rootEl);
 
 rootEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;font-size:16px;color:#555;">Bezig met laden...</div>';
 
-loadFromSupabase().then(() => {
-  rootEl.innerHTML = '';
-  reactRoot.render(<App />);
-});
+// Wachtwoord reset flow: Supabase stuurt #access_token=...&type=recovery
+const _hash = window.location.hash;
+if (_hash.includes('type=recovery')) {
+  window.supabase.auth.getSession().then(({ data }) => {
+    if (data?.session) {
+      toonWachtwoordResetFormulier();
+    } else {
+      // Wacht kort tot Supabase de hash heeft verwerkt
+      setTimeout(() => {
+        window.supabase.auth.getSession().then(({ data: d2 }) => {
+          if (d2?.session) { toonWachtwoordResetFormulier(); }
+          else { loadFromSupabase().then(() => { rootEl.innerHTML = ''; reactRoot.render(<App />); }); }
+        });
+      }, 800);
+    }
+  });
+} else {
+  loadFromSupabase().then(() => {
+    rootEl.innerHTML = '';
+    reactRoot.render(<App />);
+  });
+}
 
   </script>
 
