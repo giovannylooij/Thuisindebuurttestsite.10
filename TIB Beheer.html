@@ -5331,6 +5331,7 @@ function App() {
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
+        console.log('[TIB] profile data van Supabase:', data);
         const p = data || window._tibProfile || { role: 'beheerder', club_id: null };
         setProfile(p);
         window._tibProfile = p;
