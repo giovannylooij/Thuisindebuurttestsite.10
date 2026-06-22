@@ -5073,7 +5073,7 @@ function MasterDetail({ items, loading, selectedId, onSelect, renderListItem, re
 }
 
 /* Aanmeldingen */
-function AanmeldingenScreen() {
+function AanmeldingenScreen({ onBadgeRefresh }) {
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [selectedId, setSelectedId] = React.useState(null);
@@ -5092,7 +5092,7 @@ function AanmeldingenScreen() {
     if (!confirm('Weet je zeker dat je dit item wilt verwijderen?')) return;
     const { error } = await window.supabase.from('aanmeldingen').delete().eq('id', id);
     if (error) { alert('Verwijderen mislukt: ' + error.message); }
-    else { setItems(prev => prev.filter(i => i.id !== id)); setSelectedId(null); }
+    else { setItems(prev => prev.filter(i => i.id !== id)); setSelectedId(null); onBadgeRefresh && onBadgeRefresh(); }
   }
 
   return React.createElement(MasterDetail, {
@@ -5136,7 +5136,7 @@ function AanmeldingenScreen() {
 }
 
 /* Buurtgroep aanvragen */
-function BgAanvragenScreen() {
+function BgAanvragenScreen({ onBadgeRefresh }) {
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [selectedId, setSelectedId] = React.useState(null);
@@ -5155,7 +5155,7 @@ function BgAanvragenScreen() {
     if (!confirm('Weet je zeker dat je dit item wilt verwijderen?')) return;
     const { error } = await window.supabase.from('buurtgroep_aanvragen').delete().eq('id', id);
     if (error) { alert('Verwijderen mislukt: ' + error.message); }
-    else { setItems(prev => prev.filter(i => i.id !== id)); setSelectedId(null); }
+    else { setItems(prev => prev.filter(i => i.id !== id)); setSelectedId(null); onBadgeRefresh && onBadgeRefresh(); }
   }
 
   return React.createElement(MasterDetail, {
@@ -5200,7 +5200,7 @@ function BgAanvragenScreen() {
 }
 
 /* Berichten */
-function BerichtenScreen() {
+function BerichtenScreen({ onBadgeRefresh }) {
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [selectedId, setSelectedId] = React.useState(null);
@@ -5219,7 +5219,7 @@ function BerichtenScreen() {
     if (!confirm('Weet je zeker dat je dit item wilt verwijderen?')) return;
     const { error } = await window.supabase.from('contact_berichten').delete().eq('id', id);
     if (error) { alert('Verwijderen mislukt: ' + error.message); }
-    else { setItems(prev => prev.filter(i => i.id !== id)); setSelectedId(null); }
+    else { setItems(prev => prev.filter(i => i.id !== id)); setSelectedId(null); onBadgeRefresh && onBadgeRefresh(); }
   }
 
   return React.createElement(MasterDetail, {
@@ -5263,7 +5263,7 @@ function BerichtenScreen() {
 }
 
 /* Bestellingen */
-function BestellingenScreen() {
+function BestellingenScreen({ onBadgeRefresh }) {
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [selectedId, setSelectedId] = React.useState(null);
@@ -5282,7 +5282,7 @@ function BestellingenScreen() {
     if (!confirm('Weet je zeker dat je dit item wilt verwijderen?')) return;
     const { error } = await window.supabase.from('boek_bestellingen').delete().eq('id', id);
     if (error) { alert('Verwijderen mislukt: ' + error.message); }
-    else { setItems(prev => prev.filter(i => i.id !== id)); setSelectedId(null); }
+    else { setItems(prev => prev.filter(i => i.id !== id)); setSelectedId(null); onBadgeRefresh && onBadgeRefresh(); }
   }
 
   return React.createElement(MasterDetail, {
