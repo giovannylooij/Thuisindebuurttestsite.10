@@ -1531,7 +1531,7 @@ function Dashboard({ onNav, onPreview }) {
     <>
       <IntroBanner onPreview={onPreview} />
       <PageHead
-        title="Goedemorgen, beheerder"
+        title={`Goedemorgen, ${profile?.role === 'superadmin' ? 'superadmin' : profile?.role === 'redactie' ? 'redactie' : 'beheerder'}`}
         sub="Welkom in het beheerpanel van Thuis in de Buurt. Hier beheert u de inhoud van de website."
         actions={<>
           <a className="btn" href="https://www.thuisindebuurt.nl" target="_blank" rel="noopener noreferrer"><Icon name="eye" size={14} /> Bekijk site</a>
@@ -4484,7 +4484,7 @@ function GebruikersScreen() {
                     <td style={{ padding: '11px 20px' }}>
                       {isSelf ? (
                         <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-                          {u.role === 'superadmin' ? 'Superadmin' : 'Beheerder'}
+                          {u.role === 'superadmin' ? 'Superadmin' : u.role === 'redactie' ? 'Redactie' : 'Beheerder'}
                         </span>
                       ) : (
                         <select
@@ -4494,6 +4494,7 @@ function GebruikersScreen() {
                         >
                           <option value="superadmin">Superadmin</option>
                           <option value="beheerder">Beheerder</option>
+                          <option value="redactie">Redactie</option>
                         </select>
                       )}
                     </td>
