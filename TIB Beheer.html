@@ -4811,63 +4811,94 @@ function FormulierenScreen() {
   );
 }
 
-function DomeinScreen() {
-  const isSuperadmin = window._tibProfile?.role === 'superadmin';
-  const [backupLoading, setBackupLoading] = React.useState(false);
-  const [backupError, setBackupError] = React.useState(null);
+window.__handleJsonBackup = async function() {
+  const btn = document.getElementById('tib-backup-btn');
+  const errEl = document.getElementById('tib-backup-error');
+  if (btn) { btn.disabled = true; btn.textContent = 'Bezig met exporteren…'; }
+  if (errEl) { errEl.style.display = 'none'; }
 
-  async function handleJsonBackup() {
-    setBackupLoading(true);
-    setBackupError(null);
+  const tabellen = [
+    'agenda', 'activiteiten', 'buurtgroepen', 'categorieen',
+    'clubjes', 'nieuws', 'partners', 'netwerken',
+    'terugkerende_activiteiten', 'aanmeldingen', 'buurtgroep_aanvragen',
+    'contact_berichten', 'boek_bestellingen', 'inzending_notities', 'profiles',
+  ];
 
-    const tabellen = [
-      'agenda', 'activiteiten', 'buurtgroepen', 'categorieen',
-      'clubjes', 'nieuws', 'partners', 'netwerken',
-      'terugkerende_activiteiten', 'aanmeldingen', 'buurtgroep_aanvragen',
-      'contact_berichten', 'boek_bestellingen', 'inzending_notities', 'profiles',
-    ];
+  const { data: { session } } = await window.supabase.auth.getSession();
+  const exportedBy = session?.user?.email || 'onbekend';
 
-    const { data: { session } } = await window.supabase.auth.getSession();
-    const exportedBy = session?.user?.email || 'onbekend';
+  const backup = {
+    metadata: {
+      exported_at: new Date().toISOString(),
+      exported_by: exportedBy,
+    },
+  };
 
-    const backup = {
-      metadata: {
-        exported_at: new Date().toISOString(),
-        exported_by: exportedBy,
-      },
-    };
-
-    const fouten = [];
-    await Promise.all(tabellen.map(async (tabel) => {
-      try {
-        const { data, error } = await window.supabase.from(tabel).select('*');
-        if (error) throw error;
-        backup[tabel] = data ?? [];
-      } catch (e) {
-        fouten.push(tabel);
-        backup[tabel] = { error: e.message || 'Ophalen mislukt' };
-      }
-    }));
-
-    if (fouten.length > 0) {
-      setBackupError('Let op: de volgende tabellen konden niet worden opgehaald: ' + fouten.join(', '));
+  const fouten = [];
+  await Promise.all(tabellen.map(async (tabel) => {
+    try {
+      const { data, error } = await window.supabase.from(tabel).select('*');
+      if (error) throw error;
+      backup[tabel] = data ?? [];
+    } catch (e) {
+      fouten.push(tabel);
+      backup[tabel] = { error: e.message || 'Ophalen mislukt' };
     }
+  }));
 
-    const vandaag = new Date().toISOString().slice(0, 10);
-    const bestandsnaam = `tib-backup-${vandaag}.json`;
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = bestandsnaam;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-
-    setBackupLoading(false);
-    window.__showToast && window.__showToast('Backup gedownload: ' + bestandsnaam);
+  if (fouten.length > 0 && errEl) {
+    errEl.textContent = 'Let op: de volgende tabellen konden niet worden opgehaald: ' + fouten.join(', ');
+    errEl.style.display = 'block';
   }
+
+  const vandaag = new Date().toISOString().slice(0, 10);
+  const bestandsnaam = 'tib-backup-' + vandaag + '.json';
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = bestandsnaam;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  if (btn) { btn.disabled = false; btn.textContent = 'JSON Backup downloaden'; }
+  window.__showToast && window.__showToast('Backup gedownload: ' + bestandsnaam);
+};
+
+window.renderBackupCard = function() {
+  const el = document.getElementById('tib-backup-card-container');
+  if (!el) return;
+  if (window._tibProfile?.role === 'superadmin') {
+    el.innerHTML = [
+      '<div class="card" style="max-width:480px;margin-top:20px;">',
+        '<div class="card-pad" style="display:flex;flex-direction:column;gap:12px;">',
+          '<div>',
+            '<div style="font-weight:600;font-size:14px;margin-bottom:4px;">Gegevensback-up</div>',
+            '<div style="font-size:13px;color:var(--ink-soft);">',
+              'Download alle databasetabellen als één JSON-bestand. Alleen zichtbaar voor superadmins.',
+            '</div>',
+          '</div>',
+          '<button id="tib-backup-btn" class="btn btn-accent"',
+            ' style="width:fit-content;display:inline-flex;align-items:center;gap:8px;"',
+            ' onclick="window.__handleJsonBackup()">',
+            'JSON Backup downloaden',
+          '</button>',
+          '<div id="tib-backup-error" style="display:none;font-size:12.5px;',
+            'color:var(--danger);background:oklch(0.96 0.04 25);',
+            'border:1px solid oklch(0.85 0.08 25);border-radius:7px;padding:8px 12px;">',
+          '</div>',
+        '</div>',
+      '</div>',
+    ].join('');
+  }
+};
+
+function DomeinScreen() {
+  React.useEffect(() => {
+    window.renderBackupCard && window.renderBackupCard();
+  }, []);
 
   return (
     <>
@@ -4892,32 +4923,7 @@ function DomeinScreen() {
         </div>
       </div>
 
-      {isSuperadmin && (
-        <div className="card" style={{ maxWidth: 480, marginTop: 20 }}>
-          <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Gegevensback-up</div>
-              <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-                Download alle databasetabellen als één JSON-bestand. Alleen zichtbaar voor superadmins.
-              </div>
-            </div>
-            <button
-              className="btn btn-accent"
-              style={{ width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-              onClick={handleJsonBackup}
-              disabled={backupLoading}
-            >
-              <Icon name="download" size={15} />
-              {backupLoading ? 'Bezig met exporteren…' : 'JSON Backup downloaden'}
-            </button>
-            {backupError && (
-              <div style={{ fontSize: 12.5, color: 'var(--danger)', background: 'oklch(0.96 0.04 25)', border: '1px solid oklch(0.85 0.08 25)', borderRadius: 7, padding: '8px 12px' }}>
-                {backupError}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <div id="tib-backup-card-container"></div>
     </>
   );
 }
@@ -5418,6 +5424,7 @@ function App() {
         const p = data || { role: 'beheerder', club_id: null };
         setProfile(p);
         window._tibProfile = p;
+        window.renderBackupCard && window.renderBackupCard();
       });
   }, [session?.user?.id, session?.access_token]);
 
