@@ -1529,7 +1529,7 @@ function Dashboard({ onNav, onPreview }) {
     <>
       <IntroBanner onPreview={onPreview} />
       <PageHead
-        title={`Goedemorgen, ${profile?.role === 'superadmin' ? 'superadmin' : profile?.role === 'redactie' ? 'redactie' : 'beheerder'}`}
+        title={`Goedemorgen, ${window._tibProfile?.role === 'superadmin' ? 'superadmin' : window._tibProfile?.role === 'redactie' ? 'redactie' : 'beheerder'}`}
         sub="Welkom in het beheerpanel van Thuis in de Buurt. Hier beheert u de inhoud van de website."
         actions={<>
           <a className="btn" href="https://www.thuisindebuurt.nl" target="_blank" rel="noopener noreferrer"><Icon name="eye" size={14} /> Bekijk site</a>
