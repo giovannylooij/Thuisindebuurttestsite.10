@@ -4812,6 +4812,63 @@ function FormulierenScreen() {
 }
 
 function DomeinScreen() {
+  const isSuperadmin = window._tibProfile?.role === 'superadmin';
+  const [backupLoading, setBackupLoading] = React.useState(false);
+  const [backupError, setBackupError] = React.useState(null);
+
+  async function handleJsonBackup() {
+    setBackupLoading(true);
+    setBackupError(null);
+
+    const tabellen = [
+      'agenda', 'activiteiten', 'buurtgroepen', 'categorieen',
+      'clubjes', 'nieuws', 'partners', 'netwerken',
+      'terugkerende_activiteiten', 'aanmeldingen', 'buurtgroep_aanvragen',
+      'contact_berichten', 'boek_bestellingen', 'inzending_notities', 'profiles',
+    ];
+
+    const { data: { session } } = await window.supabase.auth.getSession();
+    const exportedBy = session?.user?.email || 'onbekend';
+
+    const backup = {
+      metadata: {
+        exported_at: new Date().toISOString(),
+        exported_by: exportedBy,
+      },
+    };
+
+    const fouten = [];
+    await Promise.all(tabellen.map(async (tabel) => {
+      try {
+        const { data, error } = await window.supabase.from(tabel).select('*');
+        if (error) throw error;
+        backup[tabel] = data ?? [];
+      } catch (e) {
+        fouten.push(tabel);
+        backup[tabel] = { error: e.message || 'Ophalen mislukt' };
+      }
+    }));
+
+    if (fouten.length > 0) {
+      setBackupError('Let op: de volgende tabellen konden niet worden opgehaald: ' + fouten.join(', '));
+    }
+
+    const vandaag = new Date().toISOString().slice(0, 10);
+    const bestandsnaam = `tib-backup-${vandaag}.json`;
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = bestandsnaam;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    setBackupLoading(false);
+    window.__showToast && window.__showToast('Backup gedownload: ' + bestandsnaam);
+  }
+
   return (
     <>
       <PageHead
@@ -4834,6 +4891,33 @@ function DomeinScreen() {
           </p>
         </div>
       </div>
+
+      {isSuperadmin && (
+        <div className="card" style={{ maxWidth: 480, marginTop: 20 }}>
+          <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Gegevensback-up</div>
+              <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                Download alle databasetabellen als één JSON-bestand. Alleen zichtbaar voor superadmins.
+              </div>
+            </div>
+            <button
+              className="btn btn-accent"
+              style={{ width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              onClick={handleJsonBackup}
+              disabled={backupLoading}
+            >
+              <Icon name="download" size={15} />
+              {backupLoading ? 'Bezig met exporteren…' : 'JSON Backup downloaden'}
+            </button>
+            {backupError && (
+              <div style={{ fontSize: 12.5, color: 'var(--danger)', background: 'oklch(0.96 0.04 25)', border: '1px solid oklch(0.85 0.08 25)', borderRadius: 7, padding: '8px 12px' }}>
+                {backupError}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
