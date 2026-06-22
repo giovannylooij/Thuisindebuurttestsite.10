@@ -1401,6 +1401,13 @@ function Topbar({ crumbs, previewOn, onTogglePreview }) {
           Open site
         </a>
         <button
+          id="btn-backup-json"
+          onClick={() => window.downloadBackupJSON && window.downloadBackupJSON()}
+          style={{ background: '#2d6a4f', color: 'white', border: 'none', padding: '8px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
+        >
+          💾 Backup JSON
+        </button>
+        <button
           className="btn btn-primary"
           title="Download de website als één HTML-bestand met alle CMS-aanpassingen hardcoded — werkt in elke browser"
           onClick={() => window.__exportWebsite && window.__exportWebsite()}
@@ -5794,6 +5801,74 @@ loadFromSupabase().then(() => {
 
     if (btn) { btn.disabled = false; btn.textContent = 'JSON Backup downloaden'; }
     if (window.__showToast) window.__showToast('Backup gedownload: ' + bestandsnaam);
+  };
+
+  window.downloadBackupJSON = async function() {
+    var btn = document.getElementById('btn-backup-json');
+    var origText = btn ? btn.textContent : '';
+    if (btn) { btn.textContent = '⏳ Bezig...'; btn.disabled = true; }
+
+    try {
+      var tabellen = [
+        'aanmeldingen',
+        'activiteiten',
+        'agenda',
+        'boek_bestellingen',
+        'buurtgroep_aanvragen',
+        'categorieen',
+        'clubjes',
+        'contact_berichten',
+        'formulieren_instellingen',
+        'inzending_notities',
+        'netwerken',
+        'nieuws',
+        'partners',
+        'profiles',
+        'terugkerende_activiteiten'
+      ];
+
+      var results = await Promise.all(
+        tabellen.map(function(t) { return window.supabase.from(t).select('*'); })
+      );
+
+      var data = {};
+      tabellen.forEach(function(naam, i) {
+        data[naam] = results[i].data || [];
+      });
+
+      var backup = {
+        export_info: {
+          website: 'thuisindebuurt.nl',
+          exportdatum: new Date().toISOString(),
+          versie: '1.0',
+          gegenereerd_door: 'TIB Beheer CMS',
+          aantal_tabellen: tabellen.length
+        },
+        data: data
+      };
+
+      var blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'TIB-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      if (btn) { btn.textContent = '✅ Backup klaar!'; }
+      setTimeout(function() {
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+      }, 3000);
+
+    } catch(err) {
+      console.error('Backup mislukt:', err);
+      if (btn) { btn.textContent = '❌ Mislukt'; }
+      setTimeout(function() {
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+      }, 3000);
+    }
   };
 
   window.renderBackupCard = function() {
