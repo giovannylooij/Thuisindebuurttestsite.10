@@ -5745,5 +5745,78 @@ loadFromSupabase().then(() => {
 });
 
   </script>
+
+  <!-- Backup-functies in plain global scope (buiten babel-transpilatie) -->
+  <script>
+  window.__handleJsonBackup = async function() {
+    var btn   = document.getElementById('tib-backup-btn');
+    var errEl = document.getElementById('tib-backup-error');
+    if (btn)   { btn.disabled = true; btn.textContent = 'Bezig met exporteren…'; }
+    if (errEl) { errEl.style.display = 'none'; }
+
+    var tabellen = [
+      'agenda', 'activiteiten', 'buurtgroepen', 'categorieen',
+      'clubjes', 'nieuws', 'partners', 'netwerken',
+      'terugkerende_activiteiten', 'aanmeldingen', 'buurtgroep_aanvragen',
+      'contact_berichten', 'boek_bestellingen', 'inzending_notities', 'profiles'
+    ];
+
+    var sessionResult = await window.supabase.auth.getSession();
+    var exportedBy = (sessionResult.data && sessionResult.data.session && sessionResult.data.session.user && sessionResult.data.session.user.email) || 'onbekend';
+
+    var backup = { metadata: { exported_at: new Date().toISOString(), exported_by: exportedBy } };
+    var fouten = [];
+
+    await Promise.all(tabellen.map(async function(tabel) {
+      try {
+        var res = await window.supabase.from(tabel).select('*');
+        if (res.error) throw res.error;
+        backup[tabel] = res.data || [];
+      } catch(e) {
+        fouten.push(tabel);
+        backup[tabel] = { error: (e && e.message) || 'Ophalen mislukt' };
+      }
+    }));
+
+    if (fouten.length > 0 && errEl) {
+      errEl.textContent = 'Let op: de volgende tabellen konden niet worden opgehaald: ' + fouten.join(', ');
+      errEl.style.display = 'block';
+    }
+
+    var vandaag = new Date().toISOString().slice(0, 10);
+    var bestandsnaam = 'tib-backup-' + vandaag + '.json';
+    var blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url; a.download = bestandsnaam;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+
+    if (btn) { btn.disabled = false; btn.textContent = 'JSON Backup downloaden'; }
+    if (window.__showToast) window.__showToast('Backup gedownload: ' + bestandsnaam);
+  };
+
+  window.renderBackupCard = function() {
+    var el = document.getElementById('tib-backup-card-container');
+    if (!el) return;
+    if (window._tibProfile && window._tibProfile.role === 'superadmin') {
+      el.innerHTML =
+        '<div class="card" style="max-width:480px;margin-top:20px;">' +
+          '<div class="card-pad" style="display:flex;flex-direction:column;gap:12px;">' +
+            '<div>' +
+              '<div style="font-weight:600;font-size:14px;margin-bottom:4px;">Gegevensback-up</div>' +
+              '<div style="font-size:13px;color:var(--ink-soft);">Download alle databasetabellen als één JSON-bestand. Alleen zichtbaar voor superadmins.</div>' +
+            '</div>' +
+            '<button id="tib-backup-btn" class="btn btn-accent" style="width:fit-content;display:inline-flex;align-items:center;gap:8px;" onclick="window.__handleJsonBackup()">' +
+              'JSON Backup downloaden' +
+            '</button>' +
+            '<div id="tib-backup-error" style="display:none;font-size:12.5px;color:var(--danger);background:oklch(0.96 0.04 25);border:1px solid oklch(0.85 0.08 25);border-radius:7px;padding:8px 12px;"></div>' +
+          '</div>' +
+        '</div>';
+    } else {
+      el.innerHTML = '';
+    }
+  };
+  </script>
 </body>
 </html>
