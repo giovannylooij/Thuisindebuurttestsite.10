@@ -5331,12 +5331,11 @@ function App() {
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
-        console.log('[TIB] profile data van Supabase:', data);
-        const p = data || window._tibProfile || { role: 'beheerder', club_id: null };
+        const p = data || { role: 'beheerder', club_id: null };
         setProfile(p);
         window._tibProfile = p;
       });
-  }, [session?.user?.id]);
+  }, [session?.user?.id, session?.access_token]);
 
   async function handleLogout() {
     await window.supabase.auth.signOut();
