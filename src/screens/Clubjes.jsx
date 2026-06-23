@@ -170,7 +170,7 @@ function ClubjeForm({ onClose }) {
           locatie: fd.querySelector('#cl').value,
           icoon_url: icoon ? ICOON_BASE_URL + icoon.bestand : null,
           icoon_label: selectedIcon || null,
-          status: 'Nieuw',
+          status: 'nieuw',
         }]);
       }
       setSubmitted(true);
