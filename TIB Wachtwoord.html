@@ -185,6 +185,10 @@
     const elPw1         = document.getElementById('pw1')
     const elPw2         = document.getElementById('pw2')
 
+    const _hash   = window.location.hash.substring(1)
+    const _params = new URLSearchParams(_hash)
+    const _type   = _params.get('type')
+
     function showGlobalError(msg) {
       elErrorGlobal.textContent = msg
       elErrorGlobal.style.display = 'block'
@@ -200,35 +204,28 @@
       elErrorInline.style.display = 'none'
     }
 
-    async function init() {
-      const hash = window.location.hash.substring(1)
-      const params = new URLSearchParams(hash)
-      const type = params.get('type')
+    function toonFormulier() {
+      if (elFormWrap.style.display === 'block') return // al zichtbaar
+      elSubtitle.textContent = _type === 'invite'
+        ? 'Welkom! Stel je wachtwoord in om verder te gaan.'
+        : 'Stel een nieuw wachtwoord in.'
+      elFormWrap.style.display = 'block'
+    }
 
-      if (!type || (type !== 'invite' && type !== 'recovery')) {
-        showGlobalError('Ongeldige of verlopen link.')
-        return
-      }
-
-      function toonFormulier() {
-        elSubtitle.textContent = type === 'invite'
-          ? 'Welkom! Stel je wachtwoord in om verder te gaan.'
-          : 'Stel een nieuw wachtwoord in.'
-        elFormWrap.style.display = 'block'
-      }
-
-      // Supabase verwerkt de hash automatisch via detectSessionInUrl
+    if (!_type || (_type !== 'invite' && _type !== 'recovery')) {
+      showGlobalError('Ongeldige of verlopen link.')
+    } else {
+      // Registreer listener DIRECT — vóór elke async operatie
       supabase.auth.onAuthStateChange((event, session) => {
-        if ((event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') && session) {
+        if (session && (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY' || event === 'INITIAL_SESSION')) {
           toonFormulier()
         }
       })
 
-      // Fallback: sessie al actief
-      const { data } = await supabase.auth.getSession()
-      if (data?.session) {
-        toonFormulier()
-      }
+      // Fallback: sessie al actief bij laden
+      supabase.auth.getSession().then(({ data }) => {
+        if (data?.session) toonFormulier()
+      })
     }
 
     elBtn.addEventListener('click', async () => {
@@ -263,7 +260,6 @@
       elSuccess.style.display = 'block'
     })
 
-    init()
   </script>
 </body>
 </html>
