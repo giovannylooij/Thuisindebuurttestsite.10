@@ -85,8 +85,10 @@ function AanmeldFormulier({ item, type }) {
       type,
       status: 'nieuw',
     };
-    if (type === 'clubje') aanmelding.clubje_id = item.id;
-    if (type === 'activiteit') aanmelding.activiteit_id = item.id;
+    // item.id kan een string zijn met letter-prefix (bv 'a2', 'c14') vanuit statische data
+    const numericId = (raw) => { const n = parseInt(String(raw).replace(/^[a-zA-Z]+/, ''), 10); return isNaN(n) ? null : n; };
+    if (type === 'clubje') aanmelding.clubje_id = numericId(item.id);
+    if (type === 'activiteit') aanmelding.activiteit_id = numericId(item.id);
 
     const { error } = await window._tibSupabase.from('aanmeldingen').insert([aanmelding]);
     setBezig(false);
