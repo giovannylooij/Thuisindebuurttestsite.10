@@ -63,6 +63,69 @@ function PrevNextBar({ siblings, currentId, onNav }) {
   );
 }
 
+/* -------- Aanmeldformulier -------- */
+function AanmeldFormulier({ item, type }) {
+  const [naam, setNaam] = useStateDt('');
+  const [email, setEmail] = useStateDt('');
+  const [telefoon, setTelefoon] = useStateDt('');
+  const [fout, setFout] = useStateDt('');
+  const [succes, setSucces] = useStateDt(false);
+  const [bezig, setBezig] = useStateDt(false);
+
+  async function verstuur() {
+    if (!naam.trim()) { setFout('Vul je naam in.'); return; }
+    if (!email.trim() || !email.includes('@')) { setFout('Vul een geldig e-mailadres in.'); return; }
+    setFout('');
+    setBezig(true);
+
+    const aanmelding = {
+      naam: naam.trim(),
+      email: email.trim(),
+      telefoon: telefoon.trim() || null,
+      type,
+      status: 'nieuw',
+    };
+    if (type === 'clubje') aanmelding.clubje_id = item.id;
+    if (type === 'activiteit') aanmelding.activiteit_id = item.id;
+
+    const { error } = await window._tibSupabase.from('aanmeldingen').insert([aanmelding]);
+    setBezig(false);
+    if (error) { setFout('Er ging iets fout. Probeer het opnieuw.'); return; }
+    setSucces(true);
+  }
+
+  const inputStyle = {
+    width: '100%', padding: '10px 14px', border: '1px solid #d1d5db',
+    borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginBottom: 10,
+    fontFamily: 'inherit', outline: 'none',
+  };
+
+  return (
+    <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #e5e7eb' }}>
+      <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#1a1a1a' }}>Meld je aan</h3>
+      {succes ? (
+        <div style={{ background: '#dcfce7', color: '#166534', padding: '12px 16px', borderRadius: 8, fontSize: 14 }}>
+          ✓ Je aanmelding is ontvangen! We nemen zo snel mogelijk contact met je op.
+        </div>
+      ) : (
+        <>
+          <input type="text" placeholder="Jouw naam *" value={naam} onChange={e => setNaam(e.target.value)} style={inputStyle} />
+          <input type="email" placeholder="E-mailadres *" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
+          <input type="tel" placeholder="Telefoonnummer (optioneel)" value={telefoon} onChange={e => setTelefoon(e.target.value)} style={inputStyle} />
+          {fout && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{fout}</p>}
+          <button
+            onClick={verstuur}
+            disabled={bezig}
+            style={{ background: '#2d6a4f', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: bezig ? 'default' : 'pointer', width: '100%', opacity: bezig ? 0.7 : 1 }}
+          >
+            {bezig ? 'Bezig...' : 'Aanmelden'}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* -------- Detail wrapper -------- */
 function Detail({ route, setPage, voice }) {
   const you = voice === "u" ? "u" : "je";
@@ -221,6 +284,9 @@ function Detail({ route, setPage, voice }) {
                       Wil {you} aansluiten? {showContactTab ? "Klik op de tab 'Contact' voor de contactgegevens." : "Neem contact op met de organisator."} Geen verplichtingen — kom een keer kijken
                       en bepaal daarna of het wat voor {you === "u" ? "u" : "jou"} is.
                     </p>
+                  )}
+                  {(kind === "clubje" || kind === "activiteit") && (
+                    <AanmeldFormulier item={item} type={kind} />
                   )}
                 </div>
               )}

@@ -5079,7 +5079,9 @@ function AanmeldingenScreen({ onBadgeRefresh }) {
   const [selectedId, setSelectedId] = React.useState(null);
 
   React.useEffect(() => {
-    window.supabase.from('aanmeldingen').select('*').order('aangemeld_op', { ascending: false })
+    window.supabase.from('aanmeldingen')
+      .select('*, clubjes(naam), activiteiten(naam)')
+      .order('aangemeld_op', { ascending: false })
       .then(({ data }) => { setItems(data || []); setLoading(false); });
   }, []);
 
@@ -5099,6 +5101,9 @@ function AanmeldingenScreen({ onBadgeRefresh }) {
     items, loading, selectedId, onSelect: setSelectedId,
     renderListItem: (item, active) => React.createElement('div', null,
       React.createElement('div', { style: { fontWeight: 600, fontSize: 13, marginBottom: 2, color: active ? '#fff' : 'var(--text)' } }, item.naam),
+      React.createElement('div', { style: { fontSize: 11, color: active ? 'rgba(255,255,255,0.8)' : 'var(--muted)', marginBottom: 2 } },
+        (item.clubjes?.naam || item.activiteiten?.naam) ? `${item.type || '—'}: ${item.clubjes?.naam || item.activiteiten?.naam}` : (item.type || '—')
+      ),
       React.createElement('div', { style: { fontSize: 11, color: active ? 'rgba(255,255,255,0.8)' : 'var(--muted)', marginBottom: 4 } },
         new Date(item.aangemeld_op).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' })
       ),
@@ -5117,7 +5122,7 @@ function AanmeldingenScreen({ onBadgeRefresh }) {
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' } },
           React.createElement(StatusSelect, {
             value: item.status,
-            options: ['nieuw', 'in behandeling', 'goedgekeurd', 'afgewezen'],
+            options: ['nieuw', 'gezien', 'afgewezen'],
             onChange: s => updateStatus(item.id, s)
           }),
           React.createElement('button', {
@@ -5127,8 +5132,9 @@ function AanmeldingenScreen({ onBadgeRefresh }) {
         )
       ),
       React.createElement(DetailField, { label: 'E-mail', value: item.email }),
-      React.createElement(DetailField, { label: 'Type aanmelding', value: item.type }),
-      React.createElement(DetailField, { label: 'Buurtgroep keuze', value: item.buurtgroep_keuze }),
+      React.createElement(DetailField, { label: 'Telefoon', value: item.telefoon }),
+      React.createElement(DetailField, { label: 'Type', value: item.type }),
+      React.createElement(DetailField, { label: 'Buurtgroep / Activiteit', value: item.clubjes?.naam || item.activiteiten?.naam || item.buurtgroep_keuze }),
       React.createElement(DetailField, { label: 'Bericht', value: item.bericht }),
       React.createElement(NotitieSectie, { type: 'aanmeldingen', id: item.id })
     )
