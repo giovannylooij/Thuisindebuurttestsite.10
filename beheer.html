@@ -3833,19 +3833,118 @@ function CategoriesScreen() {
   );
 }
 
+const CMS_ICONEN = [
+  { label: 'wandelen', bestand: 'wandelen.png' },
+  { label: 'fietsen', bestand: 'fietsen.png' },
+  { label: 'koffie', bestand: 'koffie.png' },
+  { label: 'eten', bestand: 'eten.png' },
+  { label: 'gamen', bestand: 'gamen.png' },
+  { label: 'layout', bestand: 'layout.png' },
+  { label: 'puzzel', bestand: 'puzzel.png' },
+  { label: 'muziek-noot', bestand: 'muziek-noot.png' },
+  { label: 'zingen', bestand: 'zingen.png' },
+  { label: 'muziek', bestand: 'muziek.png' },
+  { label: 'bewegen', bestand: 'bewegen.png' },
+  { label: 'vinyl', bestand: 'vinyl.png' },
+  { label: 'sport', bestand: 'sport.png' },
+  { label: 'golven', bestand: 'golven.png' },
+  { label: 'bloemen', bestand: 'bloemen.png' },
+  { label: 'natuur', bestand: 'natuur.png' },
+  { label: 'bomen', bestand: 'bomen.png' },
+  { label: 'boom', bestand: 'boom.png' },
+  { label: 'kunst', bestand: 'kunst.png' },
+  { label: 'knippen', bestand: 'knippen.png' },
+  { label: 'kleding', bestand: 'kleding.png' },
+  { label: 'lezen', bestand: 'lezen.png' },
+  { label: 'bibliotheek', bestand: 'bibliotheek.png' },
+  { label: 'educatie', bestand: 'educatie.png' },
+  { label: 'taal', bestand: 'taal.png' },
+  { label: 'laptop', bestand: 'laptop.png' },
+  { label: 'tablet', bestand: 'tablet.png' },
+  { label: 'koken', bestand: 'koken.png' },
+  { label: 'pan', bestand: 'pan.png' },
+  { label: 'winkelen', bestand: 'winkelen.png' },
+  { label: 'winkel', bestand: 'winkel.png' },
+  { label: 'gezondheid', bestand: 'gezondheid.png' },
+  { label: 'hartslag', bestand: 'hartslag.png' },
+  { label: 'zorg', bestand: 'zorg.png' },
+  { label: 'medisch', bestand: 'medisch.png' },
+  { label: 'toegankelijkheid', bestand: 'toegankelijkheid.png' },
+  { label: 'thuis-toevoegen', bestand: 'thuis-toevoegen.png' },
+  { label: 'thuis', bestand: 'thuis.png' },
+  { label: 'kaart', bestand: 'kaart.png' },
+  { label: 'groep', bestand: 'groep.png' },
+  { label: 'chat', bestand: 'chat.png' },
+  { label: 'samenwerken', bestand: 'samenwerken.png' },
+  { label: 'handdruk', bestand: 'handdruk.png' },
+  { label: 'agenda', bestand: 'agenda.png' },
+  { label: 'locatie', bestand: 'locatie.png' },
+  { label: 'auto', bestand: 'auto.png' },
+  { label: 'bus', bestand: 'bus.png' },
+  { label: 'school', bestand: 'school.png' },
+  { label: 'museum', bestand: 'museum.png' },
+  { label: 'theater', bestand: 'theater.png' },
+  { label: 'film', bestand: 'film.png' },
+  { label: 'feest', bestand: 'feest.png' },
+  { label: 'computer', bestand: 'computer.png' },
+  { label: 'wifi', bestand: 'wifi.png' },
+  { label: 'veiligheid', bestand: 'veiligheid.png' },
+  { label: 'portemonnee', bestand: 'portemonnee.png' },
+  { label: 'info', bestand: 'info.png' },
+  { label: 'zoeken', bestand: 'zoeken.png' },
+  { label: 'mail', bestand: 'mail.png' },
+  { label: 'telefoon', bestand: 'telefoon.png' },
+  { label: 'favoriet', bestand: 'favoriet.png' },
+  { label: 'ster', bestand: 'ster.png' },
+  { label: 'nieuws', bestand: 'nieuws.png' },
+  { label: 'camera', bestand: 'camera.png' },
+];
+const CMS_ICOON_BASE_URL = 'https://bxklumejqczcmhrpzstt.supabase.co/storage/v1/object/public/icons/';
+
 function MediaScreen() {
+  const [copiedLabel, setCopiedLabel] = React.useState(null);
+
+  function kopieerIconUrl(url, label) {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedLabel(label);
+      setTimeout(() => setCopiedLabel(null), 1500);
+    });
+  }
+
   return (
     <>
       <PageHead
         title="Mediabibliotheek"
-        sub="Alle afbeeldingen op één plek."
+        sub="Alle afbeeldingen en iconen op één plek."
         actions={<button className="btn btn-primary" onClick={() => window.__showToast && window.__showToast('Bestand uploaden…')}><Icon name="upload" size={14} /> Upload</button>}
       />
-      <EmptyState
-        title="Nog geen bestanden geüpload"
-        sub="Upload een afbeelding via de knop rechtsboven."
-        action={<button className="btn btn-primary" onClick={() => window.__showToast && window.__showToast('Bestand uploaden…')}><Icon name="upload" size={14} /> Upload</button>}
-      />
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Iconen ({CMS_ICONEN.length})</h3>
+          <span style={{ fontSize: 12, color: '#6b7280' }}>Klik op een icoon om de URL te kopiëren</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 10 }}>
+          {CMS_ICONEN.map(icon => {
+            const url = CMS_ICOON_BASE_URL + icon.bestand;
+            const isCopied = copiedLabel === icon.label;
+            return (
+              <div
+                key={icon.label}
+                onClick={() => kopieerIconUrl(url, icon.label)}
+                title={'Kopieer URL: ' + icon.label}
+                style={{ background: isCopied ? '#f0fdf4' : 'white', border: isCopied ? '1px solid #2d6a4f' : '1px solid #e5e7eb', borderRadius: 10, padding: '10px 6px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, transition: 'box-shadow 0.15s' }}
+                onMouseOver={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'}
+                onMouseOut={e => e.currentTarget.style.boxShadow = 'none'}
+              >
+                <img src={url} alt={icon.label} style={{ width: 36, height: 36, objectFit: 'contain' }} />
+                <span style={{ fontSize: 10, color: isCopied ? '#166534' : '#6b7280', textAlign: 'center' }}>
+                  {isCopied ? '✓ gekopieerd' : icon.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </>
   );
 }

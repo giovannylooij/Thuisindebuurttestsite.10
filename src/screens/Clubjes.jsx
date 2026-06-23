@@ -80,8 +80,108 @@ function ClubjesMap({ items, onOpen }) {
   );
 }
 
+const ICONEN = [
+  { label: 'wandelen', bestand: 'wandelen.png' },
+  { label: 'fietsen', bestand: 'fietsen.png' },
+  { label: 'koffie', bestand: 'koffie.png' },
+  { label: 'eten', bestand: 'eten.png' },
+  { label: 'gamen', bestand: 'gamen.png' },
+  { label: 'layout', bestand: 'layout.png' },
+  { label: 'puzzel', bestand: 'puzzel.png' },
+  { label: 'muziek-noot', bestand: 'muziek-noot.png' },
+  { label: 'zingen', bestand: 'zingen.png' },
+  { label: 'muziek', bestand: 'muziek.png' },
+  { label: 'bewegen', bestand: 'bewegen.png' },
+  { label: 'vinyl', bestand: 'vinyl.png' },
+  { label: 'sport', bestand: 'sport.png' },
+  { label: 'golven', bestand: 'golven.png' },
+  { label: 'bloemen', bestand: 'bloemen.png' },
+  { label: 'natuur', bestand: 'natuur.png' },
+  { label: 'bomen', bestand: 'bomen.png' },
+  { label: 'boom', bestand: 'boom.png' },
+  { label: 'kunst', bestand: 'kunst.png' },
+  { label: 'knippen', bestand: 'knippen.png' },
+  { label: 'kleding', bestand: 'kleding.png' },
+  { label: 'lezen', bestand: 'lezen.png' },
+  { label: 'bibliotheek', bestand: 'bibliotheek.png' },
+  { label: 'educatie', bestand: 'educatie.png' },
+  { label: 'taal', bestand: 'taal.png' },
+  { label: 'laptop', bestand: 'laptop.png' },
+  { label: 'tablet', bestand: 'tablet.png' },
+  { label: 'koken', bestand: 'koken.png' },
+  { label: 'pan', bestand: 'pan.png' },
+  { label: 'winkelen', bestand: 'winkelen.png' },
+  { label: 'winkel', bestand: 'winkel.png' },
+  { label: 'gezondheid', bestand: 'gezondheid.png' },
+  { label: 'hartslag', bestand: 'hartslag.png' },
+  { label: 'zorg', bestand: 'zorg.png' },
+  { label: 'medisch', bestand: 'medisch.png' },
+  { label: 'toegankelijkheid', bestand: 'toegankelijkheid.png' },
+  { label: 'thuis-toevoegen', bestand: 'thuis-toevoegen.png' },
+  { label: 'thuis', bestand: 'thuis.png' },
+  { label: 'kaart', bestand: 'kaart.png' },
+  { label: 'groep', bestand: 'groep.png' },
+  { label: 'chat', bestand: 'chat.png' },
+  { label: 'samenwerken', bestand: 'samenwerken.png' },
+  { label: 'handdruk', bestand: 'handdruk.png' },
+  { label: 'agenda', bestand: 'agenda.png' },
+  { label: 'locatie', bestand: 'locatie.png' },
+  { label: 'auto', bestand: 'auto.png' },
+  { label: 'bus', bestand: 'bus.png' },
+  { label: 'school', bestand: 'school.png' },
+  { label: 'museum', bestand: 'museum.png' },
+  { label: 'theater', bestand: 'theater.png' },
+  { label: 'film', bestand: 'film.png' },
+  { label: 'feest', bestand: 'feest.png' },
+  { label: 'computer', bestand: 'computer.png' },
+  { label: 'wifi', bestand: 'wifi.png' },
+  { label: 'veiligheid', bestand: 'veiligheid.png' },
+  { label: 'portemonnee', bestand: 'portemonnee.png' },
+  { label: 'info', bestand: 'info.png' },
+  { label: 'zoeken', bestand: 'zoeken.png' },
+  { label: 'mail', bestand: 'mail.png' },
+  { label: 'telefoon', bestand: 'telefoon.png' },
+  { label: 'favoriet', bestand: 'favoriet.png' },
+  { label: 'ster', bestand: 'ster.png' },
+  { label: 'nieuws', bestand: 'nieuws.png' },
+  { label: 'camera', bestand: 'camera.png' },
+];
+const ICOON_BASE_URL = 'https://bxklumejqczcmhrpzstt.supabase.co/storage/v1/object/public/icons/';
+
 function ClubjeForm({ onClose }) {
   const [submitted, setSubmitted] = useStateCl(false);
+  const [submitting, setSubmitting] = useStateCl(false);
+  const [selectedIcon, setSelectedIcon] = useStateCl(null);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const fd = e.target;
+    setSubmitting(true);
+    try {
+      const sb = window._tibSupabase;
+      if (sb) {
+        const icoon = selectedIcon ? ICONEN.find(i => i.label === selectedIcon) : null;
+        await sb.from('buurtgroep_aanvragen').insert([{
+          naam_buurtgroep: fd.querySelector('#cn').value,
+          categorie: fd.querySelector('#cc').value,
+          beschrijving: fd.querySelector('#cd').value,
+          contactpersoon: fd.querySelector('#cp').value,
+          email_of_telefoon: fd.querySelector('#ce').value,
+          locatie: fd.querySelector('#cl').value,
+          icoon_url: icoon ? ICOON_BASE_URL + icoon.bestand : null,
+          icoon_label: selectedIcon || null,
+          status: 'Nieuw',
+        }]);
+      }
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Aanmelding fout:', err);
+      setSubmitted(true);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="form-card">
       <h2 style={{ marginBottom: 8 }}>Meld je clubje aan</h2>
@@ -94,7 +194,7 @@ function ClubjeForm({ onClose }) {
           <strong>Bedankt!</strong> Je aanmelding is verzonden. We nemen binnen 3 werkdagen contact op.
         </div>
       ) : (
-        <form className="form-grid" onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}>
+        <form className="form-grid" onSubmit={handleSubmit}>
           <div className="field">
             <label htmlFor="cn">Naam clubje</label>
             <input id="cn" placeholder="bijv. Schaakclub Wassenaarseweg" required />
@@ -123,13 +223,32 @@ function ClubjeForm({ onClose }) {
             <label htmlFor="cl">Locatie / buurt</label>
             <input id="cl" placeholder="bijv. Statenkwartier, Belgisch Park…" />
           </div>
-          <div className="field">
-            <label>Profiel- of sfeerfoto</label>
-            <image-slot id="club-form-photo" shape="rounded" radius="10" fit="contain" placeholder="Sleep een foto hier" style={{ height: 80, width: "100%" }}></image-slot>
+          <div className="field full">
+            <label style={{ display: 'block', marginBottom: 8 }}>Kies een icoon voor je buurtgroep</label>
+            {selectedIcon && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#166534' }}>
+                <img src={ICOON_BASE_URL + ICONEN.find(i => i.label === selectedIcon).bestand} style={{ width: 28, height: 28 }} alt={selectedIcon} />
+                <span>{selectedIcon}</span>
+                <span style={{ color: '#6b7280' }}>geselecteerd ✓</span>
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, maxHeight: 280, overflowY: 'auto', padding: 6, border: '1px solid #e5e7eb', borderRadius: 10, background: '#f9fafb' }}>
+              {ICONEN.map(icon => (
+                <div
+                  key={icon.label}
+                  onClick={() => setSelectedIcon(icon.label)}
+                  title={icon.label}
+                  style={{ background: 'white', border: selectedIcon === icon.label ? '2px solid #2d6a4f' : '2px solid transparent', borderRadius: 10, padding: 6, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}
+                >
+                  <img src={ICOON_BASE_URL + icon.bestand} alt={icon.label} style={{ width: 30, height: 30, objectFit: 'contain' }} />
+                  <span style={{ fontSize: 9, color: '#6b7280', textAlign: 'center', lineHeight: 1.2, overflow: 'hidden', maxWidth: '100%' }}>{icon.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="field full" style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexDirection: "row" }}>
             {onClose && <button type="button" className="btn btn-soft" onClick={onClose}>Annuleren</button>}
-            <button type="submit" className="btn btn-primary">Verstuur aanmelding</button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? 'Versturen…' : 'Verstuur aanmelding'}</button>
           </div>
         </form>
       )}
