@@ -185,9 +185,10 @@
     const elPw1         = document.getElementById('pw1')
     const elPw2         = document.getElementById('pw2')
 
-    const _hash   = window.location.hash.substring(1)
-    const _params = new URLSearchParams(_hash)
-    const _type   = _params.get('type')
+    const _hash        = window.location.hash.substring(1)
+    const _params      = new URLSearchParams(_hash)
+    const _type        = _params.get('type')
+    const _accessToken = _params.get('access_token')
 
     function showGlobalError(msg) {
       elErrorGlobal.textContent = msg
@@ -204,28 +205,13 @@
       elErrorInline.style.display = 'none'
     }
 
-    function toonFormulier() {
-      if (elFormWrap.style.display === 'block') return // al zichtbaar
+    if (!_accessToken || !_type || (_type !== 'invite' && _type !== 'recovery')) {
+      showGlobalError('Ongeldige of verlopen link.')
+    } else {
       elSubtitle.textContent = _type === 'invite'
         ? 'Welkom! Stel je wachtwoord in om verder te gaan.'
         : 'Stel een nieuw wachtwoord in.'
       elFormWrap.style.display = 'block'
-    }
-
-    if (!_type || (_type !== 'invite' && _type !== 'recovery')) {
-      showGlobalError('Ongeldige of verlopen link.')
-    } else {
-      // Registreer listener DIRECT — vóór elke async operatie
-      supabase.auth.onAuthStateChange((event, session) => {
-        if (session && (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY' || event === 'INITIAL_SESSION')) {
-          toonFormulier()
-        }
-      })
-
-      // Fallback: sessie al actief bij laden
-      supabase.auth.getSession().then(({ data }) => {
-        if (data?.session) toonFormulier()
-      })
     }
 
     elBtn.addEventListener('click', async () => {
@@ -247,10 +233,20 @@
       elBtn.disabled = true
       elBtn.textContent = 'Bezig...'
 
-      const { error } = await supabase.auth.updateUser({ password: pw1 })
+      // Directe REST call met access_token — geen sessie nodig
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${_accessToken}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: pw1 })
+      })
 
-      if (error) {
-        showInlineError(error.message)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        showInlineError(err.msg || err.message || 'Er is een fout opgetreden.')
         elBtn.disabled = false
         elBtn.textContent = 'Wachtwoord instellen'
         return
