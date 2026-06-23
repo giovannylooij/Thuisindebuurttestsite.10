@@ -295,6 +295,8 @@ function Clubjes({ setPage, voice }) {
         lat: c.lat != null ? parseFloat(c.lat) : null,
         lng: c.lng != null ? parseFloat(c.lng) : null,
         photo: null,
+        icoon_url: c.icoon_url || null,
+        icoon_label: c.icoon_label || null,
         voorWie: c.voor_wie || '',
         wat: c.categorie || '',
         waar: c.waar || '',
@@ -385,11 +387,16 @@ function Clubjes({ setPage, voice }) {
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === "Enter") setPage({ kind: "clubje", id: c.id }); }}
                   >
-                    <Placeholder
-                      id={"clubje-photo-" + c.id}
-                      label={"Foto " + c.name}
-                      variant={["sociaal", "buiten"].includes(c.cat) ? "green" : ""}
-                    />
+                    {c.icoon_url
+                      ? <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "#f0fdf4", height: 90 }}>
+                          <img src={c.icoon_url} alt={c.icoon_label || c.name} style={{ width: 56, height: 56, objectFit: "contain" }} />
+                        </div>
+                      : <Placeholder
+                          id={"clubje-photo-" + c.id}
+                          label={"Foto " + c.name}
+                          variant={["sociaal", "buiten"].includes(c.cat) ? "green" : ""}
+                        />
+                    }
                     <div className="clubcard-body">
                       <div className="meta"><CatBadge cat={c.cat} /></div>
                       <h3 style={{display:"flex",alignItems:"center"}}>{window.getActivityIconJSX&&window.getActivityIconJSX(c.name)}<span>{c.name}</span></h3>

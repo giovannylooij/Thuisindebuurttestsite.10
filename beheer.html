@@ -2039,6 +2039,40 @@ function ClubjeEdit({ id, onBack }) {
           </div>
 
           <div className="form-section">
+            <h3>Icoon</h3>
+            <div className="sec-sub">Kies een icoon dat de buurtgroep vertegenwoordigt. Dit icoon is zichtbaar op de kaart en in het aanmeldformulier.</div>
+            {fd.icoon_url && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '8px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8 }}>
+                <img src={fd.icoon_url} alt={fd.icoon_label || ''} style={{ width: 36, height: 36, borderRadius: 8 }} />
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase' }}>Huidig icoon</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#166534' }}>{fd.icoon_label}</div>
+                </div>
+                <button className="btn btn-ghost btn-danger" style={{ marginLeft: 'auto' }} onClick={() => { up('icoon_url', null); up('icoon_label', null); }}>
+                  <Icon name="trash" size={13} /> Verwijderen
+                </button>
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, maxHeight: 280, overflowY: 'auto', padding: 8, border: '1px solid #e5e7eb', borderRadius: 10, background: '#f9fafb' }}>
+              {CMS_ICONEN.map(icon => {
+                const url = CMS_ICOON_BASE_URL + icon.bestand;
+                const isSelected = fd.icoon_label === icon.label;
+                return (
+                  <div
+                    key={icon.label}
+                    onClick={() => { up('icoon_url', url); up('icoon_label', icon.label); }}
+                    title={icon.label}
+                    style={{ background: 'white', border: isSelected ? '2px solid #2d6a4f' : '2px solid transparent', borderRadius: 8, padding: 6, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}
+                  >
+                    <img src={url} alt={icon.label} style={{ width: 28, height: 28, objectFit: 'contain' }} />
+                    <span style={{ fontSize: 8, color: '#6b7280', textAlign: 'center' }}>{icon.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="form-section">
             <h3>SEO &amp; vindbaarheid</h3>
             <Field label="SEO-titel" hint="Wordt getoond op Google en in browsertabs."><input type="text" defaultValue={fd.naam + ' — Thuis in de Buurt'} /></Field>
             <Field label="Meta description" hint="Max. 160 tekens.">
@@ -5910,6 +5944,8 @@ function __mapClubjesToDb(item) {
     leden:            item.leden,
     aangemaakt_op:    item.aangemaakt_op || null,
     contact_zichtbaar: item.contact_zichtbaar === true,
+    icoon_url:         item.icoon_url || null,
+    icoon_label:       item.icoon_label || null,
   };
   return mapped;
 }
