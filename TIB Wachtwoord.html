@@ -203,36 +203,32 @@
     async function init() {
       const hash = window.location.hash.substring(1)
       const params = new URLSearchParams(hash)
+      const type = params.get('type')
 
-      const accessToken  = params.get('access_token')
-      const refreshToken = params.get('refresh_token')
-      const type         = params.get('type')
-
-      if (!accessToken || !refreshToken || !type) {
+      if (!type || (type !== 'invite' && type !== 'recovery')) {
         showGlobalError('Ongeldige of verlopen link.')
         return
       }
 
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token:  accessToken,
-        refresh_token: refreshToken,
+      function toonFormulier() {
+        elSubtitle.textContent = type === 'invite'
+          ? 'Welkom! Stel je wachtwoord in om verder te gaan.'
+          : 'Stel een nieuw wachtwoord in.'
+        elFormWrap.style.display = 'block'
+      }
+
+      // Supabase verwerkt de hash automatisch via detectSessionInUrl
+      supabase.auth.onAuthStateChange((event, session) => {
+        if ((event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') && session) {
+          toonFormulier()
+        }
       })
 
-      if (sessionError) {
-        showGlobalError('Ongeldige of verlopen link.')
-        return
+      // Fallback: sessie al actief
+      const { data } = await supabase.auth.getSession()
+      if (data?.session) {
+        toonFormulier()
       }
-
-      if (type === 'invite') {
-        elSubtitle.textContent = 'Welkom! Stel je wachtwoord in om verder te gaan.'
-      } else if (type === 'recovery') {
-        elSubtitle.textContent = 'Stel een nieuw wachtwoord in.'
-      } else {
-        showGlobalError('Ongeldige of verlopen link.')
-        return
-      }
-
-      elFormWrap.style.display = 'block'
     }
 
     elBtn.addEventListener('click', async () => {
