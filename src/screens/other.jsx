@@ -635,6 +635,68 @@ function DoeMee({ voice }) {
   const you = voice === "u" ? "u" : "je";
   const [mode, setMode] = useStateOt("tibber");
   const [done, setDone] = useStateOt(false);
+  const [submitting, setSubmitting] = useStateOt(false);
+  const [fout, setFout] = useStateOt(null);
+  const [naam, setNaam] = useStateOt("");
+  const [email, setEmail] = useStateOt("");
+  const [bericht, setBericht] = useStateOt("");
+  const [bijdragen, setBijdragen] = useStateOt([]);
+  const [actNaam, setActNaam] = useStateOt("");
+  const [actDatum, setActDatum] = useStateOt("");
+  const [actBeschrijving, setActBeschrijving] = useStateOt("");
+  const [org, setOrg] = useStateOt("");
+  const [website, setWebsite] = useStateOt("");
+  const [samenDoen, setSamenDoen] = useStateOt("");
+
+  function resetForm() {
+    setNaam(""); setEmail(""); setBericht(""); setBijdragen([]);
+    setActNaam(""); setActDatum(""); setActBeschrijving("");
+    setOrg(""); setWebsite(""); setSamenDoen("");
+  }
+
+  function toggleBijdrage(t) {
+    setBijdragen(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setFout(null);
+
+    let extraBericht = bericht;
+    let buurtgroepKeuze = null;
+
+    if (mode === "tibber") {
+      buurtgroepKeuze = bijdragen.join(", ") || null;
+    } else if (mode === "activiteit") {
+      extraBericht = `Naam activiteit: ${actNaam}\nDatum & tijd: ${actDatum}\nBeschrijving: ${actBeschrijving}${bericht ? "\n\n" + bericht : ""}`;
+    } else if (mode === "partner") {
+      extraBericht = `Organisatie: ${org}\nWebsite: ${website || "-"}\nSamen doen: ${samenDoen}${bericht ? "\n\n" + bericht : ""}`;
+    }
+
+    const sb = window._tibSupabase;
+    if (!sb) { setFout("Verbinding niet beschikbaar, probeer het later."); setSubmitting(false); return; }
+
+    const { error } = await sb.from("aanmeldingen").insert({
+      naam,
+      email,
+      type: mode,
+      buurtgroep_keuze: buurtgroepKeuze,
+      bericht: extraBericht || null,
+      status: "nieuw",
+      aangemeld_op: new Date().toISOString(),
+    });
+
+    setSubmitting(false);
+    if (error) {
+      console.error("Aanmelding fout:", error);
+      setFout("Er ging iets mis: " + error.message);
+    } else {
+      resetForm();
+      setDone(true);
+    }
+  }
+
   return (
     <main>
       <section className="page-head">
@@ -643,9 +705,9 @@ function DoeMee({ voice }) {
           <h1>Word onderdeel van de buurt.</h1>
           <p>Wat past het beste bij {you}? Kies een optie en we helpen {you} verder.</p>
           <div className="seg" style={{ marginTop: 18 }}>
-            <button className={mode === "tibber" ? "active" : ""} onClick={() => { setMode("tibber"); setDone(false); }}>TIBber worden</button>
-            <button className={mode === "activiteit" ? "active" : ""} onClick={() => { setMode("activiteit"); setDone(false); }}>Activiteit aanleveren</button>
-            <button className={mode === "partner" ? "active" : ""} onClick={() => { setMode("partner"); setDone(false); }}>Voor partners</button>
+            <button className={mode === "tibber" ? "active" : ""} onClick={() => { setMode("tibber"); setDone(false); setFout(null); }}>TIBber worden</button>
+            <button className={mode === "activiteit" ? "active" : ""} onClick={() => { setMode("activiteit"); setDone(false); setFout(null); }}>Activiteit aanleveren</button>
+            <button className={mode === "partner" ? "active" : ""} onClick={() => { setMode("partner"); setDone(false); setFout(null); }}>Voor partners</button>
           </div>
         </div>
       </section>
@@ -656,14 +718,14 @@ function DoeMee({ voice }) {
             {done ? (
               <div className="callout"><strong>Dank je wel!</strong> We nemen binnen een paar dagen contact op via {you === "u" ? "uw" : "je"} e-mailadres.</div>
             ) : (
-              <form className="form-grid" onSubmit={(e) => { e.preventDefault(); setDone(true); }}>
+              <form className="form-grid" onSubmit={handleSubmit}>
                 <div className="field">
                   <label>Naam</label>
-                  <input placeholder="Voornaam en achternaam" required />
+                  <input placeholder="Voornaam en achternaam" required value={naam} onChange={e => setNaam(e.target.value)} />
                 </div>
                 <div className="field">
                   <label>E-mailadres</label>
-                  <input type="email" placeholder="je@e-mailadres.nl" required />
+                  <input type="email" placeholder="je@e-mailadres.nl" required value={email} onChange={e => setEmail(e.target.value)} />
                 </div>
                 {mode === "tibber" && (
                   <div className="field full">
@@ -671,7 +733,7 @@ function DoeMee({ voice }) {
                     <div className="chip-row" style={{ marginTop: 4 }}>
                       {(function(){try{var d=JSON.parse(localStorage.getItem("tib-cms-data")||"{}");return Array.isArray(d.contactOpties)&&d.contactOpties.length?d.contactOpties:["Koffie & Soep","Buurtatlas","Clubjes-redactie","Communicatie","Anders"];}catch(e){return ["Koffie & Soep","Buurtatlas","Clubjes-redactie","Communicatie","Anders"];}})().map((t) => (
                         <label key={t} className="chip" style={{ cursor: "pointer" }}>
-                          <input type="checkbox" style={{ accentColor: "var(--tib-blue)" }} /> {t}
+                          <input type="checkbox" checked={bijdragen.includes(t)} onChange={() => toggleBijdrage(t)} style={{ accentColor: "var(--tib-blue)" }} /> {t}
                         </label>
                       ))}
                     </div>
@@ -679,24 +741,25 @@ function DoeMee({ voice }) {
                 )}
                 {mode === "activiteit" && (
                   <>
-                    <div className="field"><label>Naam activiteit</label><input required /></div>
-                    <div className="field"><label>Datum & tijd</label><input type="text" placeholder="dd-mm-jjjj 19:00" required /></div>
-                    <div className="field full"><label>Beschrijving</label><textarea required /></div>
+                    <div className="field"><label>Naam activiteit</label><input required value={actNaam} onChange={e => setActNaam(e.target.value)} /></div>
+                    <div className="field"><label>Datum & tijd</label><input type="text" placeholder="dd-mm-jjjj 19:00" required value={actDatum} onChange={e => setActDatum(e.target.value)} /></div>
+                    <div className="field full"><label>Beschrijving</label><textarea required value={actBeschrijving} onChange={e => setActBeschrijving(e.target.value)} /></div>
                   </>
                 )}
                 {mode === "partner" && (
                   <>
-                    <div className="field"><label>Organisatie</label><input required /></div>
-                    <div className="field"><label>Website</label><input placeholder="https://" /></div>
-                    <div className="field full"><label>Wat zou {you} willen samen doen?</label><textarea required /></div>
+                    <div className="field"><label>Organisatie</label><input required value={org} onChange={e => setOrg(e.target.value)} /></div>
+                    <div className="field"><label>Website</label><input placeholder="https://" value={website} onChange={e => setWebsite(e.target.value)} /></div>
+                    <div className="field full"><label>Wat zou {you} willen samen doen?</label><textarea required value={samenDoen} onChange={e => setSamenDoen(e.target.value)} /></div>
                   </>
                 )}
                 <div className="field full">
                   <label>Bericht (optioneel)</label>
-                  <textarea placeholder="Vertel meer…"></textarea>
+                  <textarea placeholder="Vertel meer…" value={bericht} onChange={e => setBericht(e.target.value)}></textarea>
                 </div>
+                {fout && <div className="field full" style={{ color: "#dc2626", fontSize: 14 }}>{fout}</div>}
                 <div className="field full" style={{ flexDirection: "row", justifyContent: "flex-end" }}>
-                  <button type="submit" className="btn btn-primary">Verstuur</button>
+                  <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Versturen…" : "Verstuur"}</button>
                 </div>
               </form>
             )}
