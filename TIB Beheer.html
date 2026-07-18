@@ -1158,7 +1158,7 @@ window.DATA = {
   // De 9 pagina's uit jouw site (NAV_ITEMS) + Doe mee / Doneren / Boek (uit CTAs)
   pages: [
     { id: 1, titel: "Home", slug: "/", status: "Gepubliceerd", inMenu: true, ord: 1, secties: 7 },
-    { id: 2, titel: "Buurtgroepen", slug: "/clubjes", status: "Gepubliceerd", inMenu: true, ord: 2, secties: 3 },
+    { id: 2, titel: "Buurtinitiatieven", slug: "/clubjes", status: "Gepubliceerd", inMenu: true, ord: 2, secties: 3 },
     { id: 3, titel: "Activiteiten", slug: "/activiteiten", status: "Gepubliceerd", inMenu: true, ord: 3, secties: 3 },
     { id: 4, titel: "Agenda", slug: "/agenda", status: "Gepubliceerd", inMenu: true, ord: 4, secties: 2 },
     { id: 5, titel: "Buurtatlas", slug: "/buurtatlas", status: "Gepubliceerd", inMenu: true, ord: 5, secties: 2 },
@@ -1174,7 +1174,7 @@ window.DATA = {
   // Navigation items for the main menu
   nav: [
     { id: 'nav-1', label: 'Home',         target: '/',             visible: true,  level: 0 },
-    { id: 'nav-2', label: 'Buurtgroepen',      target: '/clubjes',      visible: true,  level: 0 },
+    { id: 'nav-2', label: 'Buurtinitiatieven',      target: '/clubjes',      visible: true,  level: 0 },
     { id: 'nav-3', label: 'Activiteiten', target: '/activiteiten', visible: true,  level: 0 },
     { id: 'nav-4', label: 'Agenda',       target: '/agenda',       visible: true,  level: 0 },
     { id: 'nav-5', label: 'Buurtatlas',   target: '/buurtatlas',   visible: true,  level: 0 },
@@ -1185,15 +1185,15 @@ window.DATA = {
   ],
 
   // Contact form subject / routing options
-  contactOpties: ["Koffie & Soep", "Buurtatlas", "Buurtgroepen-redactie", "Communicatie", "Anders"],
+  contactOpties: ["Koffie & Soep", "Buurtatlas", "Buurtinitiatieven-redactie", "Communicatie", "Anders"],
 
   // Contact page content (editable from ContactScreen)
   contact: {
     titel: "Neem contact op.",
     intro: "Heb je een vraag, suggestie of zin om iets bij te dragen? Stuur ons een bericht — we reageren binnen drie werkdagen.",
     cards: [
-      { role: "Algemene informatie", desc: "Voor alle vragen over Thuis in de Buurt — meedoen, een buurtgroep starten, samenwerken.", email: "info@thuisindebuurt.org", icon: "✉", visible: true },
-      { role: "Webredactie", desc: "Voor vragen over de site, tekst- of fotosuggesties, of een nieuwe buurtgroep aanmelden.", email: "webredactie@thuisindebuurt.nl", icon: "✎", visible: true },
+      { role: "Algemene informatie", desc: "Voor alle vragen over Thuis in de Buurt — meedoen, een buurtinitiatief starten, samenwerken.", email: "info@thuisindebuurt.org", icon: "✉", visible: true },
+      { role: "Webredactie", desc: "Voor vragen over de site, tekst- of fotosuggesties, of een nieuw buurtinitiatief aanmelden.", email: "webredactie@thuisindebuurt.nl", icon: "✎", visible: true },
       { role: "Doneren & boek", desc: "Vragen over donaties of het boek 'Leven is spelen' van Margreet Jonkers.", email: "doneren@thuisindebuurt.org", icon: "♥", visible: true },
     ],
   },
@@ -1259,7 +1259,7 @@ const NAV = [
   ]},
   { group: "Inhoud", items: [
     { id: "pages", label: "Pagina's", icon: "pages" },
-    { id: "clubjes", label: "Buurtgroepen", icon: "club", count: 9 },
+    { id: "clubjes", label: "Buurtinitiatieven", icon: "club", count: 9 },
     { id: "activiteiten", label: "Activiteiten", icon: "activity", count: 12 },
     { id: "agenda", label: "Agenda", icon: "calendar", count: 7 },
     { id: "nieuws", label: "Nieuws", icon: "news", count: 18 },
@@ -1277,7 +1277,7 @@ const NAV = [
   ]},
   { group: "Inzendingen", items: [
     { id: "aanmeldingen",   label: "Aanmeldingen",       icon: "inbox" },
-    { id: "bg-aanvragen",   label: "Buurtgroep aanvragen", icon: "club" },
+    { id: "bg-aanvragen",   label: "Buurtinitiatief aanvragen", icon: "club" },
     { id: "berichten",      label: "Contact",              icon: "mail" },
     { id: "bestellingen",   label: "Bestellingen",        icon: "heart" },
   ]},
@@ -1309,7 +1309,7 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
   })).filter(group => group.items.length > 0);
 
   const initials = (userEmail || 'TB').slice(0, 2).toUpperCase();
-  const roleLabel = role === 'superadmin' ? 'Superadmin' : role === 'redactie' ? 'Redactie' : 'Buurtgroep-beheerder';
+  const roleLabel = role === 'superadmin' ? 'Superadmin' : role === 'redactie' ? 'Redactie' : 'Initiatief-beheerder';
 
   return (
     <aside className="sidebar">
@@ -1520,7 +1520,7 @@ Object.assign(window, { NAV, NAV_LOOKUP, Sidebar, Topbar, PageHead, Pill, Toggle
 // Dashboard screen
 function Dashboard({ onNav, onPreview }) {
   const quickActions = [
-    { id: 'clubjes', icon: 'club', title: 'Nieuwe buurtgroep', sub: 'Verschijnt in de Buurtgroepen-cards' },
+    { id: 'clubjes', icon: 'club', title: 'Nieuw buurtinitiatief', sub: 'Verschijnt in de Buurtinitiatieven-cards' },
     { id: 'activiteiten', icon: 'activity', title: 'Nieuwe activiteit', sub: 'Wekelijks of eenmalig' },
     { id: 'agenda', icon: 'calendar', title: 'Agenda-item', sub: 'Komt direct in /agenda' },
     { id: 'nieuws', icon: 'news', title: 'Nieuwsbericht', sub: 'Met intro, foto en tekst' },
@@ -1553,7 +1553,7 @@ function Dashboard({ onNav, onPreview }) {
       {/* Tiles */}
       <div className="grid grid-4" style={{ marginBottom: 24 }}>
         <div className="tile">
-          <div className="tile-label">Gepubliceerde buurtgroepen</div>
+          <div className="tile-label">Gepubliceerde buurtinitiatieven</div>
           <div className="tile-value">9</div>
           <div className="tile-delta flat">Live op /clubjes</div>
         </div>
@@ -1612,7 +1612,7 @@ function Dashboard({ onNav, onPreview }) {
         <div>
           {(() => {
             const concepten = [
-              ...DATA.clubjes.filter(c => c.status === 'Concept').map(c => ({ t: c.naam, k: 'Buurtgroep', id: 'clubjes' })),
+              ...DATA.clubjes.filter(c => c.status === 'Concept').map(c => ({ t: c.naam, k: 'Buurtinitiatief', id: 'clubjes' })),
               ...DATA.activiteiten.filter(a => a.status === 'Concept').map(a => ({ t: a.naam, k: 'Activiteit', id: 'activiteiten' })),
               ...DATA.nieuws.filter(n => n.status === 'Concept').map(n => ({ t: n.titel, k: 'Nieuws', id: 'nieuws' })),
             ];
@@ -1769,11 +1769,11 @@ function ClubjesList({ onNav, onEdit, profile }) {
   const isBeheerder = profile?.role === 'beheerder';
 
   function handleDelete(id, naam) {
-    if (!window.confirm('Buurtgroep "' + naam + '" definitief verwijderen?')) return;
+    if (!window.confirm('Buurtinitiatief "' + naam + '" definitief verwijderen?')) return;
     const idx = DATA.clubjes.findIndex(c => c.id === id);
     if (idx >= 0) { window.__supabaseDelete('clubjes', id); DATA.clubjes.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast('Buurtgroep verwijderd');
+    window.__showToast && window.__showToast('Buurtinitiatief verwijderd');
     forceUpdate();
   }
   const cats = ['Alle', 'Sport', 'Cultuur', 'Sociaal', 'Buiten', 'Lezen & leren'];
@@ -1784,10 +1784,10 @@ function ClubjesList({ onNav, onEdit, profile }) {
   return (
     <>
       <PageHead
-        title="Buurtgroepen"
-        sub="Beheer de buurtgroepen die op de website staan. Klik op een rij om aan te passen."
+        title="Buurtinitiatieven"
+        sub="Beheer de buurtinitiatieven die op de website staan. Klik op een rij om aan te passen."
         actions={<>
-          <button className="btn btn-primary" onClick={() => onEdit('new')}><Icon name="plus" size={14} /> Nieuwe buurtgroep</button>
+          <button className="btn btn-primary" onClick={() => onEdit('new')}><Icon name="plus" size={14} /> Nieuw buurtinitiatief</button>
         </>}
       />
 
@@ -1800,7 +1800,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
           <button key={c} className={"chip" + (filter === c ? " active" : "")} onClick={() => setFilter(c)}>{c}</button>
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', color: 'var(--ink-soft)', fontSize: 12.5 }}>
-          {rows.length} buurtgroepen
+          {rows.length} buurtinitiatieven
         </div>
       </div>
 
@@ -1856,7 +1856,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
 
 function ClubjeEdit({ id, onBack }) {
   const existing = DATA.clubjes.find(c => c.id === id);
-  const defaults = existing || { naam: 'Nieuwe buurtgroep', categorie: 'Sociaal', wijk: '', omschrijving: '', voor_wie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false, contact_zichtbaar: false };
+  const defaults = existing || { naam: 'Nieuw buurtinitiatief', categorie: 'Sociaal', wijk: '', omschrijving: '', voor_wie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false, contact_zichtbaar: false };
   const [fd, setFd] = React.useState({ ...defaults });
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [uitgelicht, setUitgelicht] = React.useState(!!defaults.uitgelicht);
@@ -1875,15 +1875,15 @@ function ClubjeEdit({ id, onBack }) {
     }
     window.__syncToSite && window.__syncToSite();
     window.__supabaseUpsert('clubjes', toSave);
-    window.__showToast && window.__showToast('Buurtgroep opgeslagen!');
+    window.__showToast && window.__showToast('Buurtinitiatief opgeslagen!');
   }
 
   function handleDelete() {
-    if (!window.confirm('Buurtgroep "' + fd.naam + '" definitief verwijderen?')) return;
+    if (!window.confirm('Buurtinitiatief "' + fd.naam + '" definitief verwijderen?')) return;
     const idx = DATA.clubjes.findIndex(c => c.id === id);
     if (idx >= 0) { window.__supabaseDelete('clubjes', id); DATA.clubjes.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast('Buurtgroep verwijderd');
+    window.__showToast && window.__showToast('Buurtinitiatief verwijderd');
     onBack();
   }
 
@@ -1891,7 +1891,7 @@ function ClubjeEdit({ id, onBack }) {
     <>
       <PageHead
         title={fd.naam}
-        sub={<><a href="#" onClick={onBack} style={{ color: 'var(--accent-2)' }}>← Terug naar buurtgroepen</a></>}
+        sub={<><a href="#" onClick={onBack} style={{ color: 'var(--accent-2)' }}>← Terug naar buurtinitiatieven</a></>}
         actions={<>
           {id != null && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
           <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
@@ -1904,8 +1904,8 @@ function ClubjeEdit({ id, onBack }) {
         <div>
           <div className="form-section">
             <h3>Basisgegevens</h3>
-            <div className="sec-sub">Wat ziet de bezoeker als eerste op de buurtgroep-pagina?</div>
-            <Field label="Naam van de buurtgroep">
+            <div className="sec-sub">Wat ziet de bezoeker als eerste op de buurtinitiatief-pagina?</div>
+            <Field label="Naam van het buurtinitiatief">
               <input type="text" value={fd.naam} onChange={e => up('naam', e.target.value)} />
             </Field>
             <div className="row-2">
@@ -1961,7 +1961,7 @@ function ClubjeEdit({ id, onBack }) {
                   onChange={e => up('contact_zichtbaar', e.target.checked)}
                   style={{ width: 18, height: 18, accentColor: 'var(--accent-1)', cursor: 'pointer' }}
                 />
-                <span style={{ fontSize: '0.92rem' }}>Toon Contact-tab op de buurtgroep detailpagina</span>
+                <span style={{ fontSize: '0.92rem' }}>Toon Contact-tab op de detailpagina van het buurtinitiatief</span>
               </label>
             </Field>
             <div className="row-2">
@@ -2069,7 +2069,7 @@ function ClubjeEdit({ id, onBack }) {
 
           <div className="side-card">
             <h4>Uitlichten</h4>
-            <Toggle on={uitgelicht} label="Toon op de homepagina" sub="Verschijnt in de sectie 'Uitgelichte buurtgroepen'" onChange={setUitgelicht} />
+            <Toggle on={uitgelicht} label="Toon op de homepagina" sub="Verschijnt in de sectie 'Uitgelichte buurtinitiatieven'" onChange={setUitgelicht} />
           </div>
 
           <div className="side-card">
@@ -2779,7 +2779,7 @@ function BuurtatlasScreen() {
     const pins = [];
     if (layers.clubjes) {
       DATA.clubjes.forEach(c => {
-        if (c.lat && c.lng) pins.push({ id: 'c' + c.id, naam: c.naam, lat: c.lat, lng: c.lng, type: 'Buurtgroep', cat: c.categorie || '', sub: c.wijk || '' });
+        if (c.lat && c.lng) pins.push({ id: 'c' + c.id, naam: c.naam, lat: c.lat, lng: c.lng, type: 'Buurtinitiatief', cat: c.categorie || '', sub: c.wijk || '' });
       });
     }
     if (layers.activiteiten) {
@@ -2835,7 +2835,7 @@ function BuurtatlasScreen() {
     <>
       <PageHead
         title="Buurtatlas"
-        sub="Alle locaties op één kaart — live data uit buurtgroepen, activiteiten en partners."
+        sub="Alle locaties op één kaart — live data uit buurtinitiatieven, activiteiten en partners."
         actions={<>
           <button className="btn" onClick={handleZoomOut} title="Zoom uit"><Icon name="minus" size={14} /> −</button>
           <span style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: '34px', minWidth: 56, textAlign: 'center' }}>Zoom {zoomLevel}</span>
@@ -2848,7 +2848,7 @@ function BuurtatlasScreen() {
         <div>
           <div className="toolbar" style={{ borderRadius: 'var(--radius) var(--radius) 0 0', borderBottom: '1px solid var(--line)' }}>
             <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginRight: 6 }}>Tonen:</div>
-            {Object.entries({ clubjes: 'Buurtgroepen', activiteiten: 'Activiteiten', partners: 'Partners' }).map(([k, v]) => (
+            {Object.entries({ clubjes: 'Buurtinitiatieven', activiteiten: 'Activiteiten', partners: 'Partners' }).map(([k, v]) => (
               <button key={k} className={"chip" + (layers[k] ? " active" : "")} onClick={() => setLayers(s => ({ ...s, [k]: !s[k] }))}>
                 {layers[k] && <Icon name="check" size={11} />} {v}
               </button>
@@ -2862,7 +2862,7 @@ function BuurtatlasScreen() {
             style={{ height: 520, borderRadius: '0 0 var(--radius) var(--radius)', border: '1px solid var(--line)', borderTop: 0, zIndex: 0 }}
           />
           <div style={{ display: 'flex', gap: 16, padding: '8px 12px', background: 'var(--paper)', border: '1px solid var(--line)', borderTop: 0, borderRadius: '0 0 var(--radius) var(--radius)', fontSize: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#2a6fb5', display: 'inline-block' }}></span> Buurtgroep</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#2a6fb5', display: 'inline-block' }}></span> Buurtinitiatief</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#3f8f7a', display: 'inline-block' }}></span> Activiteit</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#d97a2c', display: 'inline-block' }}></span> Partner</div>
           </div>
@@ -2898,7 +2898,7 @@ function BuurtatlasScreen() {
           )}
 
           <HintCard variant="info" icon="info" style={{ marginTop: 14 }}>
-            Markers met een <strong>lat/lng</strong> in buurtgroepen of activiteiten verschijnen automatisch op de kaart. Voeg coördinaten toe via het bewerkscherm van elk item.
+            Markers met een <strong>lat/lng</strong> in buurtinitiatieven of activiteiten verschijnen automatisch op de kaart. Voeg coördinaten toe via het bewerkscherm van elk item.
           </HintCard>
         </div>
       </div>
@@ -3037,8 +3037,8 @@ function PagesScreen() {
           <div className="card-pad" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {[
               { t: "Hero met foto", u: "Home, Boek" },
-              { t: "Uitgelichte buurtgroepen", u: "Home" },
-              { t: "Agenda preview", u: "Home, Buurtgroepen" },
+              { t: "Uitgelichte buurtinitiatieven", u: "Home" },
+              { t: "Agenda preview", u: "Home, Buurtinitiatieven" },
               { t: "Nieuws preview", u: "Home" },
               { t: "Partner-strook", u: "Home, Partners" },
               { t: "Doneerblok", u: "Home, Doneren" },
@@ -3682,7 +3682,7 @@ function CategoriesScreen() {
   const [newNaam, setNewNaam] = React.useState('');
   const [newIcoon, setNewIcoon] = React.useState('users');
   const [newKleurIdx, setNewKleurIdx] = React.useState(2);
-  const [newKoppeling, setNewKoppeling] = React.useState({ Buurtgroepen: true, Activiteiten: true, Agenda: false, Nieuws: false });
+  const [newKoppeling, setNewKoppeling] = React.useState({ Buurtinitiatieven: true, Activiteiten: true, Agenda: false, Nieuws: false });
   const [saving, setSaving] = React.useState(false);
   const kleuren = ['oklch(0.65 0.13 25)','oklch(0.65 0.13 65)','oklch(0.65 0.13 145)','oklch(0.55 0.13 250)','oklch(0.55 0.13 295)','oklch(0.55 0.04 250)'];
 
@@ -3736,7 +3736,7 @@ function CategoriesScreen() {
     const { count } = await window.supabase.from('clubjes').select('id', { count: 'exact', head: true }).eq('categorie', c.naam);
     const aantal = count || 0;
     const msg = aantal > 0
-      ? `${aantal} buurtgroep${aantal !== 1 ? 'en' : ''} gebruik${aantal !== 1 ? 'en' : 't'} categorie "${c.naam}". Toch verwijderen?`
+      ? `${aantal} buurtinitiatief${aantal !== 1 ? 'en' : ''} gebruik${aantal !== 1 ? 'en' : 't'} categorie "${c.naam}". Toch verwijderen?`
       : `Categorie "${c.naam}" definitief verwijderen?`;
     if (!window.confirm(msg)) return;
     const { error } = await window.supabase.from('categorieen').delete().eq('id', c.id);
@@ -3750,7 +3750,7 @@ function CategoriesScreen() {
     <>
       <PageHead
         title="Categorieën"
-        sub="Categorieën worden gedeeld door buurtgroepen, activiteiten, agenda en nieuws. Kleuren tonen op kaarten en filters."
+        sub="Categorieën worden gedeeld door buurtinitiatieven, activiteiten, agenda en nieuws. Kleuren tonen op kaarten en filters."
         actions={<button className="btn btn-primary" onClick={handleCreate} disabled={saving}><Icon name="plus" size={14} /> Nieuwe categorie</button>}
       />
 
@@ -4080,7 +4080,7 @@ function HuisstijlScreen() {
   const [secties, setSecties] = React.useState([
     { name: 'Hero met foto', sub: 'Bovenste blok met titel en knop', on: true },
     { name: 'Intro / welkomsttekst', sub: 'Korte uitleg over TIB', on: true },
-    { name: 'Uitgelichte buurtgroepen', sub: 'Toont 3 uitgelichte buurtgroepen', on: true },
+    { name: 'Uitgelichte buurtinitiatieven', sub: 'Toont 3 uitgelichte buurtinitiatieven', on: true },
     { name: 'Agenda preview', sub: 'Komende 5 agenda-items', on: true },
     { name: 'Activiteiten preview', sub: 'Wekelijkse activiteiten', on: true },
     { name: 'Nieuws preview', sub: 'Laatste 3 nieuwsberichten', on: true },
@@ -4219,7 +4219,7 @@ function HuisstijlScreen() {
                 Welkom in {tone === 'je' ? 'jouw' : 'uw'} buurt
               </div>
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>
-                Ontdek buurtgroepen, activiteiten en evenementen bij {tone === 'je' ? 'jou' : 'u'} om de hoek.
+                Ontdek buurtinitiatieven, activiteiten en evenementen bij {tone === 'je' ? 'jou' : 'u'} om de hoek.
               </p>
               <button style={{ background: accent, color: 'white', border: 0, padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>Doe mee →</button>
             </div>
@@ -4406,7 +4406,7 @@ function GebruikersScreen() {
                 placeholder="naam@voorbeeld.nl"
               />
             </Field>
-            <Field label="Buurtgroep" hint="Laat leeg voor een algemene beheerder zonder clubkoppeling.">
+            <Field label="Buurtinitiatief" hint="Laat leeg voor een algemene beheerder zonder clubkoppeling.">
               <select value={inviteClubId} onChange={e => setInviteClubId(e.target.value)}>
                 <option value="">Geen club — algemene beheerder</option>
                 {clubs.map(c => (
@@ -4456,7 +4456,7 @@ function GebruikersScreen() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--line)' }}>
-                {['E-mail', 'Rol', 'Buurtgroep', 'Acties'].map(h => (
+                {['E-mail', 'Rol', 'Buurtinitiatief', 'Acties'].map(h => (
                   <th key={h} style={{
                     padding: '9px 20px', textAlign: 'left',
                     fontSize: 11.5, fontWeight: 600,
@@ -4629,7 +4629,7 @@ function FormulierenScreen() {
   );
   const f = inzendingen.find(x => x.id === selected);
   if (role === 'beheerder' && clubId === null) {
-    return <div style={{ padding: 40, color: '#888', fontSize: 16 }}>Je bent nog niet gekoppeld aan een buurtgroep.</div>;
+    return <div style={{ padding: 40, color: '#888', fontSize: 16 }}>Je bent nog niet gekoppeld aan een buurtinitiatief.</div>;
   }
   const fStatus = statuses[selected] || (f && f.status);
   const handleSend = () => {
@@ -4790,7 +4790,7 @@ function FormulierenScreen() {
               <Field label="E-mail voor contactformulier" hint="Inzendingen via het contactformulier worden hier naartoe gestuurd.">
                 <input type="email" value={instEmail} onChange={e => setInstEmail(e.target.value)} />
               </Field>
-              <Field label="E-mail voor buurtgroep aanmeldingen" hint="Aanmeldingen voor buurtgroepen worden hier naartoe gestuurd.">
+              <Field label="E-mail voor buurtinitiatief aanmeldingen" hint="Aanmeldingen voor buurtinitiatieven worden hier naartoe gestuurd.">
                 <input type="email" value={instEmailClubje} onChange={e => setInstEmailClubje(e.target.value)} />
               </Field>
               <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={saveInstellingen}>
@@ -5128,14 +5128,14 @@ function AanmeldingenScreen({ onBadgeRefresh }) {
       ),
       React.createElement(DetailField, { label: 'E-mail', value: item.email }),
       React.createElement(DetailField, { label: 'Type aanmelding', value: item.type }),
-      React.createElement(DetailField, { label: 'Buurtgroep keuze', value: item.buurtgroep_keuze }),
+      React.createElement(DetailField, { label: 'Buurtinitiatief keuze', value: item.buurtgroep_keuze }),
       React.createElement(DetailField, { label: 'Bericht', value: item.bericht }),
       React.createElement(NotitieSectie, { type: 'aanmeldingen', id: item.id })
     )
   });
 }
 
-/* Buurtgroep aanvragen */
+/* Buurtinitiatief aanvragen */
 function BgAanvragenScreen({ onBadgeRefresh }) {
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -5653,7 +5653,7 @@ function App() {
   const screens = {
     dashboard: { crumbs: ['Dashboard'], render: () => <Dashboard onNav={setRoute} onPreview={() => setPreviewOn(true)} /> },
     pages: { crumbs: ["Pagina's"], render: () => <PagesScreen /> },
-    clubjes: { crumbs: ['Buurtgroepen'], render: () => <ClubjesScreen onNav={setRoute} profile={profile} /> },
+    clubjes: { crumbs: ['Buurtinitiatieven'], render: () => <ClubjesScreen onNav={setRoute} profile={profile} /> },
     activiteiten: { crumbs: ['Activiteiten'], render: () => <ActiviteitenScreen /> },
     agenda: { crumbs: ['Agenda'], render: () => <AgendaScreen /> },
     nieuws: { crumbs: ['Nieuws'], render: () => <NieuwsScreen /> },
@@ -5670,7 +5670,7 @@ function App() {
     gebruikers: { crumbs: ['Gebruikers'], render: () => <GebruikersScreen /> },
     domein: { crumbs: ['Website & domein'], render: () => <DomeinScreen /> },
     aanmeldingen:  { crumbs: ['Aanmeldingen'],         render: () => <AanmeldingenScreen  onBadgeRefresh={loadBadges} /> },
-    'bg-aanvragen':{ crumbs: ['Buurtgroep aanvragen'],  render: () => <BgAanvragenScreen   onBadgeRefresh={loadBadges} /> },
+    'bg-aanvragen':{ crumbs: ['Buurtinitiatief aanvragen'],  render: () => <BgAanvragenScreen   onBadgeRefresh={loadBadges} /> },
     berichten:     { crumbs: ['Contact'],                render: () => <BerichtenScreen     onBadgeRefresh={loadBadges} /> },
     bestellingen:  { crumbs: ['Bestellingen'],          render: () => <BestellingenScreen  onBadgeRefresh={loadBadges} /> },
   };
