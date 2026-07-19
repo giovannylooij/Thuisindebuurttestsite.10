@@ -4188,6 +4188,9 @@ const HUISSTIJL_VELDEN = [
 ];
 const HUISSTIJL_DEFAULTS_V2 = Object.fromEntries(HUISSTIJL_VELDEN.map(v => [v.key, v.default]));
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+// Snelkeuze-swatches naast de kleurkiezer/hex-invoer — zelfde palet op elk
+// van de 5 velden, inclusief de 3 kleuren die expliciet zijn opgegeven.
+const HUISSTIJL_PALET = ['#2d7f7b', '#236360', '#1d2530', '#faf3e6', '#ffffff', '#1a4a7a', '#2d6aa0', '#3f8f7a', '#6cab46', '#7b2d26', '#E48033', '#87C2C6', '#077063'];
 
 function HuisstijlScreen() {
   const [logoUrl, setLogoUrl] = React.useState(window.TIB_LOGO_URL || null);
@@ -4314,7 +4317,7 @@ function HuisstijlScreen() {
             {HUISSTIJL_VELDEN.map(veld => (
               <Field key={veld.key} label={veld.label}>
                 <div className="sec-sub" style={{ marginTop: -4, marginBottom: 8 }}>{veld.uitleg}</div>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
                   <input
                     type="color"
                     value={HEX_RE.test(kleuren[veld.key]) ? kleuren[veld.key] : veld.default}
@@ -4327,6 +4330,17 @@ function HuisstijlScreen() {
                     onChange={e => setKleuren(prev => ({ ...prev, [veld.key]: e.target.value }))}
                     style={{ width: 130, fontFamily: 'var(--mono)' }}
                   />
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {HUISSTIJL_PALET.map((c, i) => (
+                      <span
+                        key={i}
+                        title={c}
+                        className={"swatch" + (c.toLowerCase() === (kleuren[veld.key] || '').toLowerCase() ? ' selected' : '')}
+                        style={{ background: c, width: 26, height: 26 }}
+                        onClick={() => setKleuren(prev => ({ ...prev, [veld.key]: c }))}
+                      ></span>
+                    ))}
+                  </div>
                 </div>
               </Field>
             ))}
