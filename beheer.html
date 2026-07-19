@@ -4175,14 +4175,61 @@ Object.assign(window, { CategoriesScreen, MediaScreen, MenuScreen });
 /* === screens/system.jsx === */
 // Huisstijl, Gebruikers, Formulieren, Domein
 
+// Huisstijl-kleuren: dit zijn ook de daadwerkelijke huidige sitekleuren
+// (zie TWEAK_DEFAULTS in app.jsx) — bij het missen van een opgeslagen rij
+// vallen we hierop terug, zodat er nooit een afwijkende kleur getoond wordt.
+const HUISSTIJL_DEFAULTS = { primary: '#2D7F7B', accent: '#3f8f7a', bg: '#faf3e6' };
+
 function HuisstijlScreen() {
   const [logoUrl, setLogoUrl] = React.useState(window.TIB_LOGO_URL || null);
   const [faviconUrl, setFaviconUrl] = React.useState((DATA.huisstijl && DATA.huisstijl.favicon) || null);
-  const [primary, setPrimary] = React.useState('#1a4a7a');
-  const [accent, setAccent] = React.useState('#3f8f7a');
+  const [primary, setPrimary] = React.useState(HUISSTIJL_DEFAULTS.primary);
+  const [accent, setAccent] = React.useState(HUISSTIJL_DEFAULTS.accent);
+  const [bgColor, setBgColor] = React.useState(HUISSTIJL_DEFAULTS.bg);
   const [tone, setTone] = React.useState('je');
   const [serifFont, setSerifFont] = React.useState('Lora');
   const [bodyFont, setBodyFont] = React.useState('Source Sans 3');
+  const [kleurenLaden, setKleurenLaden] = React.useState(true);
+  const [kleurenOpslaan, setKleurenOpslaan] = React.useState(false);
+  const [kleurenFout, setKleurenFout] = React.useState(null);
+
+  React.useEffect(() => {
+    let actief = true;
+    window.supabase
+      .from('huisstijl_instellingen')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!actief) return;
+        if (!error && data) {
+          if (data.primary_color) setPrimary(data.primary_color);
+          if (data.accent_color) setAccent(data.accent_color);
+          if (data.bg_color) setBgColor(data.bg_color);
+        }
+        setKleurenLaden(false);
+      });
+    return () => { actief = false; };
+  }, []);
+
+  async function opslaanHuisstijlKleuren() {
+    setKleurenOpslaan(true);
+    setKleurenFout(null);
+    const { error } = await window.supabase.from('huisstijl_instellingen').upsert({
+      id: 1,
+      primary_color: primary,
+      accent_color: accent,
+      bg_color: bgColor,
+    });
+    setKleurenOpslaan(false);
+    if (error) {
+      setKleurenFout('Kon kleuren niet opslaan: ' + error.message + ' (is sql/huisstijl_instellingen.sql al uitgevoerd in Supabase?)');
+      window.__showToast && window.__showToast('Opslaan mislukt — zie foutmelding');
+      return false;
+    }
+    window.__showToast && window.__showToast('Huisstijl toegepast op de website!');
+    return true;
+  }
 
   function handleLogoUpload(e) {
     const file = e.target.files[0];
@@ -4226,25 +4273,29 @@ function HuisstijlScreen() {
     <>
       <PageHead
         title="Huisstijl"
-        sub="De waardes hieronder worden doorgegeven aan de bestaande HTML-site via een settings-endpoint. Het uiterlijk en de structuur van de site veranderen niet."
+        sub="De kleuren hieronder worden opgeslagen in Supabase en direct toegepast op de live website."
         actions={<>
-          <button className="btn" onClick={() => { setPrimary('#1a4a7a'); setAccent('#3f8f7a'); setTone('je'); setSerifFont('Lora'); setBodyFont('Source Sans 3'); window.__showToast && window.__showToast('Huisstijl teruggezet naar standaard'); }}><Icon name="refresh" size={14} /> Reset</button>
-          <button className="btn btn-primary" onClick={() => { window.__syncToSite && window.__syncToSite(); window.__showToast && window.__showToast('Huisstijl toegepast!'); }}><Icon name="save" size={14} /> Toepassen</button>
+          <button className="btn" onClick={() => { setPrimary(HUISSTIJL_DEFAULTS.primary); setAccent(HUISSTIJL_DEFAULTS.accent); setBgColor(HUISSTIJL_DEFAULTS.bg); setTone('je'); setSerifFont('Lora'); setBodyFont('Source Sans 3'); window.__showToast && window.__showToast('Kleuren teruggezet naar standaard (nog niet opgeslagen)'); }}><Icon name="refresh" size={14} /> Reset</button>
+          <button className="btn btn-primary" disabled={kleurenOpslaan || kleurenLaden} onClick={opslaanHuisstijlKleuren}><Icon name="save" size={14} /> {kleurenOpslaan ? 'Bezig…' : 'Toepassen'}</button>
         </>}
       />
 
       <HintCard variant="info" icon="info">
-        Deze waardes worden door <code>app.jsx</code> ingelezen uit <code>TIB_SETTINGS</code> en toegepast via <code>applyTokens()</code>. Het overschrijft de huidige hardcoded <code>TWEAK_DEFAULTS</code> in jouw site, zonder dat er aan de CSS of componenten iets verandert.
+        De 3 kleuren hieronder (primair, accent, achtergrond) worden bij het klikken op "Toepassen" opgeslagen in de tabel <code>huisstijl_instellingen</code> en bij elk bezoek van de website live ingelezen en toegepast via <code>applyTokens()</code>.
       </HintCard>
+
+      {kleurenFout && (
+        <HintCard variant="warn" icon="warn">{kleurenFout}</HintCard>
+      )}
 
       <div className="form-grid" style={{ marginTop: 18 }}>
         <div>
           <div className="form-section">
             <h3>Kleuren</h3>
-            <div className="sec-sub">Exact dezelfde palet-keuze als nu in jouw TweaksPanel. Klant kiest uit vooraf geselecteerde swatches — geen vrije kleurkiezer, zo blijft de huisstijl consistent.</div>
-            <Field label="Primair (blauw)">
+            <div className="sec-sub">Kies een swatch of typ een eigen hex-kleur. Klik op "Toepassen" om de kleur echt op de website te zetten.</div>
+            <Field label="Primair (teal)">
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {['#1a4a7a', '#15568a', '#2d6aa0', '#1f3e6b', '#264b5f'].map((c, i) => (
+                {['#2D7F7B', '#1a4a7a', '#15568a', '#2d6aa0', '#1f3e6b'].map((c, i) => (
                   <span key={i} className={"swatch" + (c === primary ? ' selected' : '')} style={{ background: c, width: 36, height: 36 }} onClick={() => setPrimary(c)}></span>
                 ))}
                 <input type="text" value={primary} onChange={e => setPrimary(e.target.value)} style={{ width: 110, fontFamily: 'var(--mono)' }} />
@@ -4261,9 +4312,9 @@ function HuisstijlScreen() {
             <Field label="Achtergrond (crème)">
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 {['#faf3e6', '#f7f1e3', '#fbf7ee', '#f4ede0', '#f3f1eb', '#ffffff'].map((c, i) => (
-                  <span key={i} className={"swatch" + (i === 0 ? ' selected' : '')} style={{ background: c, width: 36, height: 36 }}></span>
+                  <span key={i} className={"swatch" + (c === bgColor ? ' selected' : '')} style={{ background: c, width: 36, height: 36 }} onClick={() => setBgColor(c)}></span>
                 ))}
-                <input type="text" defaultValue="#faf3e6" style={{ width: 110, fontFamily: 'var(--mono)' }} />
+                <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} style={{ width: 110, fontFamily: 'var(--mono)' }} />
               </div>
             </Field>
           </div>
