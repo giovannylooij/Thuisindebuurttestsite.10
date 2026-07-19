@@ -4215,12 +4215,15 @@ function HuisstijlScreen() {
   async function opslaanHuisstijlKleuren() {
     setKleurenOpslaan(true);
     setKleurenFout(null);
-    const { error } = await window.supabase.from('huisstijl_instellingen').upsert({
-      id: 1,
+    // update() i.p.v. upsert(): de rij (id=1) bestaat altijd al dankzij de
+    // SQL-migratie, en de RLS-policy staat alleen UPDATE toe (geen INSERT)
+    // — upsert() zou onder water eerst een INSERT proberen en op RLS
+    // stuklopen.
+    const { error } = await window.supabase.from('huisstijl_instellingen').update({
       primary_color: primary,
       accent_color: accent,
       bg_color: bgColor,
-    });
+    }).eq('id', 1);
     setKleurenOpslaan(false);
     if (error) {
       setKleurenFout('Kon kleuren niet opslaan: ' + error.message + ' (is sql/huisstijl_instellingen.sql al uitgevoerd in Supabase?)');
