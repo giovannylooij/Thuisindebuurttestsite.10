@@ -4175,159 +4175,74 @@ Object.assign(window, { CategoriesScreen, MediaScreen, MenuScreen });
 /* === screens/system.jsx === */
 // Huisstijl, Gebruikers, Formulieren, Domein
 
-// Huisstijl-kleuren: dit zijn ook de daadwerkelijke huidige sitekleuren
-// (zie TWEAK_DEFAULTS in app.jsx) — bij het missen van een opgeslagen rij
-// vallen we hierop terug, zodat er nooit een afwijkende kleur getoond wordt.
-const HUISSTIJL_DEFAULTS = { primary: '#2D7F7B', accent: '#3f8f7a', bg: '#faf3e6' };
-
-// Huisstijl fase 2 — 6 secties × 3 kleurrollen. Sleutels matchen exact de
-// (sectie, rol)-combinaties in de Supabase-tabel huisstijl_secties en de
-// CSS-variabelen in template.html (zie sql/huisstijl_secties.sql).
-const SECTIE_KLEUREN_DEFAULTS = {
-  'merk.koptekst': '#1d2530', 'merk.body': '#4a5563', 'merk.muted': '#7a8392',
-  'navigatie.achtergrond': 'rgba(250,243,230,0.92)', 'navigatie.tekst': '#4a5563', 'navigatie.actief': '#2D7F7B',
-  'hero.achtergrond': '#FFFFFF', 'hero.eyebrow': '#3f8f7a', 'hero.tekst': '#1d2530',
-  'band.wit': '#FFFFFF', 'band.creme': '#faf3e6', 'band.accent': '#e0f2f1',
-  'knop.primair': '#2D7F7B', 'knop.primair_hover': '#1F5F5B', 'knop.secundair_rand': '#2D7F7B',
-  'footer.achtergrond': '#1F5F5B', 'footer.tekst': '#DDE7E6', 'footer.link': '#3f8f7a',
-};
-
-const SECTIE_KLEUREN_GROEPEN = [
-  { titel: 'Merk & tekst', velden: [
-    { key: 'merk.koptekst', label: 'Koptekst' },
-    { key: 'merk.body', label: 'Lopende tekst' },
-    { key: 'merk.muted', label: 'Gedempte tekst' },
-  ]},
-  { titel: 'Navigatie', velden: [
-    { key: 'navigatie.achtergrond', label: 'Achtergrond' },
-    { key: 'navigatie.tekst', label: 'Tekst/links' },
-    { key: 'navigatie.actief', label: 'Actieve pagina' },
-  ]},
-  { titel: 'Hero', velden: [
-    { key: 'hero.achtergrond', label: 'Achtergrond' },
-    { key: 'hero.eyebrow', label: 'Eyebrow/accentstreep' },
-    { key: 'hero.tekst', label: 'Titel' },
-  ]},
-  { titel: 'Secties & banden', velden: [
-    { key: 'band.wit', label: 'Witte band' },
-    { key: 'band.creme', label: 'Crème band' },
-    { key: 'band.accent', label: 'Badges/accenten' },
-  ]},
-  { titel: 'Knoppen', velden: [
-    { key: 'knop.primair', label: 'Primair (achtergrond)' },
-    { key: 'knop.primair_hover', label: 'Primair (hover)' },
-    { key: 'knop.secundair_rand', label: 'Rand/tekst secundair' },
-  ]},
-  { titel: 'Footer', velden: [
-    { key: 'footer.achtergrond', label: 'Achtergrond' },
-    { key: 'footer.tekst', label: 'Tekst' },
-    { key: 'footer.link', label: 'Links/knop' },
-  ]},
+// Huisstijl v2 — één sectie, 5 gedeelde kleuren. Sleutels matchen de
+// 'rol'-waarden in Supabase-tabel huisstijl_secties (sectie='huisstijl')
+// en de --hs-*-CSS-variabelen in template.html (zie sql/huisstijl_v2.sql).
+// Defaults = de kleuren die de site nu al heeft.
+const HUISSTIJL_VELDEN = [
+  { key: 'hoofdkleur', label: 'Hoofdkleur', uitleg: 'Knoppen, links, actieve pagina, eyebrow/accentstreep.', default: '#2d7f7b' },
+  { key: 'donker', label: 'Donkere kleur', uitleg: 'Footer-achtergrond en de hover-kleur van de hoofdknop.', default: '#236360' },
+  { key: 'tekst', label: 'Titel- & tekstkleur', uitleg: 'Koppen en lopende tekst (een secundair grijs wordt automatisch afgeleid).', default: '#1d2530' },
+  { key: 'creme', label: 'Crème band', uitleg: 'Achtergrond van sectiebanden; ook de basis voor zachte knoppen.', default: '#faf3e6' },
+  { key: 'achtergrond', label: 'Achtergrond', uitleg: 'Witte secties en de hero-achtergrond.', default: '#ffffff' },
 ];
-
-const SECTIE_KLEURENPALET = ['#2D7F7B', '#1F5F5B', '#1a4a7a', '#15568a', '#2d6aa0', '#1f3e6b', '#264653', '#0f6466', '#3b6e8f', '#6c584c', '#7b2d26', '#3f8f7a', '#4f9b7c', '#377063', '#6cab46', '#e0f2f1', '#faf3e6', '#f4ede0', '#FFFFFF', '#DDE7E6', '#1d2530', '#4a5563', '#7a8392', '#E48033', '#87C2C6', '#077063'];
+const HUISSTIJL_DEFAULTS_V2 = Object.fromEntries(HUISSTIJL_VELDEN.map(v => [v.key, v.default]));
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 function HuisstijlScreen() {
   const [logoUrl, setLogoUrl] = React.useState(window.TIB_LOGO_URL || null);
   const [faviconUrl, setFaviconUrl] = React.useState((DATA.huisstijl && DATA.huisstijl.favicon) || null);
-  const [primary, setPrimary] = React.useState(HUISSTIJL_DEFAULTS.primary);
-  const [accent, setAccent] = React.useState(HUISSTIJL_DEFAULTS.accent);
-  const [bgColor, setBgColor] = React.useState(HUISSTIJL_DEFAULTS.bg);
   const [tone, setTone] = React.useState('je');
   const [serifFont, setSerifFont] = React.useState('Lora');
   const [bodyFont, setBodyFont] = React.useState('Source Sans 3');
+
+  const [kleuren, setKleuren] = React.useState(HUISSTIJL_DEFAULTS_V2);
   const [kleurenLaden, setKleurenLaden] = React.useState(true);
   const [kleurenOpslaan, setKleurenOpslaan] = React.useState(false);
   const [kleurenFout, setKleurenFout] = React.useState(null);
 
   React.useEffect(() => {
     let actief = true;
-    window.supabase
-      .from('huisstijl_instellingen')
-      .select('*')
-      .eq('id', 1)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!actief) return;
-        if (!error && data) {
-          if (data.primary_color) setPrimary(data.primary_color);
-          if (data.accent_color) setAccent(data.accent_color);
-          if (data.bg_color) setBgColor(data.bg_color);
-        }
-        setKleurenLaden(false);
-      });
-    return () => { actief = false; };
-  }, []);
-
-  async function opslaanHuisstijlKleuren() {
-    setKleurenOpslaan(true);
-    setKleurenFout(null);
-    // update() i.p.v. upsert(): de rij (id=1) bestaat altijd al dankzij de
-    // SQL-migratie, en de RLS-policy staat alleen UPDATE toe (geen INSERT)
-    // — upsert() zou onder water eerst een INSERT proberen en op RLS
-    // stuklopen.
-    const { error } = await window.supabase.from('huisstijl_instellingen').update({
-      primary_color: primary,
-      accent_color: accent,
-      bg_color: bgColor,
-    }).eq('id', 1);
-    setKleurenOpslaan(false);
-    if (error) {
-      setKleurenFout('Kon kleuren niet opslaan: ' + error.message + ' (is sql/huisstijl_instellingen.sql al uitgevoerd in Supabase?)');
-      window.__showToast && window.__showToast('Opslaan mislukt — zie foutmelding');
-      return false;
-    }
-    window.__showToast && window.__showToast('Huisstijl toegepast op de website!');
-    return true;
-  }
-
-  // Huisstijl fase 2 — 6 secties × kleurrollen
-  const [sectieKleuren, setSectieKleuren] = React.useState(SECTIE_KLEUREN_DEFAULTS);
-  const [sectiesLaden, setSectiesLaden] = React.useState(true);
-  const [sectiesOpslaan, setSectiesOpslaan] = React.useState(false);
-  const [sectiesFout, setSectiesFout] = React.useState(null);
-
-  React.useEffect(() => {
-    let actief = true;
-    window.supabase.from('huisstijl_secties').select('*').then(({ data, error }) => {
+    window.supabase.from('huisstijl_secties').select('*').eq('sectie', 'huisstijl').then(({ data, error }) => {
       if (!actief) return;
       if (!error && data && data.length > 0) {
-        setSectieKleuren(prev => {
+        setKleuren(prev => {
           const next = { ...prev };
-          data.forEach(rij => { next[rij.sectie + '.' + rij.rol] = rij.kleur; });
+          data.forEach(rij => { next[rij.rol] = rij.kleur; });
           return next;
         });
       }
-      setSectiesLaden(false);
+      setKleurenLaden(false);
     });
     return () => { actief = false; };
   }, []);
 
-  function resetSectieKleuren() {
-    setSectieKleuren(SECTIE_KLEUREN_DEFAULTS);
-    window.__showToast && window.__showToast('Sectiekleuren teruggezet naar standaard (nog niet opgeslagen)');
+  function resetKleuren() {
+    if (!window.confirm('Alle 5 kleuren terugzetten naar de standaardkleuren? Dit wordt pas definitief na "Opslaan".')) return;
+    setKleuren(HUISSTIJL_DEFAULTS_V2);
+    window.__showToast && window.__showToast('Kleuren teruggezet naar standaard (nog niet opgeslagen)');
   }
 
-  async function opslaanSectieKleuren() {
-    setSectiesOpslaan(true);
-    setSectiesFout(null);
-    // Elke rij bestaat al dankzij de SQL-migratie (18 gezaaide rijen) — net
-    // als bij opslaanHuisstijlKleuren() gebruiken we update(), geen
-    // upsert(), want de RLS-policy staat alleen UPDATE toe.
+  async function opslaanKleuren() {
+    setKleurenOpslaan(true);
+    setKleurenFout(null);
+    // upsert() (niet update()): sql/huisstijl_v2.sql voegt naast de 5
+    // rijen ook een INSERT-policy toe, dus dit werkt zowel de allereerste
+    // keer (rij bestaat nog niet) als bij elke volgende keer opslaan.
     const resultaten = await Promise.all(
-      Object.keys(sectieKleuren).map(key => {
-        const [sectie, rol] = key.split('.');
-        return window.supabase.from('huisstijl_secties').update({ kleur: sectieKleuren[key] }).eq('sectie', sectie).eq('rol', rol);
-      })
+      HUISSTIJL_VELDEN.map(veld =>
+        window.supabase.from('huisstijl_secties')
+          .upsert({ sectie: 'huisstijl', rol: veld.key, kleur: kleuren[veld.key] }, { onConflict: 'sectie,rol' })
+      )
     );
-    setSectiesOpslaan(false);
+    setKleurenOpslaan(false);
     const eersteFout = resultaten.find(r => r.error);
     if (eersteFout) {
-      setSectiesFout('Kon sectiekleuren niet opslaan: ' + eersteFout.error.message + ' (is sql/huisstijl_secties.sql al uitgevoerd in Supabase?)');
+      setKleurenFout('Kon kleuren niet opslaan: ' + eersteFout.error.message + ' (is sql/huisstijl_v2.sql al uitgevoerd in Supabase?)');
       window.__showToast && window.__showToast('Opslaan mislukt — zie foutmelding');
       return false;
     }
-    window.__showToast && window.__showToast('Sectiekleuren toegepast op de website!');
+    window.__showToast && window.__showToast('Huisstijl opgeslagen en toegepast op de website!');
     return true;
   }
 
@@ -4373,96 +4288,47 @@ function HuisstijlScreen() {
     <>
       <PageHead
         title="Huisstijl"
-        sub="De kleuren hieronder worden opgeslagen in Supabase en direct toegepast op de live website."
-        actions={<>
-          <button className="btn" onClick={() => { setPrimary(HUISSTIJL_DEFAULTS.primary); setAccent(HUISSTIJL_DEFAULTS.accent); setBgColor(HUISSTIJL_DEFAULTS.bg); setTone('je'); setSerifFont('Lora'); setBodyFont('Source Sans 3'); window.__showToast && window.__showToast('Kleuren teruggezet naar standaard (nog niet opgeslagen)'); }}><Icon name="refresh" size={14} /> Reset</button>
-          <button className="btn btn-primary" disabled={kleurenOpslaan || kleurenLaden} onClick={opslaanHuisstijlKleuren}><Icon name="save" size={14} /> {kleurenOpslaan ? 'Bezig…' : 'Toepassen'}</button>
-        </>}
+        sub="5 kleuren sturen de hele website aan: knoppen, navigatie, hero, banden en footer."
       />
-
-      <HintCard variant="info" icon="info">
-        De 3 kleuren hieronder (primair, accent, achtergrond) worden bij het klikken op "Toepassen" opgeslagen in de tabel <code>huisstijl_instellingen</code> en bij elk bezoek van de website live ingelezen en toegepast via <code>applyTokens()</code>.
-      </HintCard>
-
-      {kleurenFout && (
-        <HintCard variant="warn" icon="warn">{kleurenFout}</HintCard>
-      )}
 
       <div className="form-grid" style={{ marginTop: 18 }}>
         <div>
           <div className="form-section">
-            <h3>Kleuren</h3>
-            <div className="sec-sub">Kies een swatch of typ een eigen hex-kleur. Klik op "Toepassen" om de kleur echt op de website te zetten.</div>
-            <Field label="Primair">
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
-                {['#2D7F7B', '#1a4a7a', '#15568a', '#2d6aa0', '#1f3e6b', '#264653', '#0f6466', '#3b6e8f', '#6c584c', '#7b2d26', '#E48033', '#87C2C6', '#077063'].map((c, i) => (
-                  <span key={i} className={"swatch" + (c === primary ? ' selected' : '')} style={{ background: c, width: 36, height: 36 }} onClick={() => setPrimary(c)}></span>
-                ))}
-                <input type="text" value={primary} onChange={e => setPrimary(e.target.value)} style={{ width: 110, fontFamily: 'var(--mono)' }} />
-              </div>
-            </Field>
-            <Field label="Accent">
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
-                {['#3f8f7a', '#4f9b7c', '#5fa672', '#377063', '#6cab46', '#2f6b4f', '#7a9e3f', '#4a8a6d', '#5c7a4f', '#8a6d3f', '#E48033', '#87C2C6', '#077063'].map((c, i) => (
-                  <span key={i} className={"swatch" + (c === accent ? ' selected' : '')} style={{ background: c, width: 36, height: 36 }} onClick={() => setAccent(c)}></span>
-                ))}
-                <input type="text" value={accent} onChange={e => setAccent(e.target.value)} style={{ width: 110, fontFamily: 'var(--mono)' }} />
-              </div>
-            </Field>
-            <Field label="Achtergrond">
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
-                {['#faf3e6', '#f7f1e3', '#fbf7ee', '#f4ede0', '#f3f1eb', '#ffffff', '#f0e6d2', '#eee7d8', '#f5f0e8', '#faf7f2', '#E48033', '#87C2C6', '#077063'].map((c, i) => (
-                  <span key={i} className={"swatch" + (c === bgColor ? ' selected' : '')} style={{ background: c, width: 36, height: 36 }} onClick={() => setBgColor(c)}></span>
-                ))}
-                <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} style={{ width: 110, fontFamily: 'var(--mono)' }} />
-              </div>
-            </Field>
-          </div>
-
-          <div className="form-section">
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div>
-                <h3 style={{ marginBottom: 4 }}>Kleuren per sectie</h3>
-                <div className="sec-sub" style={{ marginBottom: 0 }}>
-                  Fijnere controle bovenop de 3 kleuren hierboven: deze 18 kleuren sturen specifiek navigatie, hero, banden, knoppen en footer aan. De kleuren hierboven blijven ook gelden voor de rest van de site (links, chips, formuliervelden, etc.).
-                </div>
+                <h3 style={{ marginBottom: 4 }}>Kleuren</h3>
+                <div className="sec-sub" style={{ marginBottom: 0 }}>Kies een kleur met de kleurkiezer of typ een hex-code. Klik op "Opslaan" om ze echt op de website te zetten.</div>
               </div>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                <button className="btn" onClick={resetSectieKleuren}><Icon name="refresh" size={14} /> Reset</button>
-                <button className="btn btn-primary" disabled={sectiesOpslaan || sectiesLaden} onClick={opslaanSectieKleuren}><Icon name="save" size={14} /> {sectiesOpslaan ? 'Bezig…' : 'Toepassen'}</button>
+                <button className="btn" onClick={resetKleuren}><Icon name="refresh" size={14} /> Herstel standaardkleuren</button>
+                <button className="btn btn-primary" disabled={kleurenOpslaan || kleurenLaden} onClick={opslaanKleuren}><Icon name="save" size={14} /> {kleurenOpslaan ? 'Bezig…' : 'Opslaan'}</button>
               </div>
             </div>
 
-            {sectiesFout && (
+            {kleurenFout && (
               <div style={{ marginTop: 14 }}>
-                <HintCard variant="warn" icon="warn">{sectiesFout}</HintCard>
+                <HintCard variant="warn" icon="warn">{kleurenFout}</HintCard>
               </div>
             )}
 
-            {SECTIE_KLEUREN_GROEPEN.map(groep => (
-              <div key={groep.titel} style={{ marginTop: 20 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 10, color: 'var(--ink)' }}>{groep.titel}</div>
-                {groep.velden.map(veld => (
-                  <Field key={veld.key} label={veld.label}>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
-                      {SECTIE_KLEURENPALET.map((c, i) => (
-                        <span
-                          key={i}
-                          className={"swatch" + (c.toLowerCase() === (sectieKleuren[veld.key] || '').toLowerCase() ? ' selected' : '')}
-                          style={{ background: c, width: 30, height: 30 }}
-                          onClick={() => setSectieKleuren(prev => ({ ...prev, [veld.key]: c }))}
-                        ></span>
-                      ))}
-                      <input
-                        type="text"
-                        value={sectieKleuren[veld.key] || ''}
-                        onChange={e => setSectieKleuren(prev => ({ ...prev, [veld.key]: e.target.value }))}
-                        style={{ width: 150, fontFamily: 'var(--mono)' }}
-                      />
-                    </div>
-                  </Field>
-                ))}
-              </div>
+            {HUISSTIJL_VELDEN.map(veld => (
+              <Field key={veld.key} label={veld.label}>
+                <div className="sec-sub" style={{ marginTop: -4, marginBottom: 8 }}>{veld.uitleg}</div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <input
+                    type="color"
+                    value={HEX_RE.test(kleuren[veld.key]) ? kleuren[veld.key] : veld.default}
+                    onChange={e => setKleuren(prev => ({ ...prev, [veld.key]: e.target.value }))}
+                    style={{ width: 44, height: 36, padding: 0, border: '1px solid var(--line)', borderRadius: 6, cursor: 'pointer' }}
+                  />
+                  <input
+                    type="text"
+                    value={kleuren[veld.key]}
+                    onChange={e => setKleuren(prev => ({ ...prev, [veld.key]: e.target.value }))}
+                    style={{ width: 130, fontFamily: 'var(--mono)' }}
+                  />
+                </div>
+              </Field>
             ))}
           </div>
 
@@ -4545,15 +4411,16 @@ function HuisstijlScreen() {
         <div>
           <div className="side-card">
             <h4>Live voorvertoning</h4>
-            <div style={{ background: 'oklch(0.97 0.012 85)', border: '1px solid var(--line)', borderRadius: 8, padding: 16, fontFamily: bodyFont + ', sans-serif' }}>
-              <div style={{ background: primary, padding: '8px 12px', borderRadius: 4, color: 'white', fontFamily: serifFont + ', serif', fontSize: 13, fontWeight: 600 }}>Thuis in de Buurt</div>
-              <div style={{ marginTop: 14, fontFamily: serifFont + ', serif', fontSize: 22, fontWeight: 600, color: primary, lineHeight: 1.15 }}>
+            <div style={{ background: kleuren.achtergrond, border: '1px solid var(--line)', borderRadius: 8, padding: 16, fontFamily: bodyFont + ', sans-serif' }}>
+              <div style={{ background: kleuren.hoofdkleur, padding: '8px 12px', borderRadius: 4, color: 'white', fontFamily: serifFont + ', serif', fontSize: 13, fontWeight: 600 }}>Thuis in de Buurt</div>
+              <div style={{ marginTop: 14, fontFamily: serifFont + ', serif', fontSize: 22, fontWeight: 600, color: kleuren.tekst, lineHeight: 1.15 }}>
                 Welkom in {tone === 'je' ? 'jouw' : 'uw'} buurt
               </div>
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>
                 Ontdek buurtinitiatieven, activiteiten en evenementen bij {tone === 'je' ? 'jou' : 'u'} om de hoek.
               </p>
-              <button style={{ background: accent, color: 'white', border: 0, padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>Doe mee →</button>
+              <button style={{ background: kleuren.donker, color: 'white', border: 0, padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>Doe mee →</button>
+              <div style={{ marginTop: 10, height: 18, borderRadius: 4, background: kleuren.creme, border: '1px solid var(--line)' }} title="Crème band"></div>
             </div>
           </div>
           <div className="side-card">
