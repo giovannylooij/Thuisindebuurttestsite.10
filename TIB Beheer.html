@@ -4295,7 +4295,7 @@ function HuisstijlScreen() {
             <div className="sec-sub">Kies een swatch of typ een eigen hex-kleur. Klik op "Toepassen" om de kleur echt op de website te zetten.</div>
             <Field label="Primair">
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
-                {['#2D7F7B', '#1a4a7a', '#15568a', '#2d6aa0', '#1f3e6b', '#264653', '#0f6466', '#3b6e8f', '#6c584c', '#7b2d26'].map((c, i) => (
+                {['#2D7F7B', '#1a4a7a', '#15568a', '#2d6aa0', '#1f3e6b', '#264653', '#0f6466', '#3b6e8f', '#6c584c', '#7b2d26', '#E48033', '#87C2C6', '#077063'].map((c, i) => (
                   <span key={i} className={"swatch" + (c === primary ? ' selected' : '')} style={{ background: c, width: 36, height: 36 }} onClick={() => setPrimary(c)}></span>
                 ))}
                 <input type="text" value={primary} onChange={e => setPrimary(e.target.value)} style={{ width: 110, fontFamily: 'var(--mono)' }} />
@@ -4303,7 +4303,7 @@ function HuisstijlScreen() {
             </Field>
             <Field label="Accent">
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
-                {['#3f8f7a', '#4f9b7c', '#5fa672', '#377063', '#6cab46', '#2f6b4f', '#7a9e3f', '#4a8a6d', '#5c7a4f', '#8a6d3f'].map((c, i) => (
+                {['#3f8f7a', '#4f9b7c', '#5fa672', '#377063', '#6cab46', '#2f6b4f', '#7a9e3f', '#4a8a6d', '#5c7a4f', '#8a6d3f', '#E48033', '#87C2C6', '#077063'].map((c, i) => (
                   <span key={i} className={"swatch" + (c === accent ? ' selected' : '')} style={{ background: c, width: 36, height: 36 }} onClick={() => setAccent(c)}></span>
                 ))}
                 <input type="text" value={accent} onChange={e => setAccent(e.target.value)} style={{ width: 110, fontFamily: 'var(--mono)' }} />
@@ -4311,7 +4311,7 @@ function HuisstijlScreen() {
             </Field>
             <Field label="Achtergrond">
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
-                {['#faf3e6', '#f7f1e3', '#fbf7ee', '#f4ede0', '#f3f1eb', '#ffffff', '#f0e6d2', '#eee7d8', '#f5f0e8', '#faf7f2'].map((c, i) => (
+                {['#faf3e6', '#f7f1e3', '#fbf7ee', '#f4ede0', '#f3f1eb', '#ffffff', '#f0e6d2', '#eee7d8', '#f5f0e8', '#faf7f2', '#E48033', '#87C2C6', '#077063'].map((c, i) => (
                   <span key={i} className={"swatch" + (c === bgColor ? ' selected' : '')} style={{ background: c, width: 36, height: 36 }} onClick={() => setBgColor(c)}></span>
                 ))}
                 <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} style={{ width: 110, fontFamily: 'var(--mono)' }} />
