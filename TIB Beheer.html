@@ -4180,6 +4180,53 @@ Object.assign(window, { CategoriesScreen, MediaScreen, MenuScreen });
 // vallen we hierop terug, zodat er nooit een afwijkende kleur getoond wordt.
 const HUISSTIJL_DEFAULTS = { primary: '#2D7F7B', accent: '#3f8f7a', bg: '#faf3e6' };
 
+// Huisstijl fase 2 — 6 secties × 3 kleurrollen. Sleutels matchen exact de
+// (sectie, rol)-combinaties in de Supabase-tabel huisstijl_secties en de
+// CSS-variabelen in template.html (zie sql/huisstijl_secties.sql).
+const SECTIE_KLEUREN_DEFAULTS = {
+  'merk.koptekst': '#1d2530', 'merk.body': '#4a5563', 'merk.muted': '#7a8392',
+  'navigatie.achtergrond': 'rgba(250,243,230,0.92)', 'navigatie.tekst': '#4a5563', 'navigatie.actief': '#2D7F7B',
+  'hero.achtergrond': '#FFFFFF', 'hero.eyebrow': '#3f8f7a', 'hero.tekst': '#1d2530',
+  'band.wit': '#FFFFFF', 'band.creme': '#faf3e6', 'band.accent': '#e0f2f1',
+  'knop.primair': '#2D7F7B', 'knop.primair_hover': '#1F5F5B', 'knop.secundair_rand': '#2D7F7B',
+  'footer.achtergrond': '#1F5F5B', 'footer.tekst': '#DDE7E6', 'footer.link': '#3f8f7a',
+};
+
+const SECTIE_KLEUREN_GROEPEN = [
+  { titel: 'Merk & tekst', velden: [
+    { key: 'merk.koptekst', label: 'Koptekst' },
+    { key: 'merk.body', label: 'Lopende tekst' },
+    { key: 'merk.muted', label: 'Gedempte tekst' },
+  ]},
+  { titel: 'Navigatie', velden: [
+    { key: 'navigatie.achtergrond', label: 'Achtergrond' },
+    { key: 'navigatie.tekst', label: 'Tekst/links' },
+    { key: 'navigatie.actief', label: 'Actieve pagina' },
+  ]},
+  { titel: 'Hero', velden: [
+    { key: 'hero.achtergrond', label: 'Achtergrond' },
+    { key: 'hero.eyebrow', label: 'Eyebrow/accentstreep' },
+    { key: 'hero.tekst', label: 'Titel' },
+  ]},
+  { titel: 'Secties & banden', velden: [
+    { key: 'band.wit', label: 'Witte band' },
+    { key: 'band.creme', label: 'Crème band' },
+    { key: 'band.accent', label: 'Badges/accenten' },
+  ]},
+  { titel: 'Knoppen', velden: [
+    { key: 'knop.primair', label: 'Primair (achtergrond)' },
+    { key: 'knop.primair_hover', label: 'Primair (hover)' },
+    { key: 'knop.secundair_rand', label: 'Rand/tekst secundair' },
+  ]},
+  { titel: 'Footer', velden: [
+    { key: 'footer.achtergrond', label: 'Achtergrond' },
+    { key: 'footer.tekst', label: 'Tekst' },
+    { key: 'footer.link', label: 'Links/knop' },
+  ]},
+];
+
+const SECTIE_KLEURENPALET = ['#2D7F7B', '#1F5F5B', '#1a4a7a', '#15568a', '#2d6aa0', '#1f3e6b', '#264653', '#0f6466', '#3b6e8f', '#6c584c', '#7b2d26', '#3f8f7a', '#4f9b7c', '#377063', '#6cab46', '#e0f2f1', '#faf3e6', '#f4ede0', '#FFFFFF', '#DDE7E6', '#1d2530', '#4a5563', '#7a8392', '#E48033', '#87C2C6', '#077063'];
+
 function HuisstijlScreen() {
   const [logoUrl, setLogoUrl] = React.useState(window.TIB_LOGO_URL || null);
   const [faviconUrl, setFaviconUrl] = React.useState((DATA.huisstijl && DATA.huisstijl.favicon) || null);
@@ -4231,6 +4278,56 @@ function HuisstijlScreen() {
       return false;
     }
     window.__showToast && window.__showToast('Huisstijl toegepast op de website!');
+    return true;
+  }
+
+  // Huisstijl fase 2 — 6 secties × kleurrollen
+  const [sectieKleuren, setSectieKleuren] = React.useState(SECTIE_KLEUREN_DEFAULTS);
+  const [sectiesLaden, setSectiesLaden] = React.useState(true);
+  const [sectiesOpslaan, setSectiesOpslaan] = React.useState(false);
+  const [sectiesFout, setSectiesFout] = React.useState(null);
+
+  React.useEffect(() => {
+    let actief = true;
+    window.supabase.from('huisstijl_secties').select('*').then(({ data, error }) => {
+      if (!actief) return;
+      if (!error && data && data.length > 0) {
+        setSectieKleuren(prev => {
+          const next = { ...prev };
+          data.forEach(rij => { next[rij.sectie + '.' + rij.rol] = rij.kleur; });
+          return next;
+        });
+      }
+      setSectiesLaden(false);
+    });
+    return () => { actief = false; };
+  }, []);
+
+  function resetSectieKleuren() {
+    setSectieKleuren(SECTIE_KLEUREN_DEFAULTS);
+    window.__showToast && window.__showToast('Sectiekleuren teruggezet naar standaard (nog niet opgeslagen)');
+  }
+
+  async function opslaanSectieKleuren() {
+    setSectiesOpslaan(true);
+    setSectiesFout(null);
+    // Elke rij bestaat al dankzij de SQL-migratie (18 gezaaide rijen) — net
+    // als bij opslaanHuisstijlKleuren() gebruiken we update(), geen
+    // upsert(), want de RLS-policy staat alleen UPDATE toe.
+    const resultaten = await Promise.all(
+      Object.keys(sectieKleuren).map(key => {
+        const [sectie, rol] = key.split('.');
+        return window.supabase.from('huisstijl_secties').update({ kleur: sectieKleuren[key] }).eq('sectie', sectie).eq('rol', rol);
+      })
+    );
+    setSectiesOpslaan(false);
+    const eersteFout = resultaten.find(r => r.error);
+    if (eersteFout) {
+      setSectiesFout('Kon sectiekleuren niet opslaan: ' + eersteFout.error.message + ' (is sql/huisstijl_secties.sql al uitgevoerd in Supabase?)');
+      window.__showToast && window.__showToast('Opslaan mislukt — zie foutmelding');
+      return false;
+    }
+    window.__showToast && window.__showToast('Sectiekleuren toegepast op de website!');
     return true;
   }
 
@@ -4320,6 +4417,53 @@ function HuisstijlScreen() {
                 <input type="text" value={bgColor} onChange={e => setBgColor(e.target.value)} style={{ width: 110, fontFamily: 'var(--mono)' }} />
               </div>
             </Field>
+          </div>
+
+          <div className="form-section">
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <h3 style={{ marginBottom: 4 }}>Kleuren per sectie</h3>
+                <div className="sec-sub" style={{ marginBottom: 0 }}>
+                  Fijnere controle bovenop de 3 kleuren hierboven: deze 18 kleuren sturen specifiek navigatie, hero, banden, knoppen en footer aan. De kleuren hierboven blijven ook gelden voor de rest van de site (links, chips, formuliervelden, etc.).
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <button className="btn" onClick={resetSectieKleuren}><Icon name="refresh" size={14} /> Reset</button>
+                <button className="btn btn-primary" disabled={sectiesOpslaan || sectiesLaden} onClick={opslaanSectieKleuren}><Icon name="save" size={14} /> {sectiesOpslaan ? 'Bezig…' : 'Toepassen'}</button>
+              </div>
+            </div>
+
+            {sectiesFout && (
+              <div style={{ marginTop: 14 }}>
+                <HintCard variant="warn" icon="warn">{sectiesFout}</HintCard>
+              </div>
+            )}
+
+            {SECTIE_KLEUREN_GROEPEN.map(groep => (
+              <div key={groep.titel} style={{ marginTop: 20 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 10, color: 'var(--ink)' }}>{groep.titel}</div>
+                {groep.velden.map(veld => (
+                  <Field key={veld.key} label={veld.label}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
+                      {SECTIE_KLEURENPALET.map((c, i) => (
+                        <span
+                          key={i}
+                          className={"swatch" + (c.toLowerCase() === (sectieKleuren[veld.key] || '').toLowerCase() ? ' selected' : '')}
+                          style={{ background: c, width: 30, height: 30 }}
+                          onClick={() => setSectieKleuren(prev => ({ ...prev, [veld.key]: c }))}
+                        ></span>
+                      ))}
+                      <input
+                        type="text"
+                        value={sectieKleuren[veld.key] || ''}
+                        onChange={e => setSectieKleuren(prev => ({ ...prev, [veld.key]: e.target.value }))}
+                        style={{ width: 150, fontFamily: 'var(--mono)' }}
+                      />
+                    </div>
+                  </Field>
+                ))}
+              </div>
+            ))}
           </div>
 
           <div className="form-section">
