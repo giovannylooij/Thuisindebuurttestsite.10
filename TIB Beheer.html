@@ -1680,6 +1680,80 @@ function Dashboard({ onNav, onPreview }) {
 }
 window.Dashboard = Dashboard;
 
+/* === AdresVeld — adresinvoer met PDOK-suggesties, vult lat/lng automatisch === */
+function AdresVeld({ value, onChange, onLocatieGevonden }) {
+  const [suggesties, setSuggesties] = React.useState([]);
+  const [open, setOpen] = React.useState(false);
+  const [laden, setLaden] = React.useState(false);
+  const timerRef = React.useRef(null);
+  const boxRef = React.useRef(null);
+
+  React.useEffect(() => {
+    function onDocClick(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  function zoek(q) {
+    clearTimeout(timerRef.current);
+    if (!q || q.trim().length < 3) { setSuggesties([]); setOpen(false); return; }
+    timerRef.current = setTimeout(() => {
+      setLaden(true);
+      fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest?fq=type:adres&rows=6&q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(data => {
+          setSuggesties((data && data.response && data.response.docs) || []);
+          setOpen(true);
+        })
+        .catch(() => setSuggesties([]))
+        .finally(() => setLaden(false));
+    }, 300);
+  }
+
+  function kiesSuggestie(doc) {
+    setOpen(false);
+    fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/lookup?id=' + encodeURIComponent(doc.id))
+      .then(r => r.json())
+      .then(data => {
+        const gevonden = data && data.response && data.response.docs && data.response.docs[0];
+        const match = gevonden && gevonden.centroide_ll && /POINT\(([-0-9.]+) ([-0-9.]+)\)/.exec(gevonden.centroide_ll);
+        if (!match) return;
+        onChange(doc.weergavenaam);
+        onLocatieGevonden(parseFloat(match[2]), parseFloat(match[1]));
+      })
+      .catch(() => {});
+  }
+
+  return (
+    <div ref={boxRef} style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={value}
+        placeholder="Straatnaam, huisnr."
+        onChange={e => { onChange(e.target.value); zoek(e.target.value); }}
+        onFocus={() => suggesties.length && setOpen(true)}
+        autoComplete="off"
+      />
+      {laden && <div style={{ position: 'absolute', right: 10, top: 10, fontSize: 11, color: 'var(--muted)' }}>Zoeken…</div>}
+      {open && suggesties.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: '#fff', border: '1px solid var(--line)', borderRadius: 8, marginTop: 4, maxHeight: 220, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+          {suggesties.map(s => (
+            <div
+              key={s.id}
+              onClick={() => kiesSuggestie(s)}
+              style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--line)' }}
+            >
+              {s.weergavenaam}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MiniMap({ lat, lng, label }) {
   const ref = React.useRef(null);
   React.useEffect(() => {
@@ -1978,8 +2052,14 @@ function ClubjeEdit({ id, onBack }) {
 
           <div className="form-section">
             <h3>Locatie op de Buurtatlas</h3>
-            <div className="sec-sub">Vul het adres in en pas de coördinaten handmatig aan indien nodig.</div>
-            <Field label="Adres"><input type="text" value={fd.adres || ''} onChange={e => up('adres', e.target.value)} placeholder="Straatnaam, huisnr." /></Field>
+            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Kloppen de coördinaten niet precies? Pas ze hieronder handmatig aan.</div>
+            <Field label="Adres">
+              <AdresVeld
+                value={fd.adres || ''}
+                onChange={v => up('adres', v)}
+                onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
+              />
+            </Field>
             <div className="row-2">
               <Field label="Latitude">
                 <input type="number" step="0.0001" value={fd.lat || ''} onChange={e => up('lat', parseFloat(e.target.value) || fd.lat)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
