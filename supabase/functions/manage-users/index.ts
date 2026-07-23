@@ -146,7 +146,27 @@ Deno.serve(async (req) => {
 
     return json({ error: `Onbekende actie: ${action}` }, 400)
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Onbekende fout'
+    // Altijd server-side loggen (zichtbaar in Supabase → Edge Functions → Logs,
+    // filter op Error), ook als de client-boodschap hieronder mager uitvalt —
+    // sommige Supabase-SDK-fouten (bv. bij een mislukte uitnodigingsmail) hebben
+    // een lege .message ("{}" na stringificatie) maar wel bruikbare .status/.code.
+    console.error('manage-users error:', err)
+
+    let msg = 'Onbekende fout'
+    if (err instanceof Error) {
+      msg = err.message && err.message !== '{}' ? err.message : (err.name || 'Onbekende fout')
+      const extra = err as { status?: number; code?: string; cause?: unknown }
+      const details = [
+        extra.status ? `status ${extra.status}` : null,
+        extra.code ? `code ${extra.code}` : null,
+      ].filter(Boolean).join(', ')
+      if (details) msg += ` (${details})`
+      if (extra.cause) msg += ` — oorzaak: ${String(extra.cause)}`
+    } else if (err && typeof err === 'object') {
+      msg = JSON.stringify(err)
+    } else if (err) {
+      msg = String(err)
+    }
     return json({ error: msg }, 500)
   }
 })
