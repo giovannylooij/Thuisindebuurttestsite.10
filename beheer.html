@@ -1279,6 +1279,7 @@ const NAV = [
     { id: "aanmeldingen",      label: "Aanmeldingen",        icon: "inbox" },
     { id: "meedoen-aanvragen", label: "Meedoen aanvragen",   icon: "club" },
     { id: "bg-aanvragen",      label: "Buurtinitiatief aanvragen", icon: "club" },
+    { id: "meldingen",         label: "Meldingen",           icon: "warn" },
     { id: "berichten",         label: "Contact",              icon: "mail" },
     { id: "bestellingen",      label: "Bestellingen",        icon: "heart" },
   ]},
@@ -5031,7 +5032,7 @@ window.__handleJsonBackup = async function() {
   const tabellen = [
     'agenda', 'activiteiten', 'buurtgroepen', 'categorieen',
     'clubjes', 'nieuws', 'partners', 'netwerken',
-    'terugkerende_activiteiten', 'aanmeldingen', 'buurtgroep_aanvragen',
+    'terugkerende_activiteiten', 'aanmeldingen', 'buurtgroep_aanvragen', 'meldingen',
     'contact_berichten', 'boek_bestellingen', 'inzending_notities', 'profiles',
   ];
 
@@ -5557,6 +5558,82 @@ function BerichtenScreen({ onBadgeRefresh }) {
   });
 }
 
+/* Meldingen — "Bestaat dit nog?" */
+const MELDING_TYPE_LABELS = { clubje: 'Buurtinitiatief', activiteit: 'Activiteit', atlas: 'Buurtatlas-plek' };
+
+function MeldingenScreen({ onBadgeRefresh }) {
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [selectedId, setSelectedId] = React.useState(null);
+
+  React.useEffect(() => {
+    window.supabase.from('meldingen').select('*').order('gemeld_op', { ascending: false })
+      .then(({ data }) => { setItems(data || []); setLoading(false); });
+  }, []);
+
+  async function updateStatus(id, status) {
+    await window.supabase.from('meldingen').update({ status }).eq('id', id);
+    setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+    onBadgeRefresh && onBadgeRefresh();
+  }
+
+  async function verwijderItem(id) {
+    if (!confirm('Weet je zeker dat je deze melding wilt verwijderen?')) return;
+    const { error } = await window.supabase.from('meldingen').delete().eq('id', id);
+    if (error) { alert('Verwijderen mislukt: ' + error.message); }
+    else { setItems(prev => prev.filter(i => i.id !== id)); setSelectedId(null); onBadgeRefresh && onBadgeRefresh(); }
+  }
+
+  return React.createElement(MasterDetail, {
+    items, loading, selectedId, onSelect: setSelectedId,
+    renderListItem: (item, active) => React.createElement('div', null,
+      React.createElement('div', { style: { fontWeight: 600, fontSize: 13, marginBottom: 2, color: active ? '#fff' : 'var(--text)' } }, item.item_naam),
+      React.createElement('div', { style: { fontSize: 11, color: active ? 'rgba(255,255,255,0.8)' : 'var(--muted)', marginBottom: 4 } },
+        (MELDING_TYPE_LABELS[item.item_type] || item.item_type)
+      ),
+      active
+        ? React.createElement('span', { style: { fontSize: 11, fontWeight: 600 } }, item.status)
+        : React.createElement(StatusBadge, { status: item.status })
+    ),
+    renderDetail: (item) => React.createElement('div', null,
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 } },
+        React.createElement('div', null,
+          React.createElement('div', { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, item.item_naam),
+          React.createElement('div', { style: { fontSize: 13, color: 'var(--muted)' } },
+            (MELDING_TYPE_LABELS[item.item_type] || item.item_type) + ' · ' + new Date(item.gemeld_op).toLocaleString('nl-NL')
+          )
+        ),
+        React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' } },
+          React.createElement(StatusSelect, {
+            value: item.status,
+            options: ['nieuw', 'in behandeling', 'afgehandeld'],
+            onChange: s => updateStatus(item.id, s)
+          }),
+          React.createElement('button', {
+            onClick: () => verwijderItem(item.id),
+            style: { background: '#dc2626', color: 'white', border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }
+          }, '🗑 Verwijder')
+        )
+      ),
+      React.createElement('div', {
+        style: {
+          marginBottom: 16, padding: '10px 14px', borderRadius: 8,
+          background: item.bestaat_nog ? '#f0fdf4' : '#fef2f2',
+          border: '1px solid ' + (item.bestaat_nog ? '#bbf7d0' : '#fecaca'),
+          fontWeight: 600, fontSize: 13,
+          color: item.bestaat_nog ? '#166534' : '#991b1b',
+        }
+      }, item.bestaat_nog ? '✓ Melder zegt: bestaat nog' : '✕ Melder zegt: bestaat niet meer'),
+      item.bericht && React.createElement('div', { style: { marginBottom: 12 } },
+        React.createElement('div', { style: { fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 4 } }, 'Wat de melder schreef'),
+        React.createElement('div', { style: { fontSize: 14, color: 'var(--text)', background: '#f8f9fa', borderRadius: 8, padding: '12px 14px', whiteSpace: 'pre-wrap', lineHeight: 1.6 } }, item.bericht)
+      ),
+      React.createElement(DetailField, { label: 'E-mail van melder', value: item.email || '(niet opgegeven)' }),
+      React.createElement(NotitieSectie, { type: 'meldingen', id: item.id })
+    )
+  });
+}
+
 /* Bestellingen */
 function BestellingenScreen({ onBadgeRefresh }) {
   const [items, setItems] = React.useState([]);
@@ -5783,6 +5860,7 @@ function App() {
       { id: 'aanmeldingen',      tabel: 'aanmeldingen',        ts: 'aangemeld_op', filter: { type: ['tibber','activiteit','partner'] } },
       { id: 'meedoen-aanvragen', tabel: 'aanmeldingen',        ts: 'aangemeld_op', filter: { type: ['clubje','activiteit'] } },
       { id: 'bg-aanvragen',      tabel: 'buurtgroep_aanvragen', ts: 'aangemeld_op' },
+      { id: 'meldingen',         tabel: 'meldingen',           ts: 'gemeld_op' },
       { id: 'berichten',         tabel: 'contact_berichten',   ts: 'ontvangen_op' },
       { id: 'bestellingen',      tabel: 'boek_bestellingen',   ts: 'besteld_op' },
     ];
@@ -5968,6 +6046,7 @@ function App() {
     aanmeldingen:       { crumbs: ['Aanmeldingen'],         render: () => <AanmeldingenScreen      onBadgeRefresh={loadBadges} /> },
     'meedoen-aanvragen':{ crumbs: ['Meedoen aanvragen'],    render: () => <MeedoenAanvragenScreen  onBadgeRefresh={loadBadges} /> },
     'bg-aanvragen':     { crumbs: ['Buurtinitiatief aanvragen'], render: () => <BgAanvragenScreen       onBadgeRefresh={loadBadges} /> },
+    meldingen:     { crumbs: ['Meldingen'],             render: () => <MeldingenScreen     onBadgeRefresh={loadBadges} /> },
     berichten:     { crumbs: ['Contact'],                render: () => <BerichtenScreen     onBadgeRefresh={loadBadges} /> },
     bestellingen:  { crumbs: ['Bestellingen'],          render: () => <BestellingenScreen  onBadgeRefresh={loadBadges} /> },
   };
@@ -6171,7 +6250,7 @@ if (_hash.includes('type=recovery')) {
     var tabellen = [
       'agenda', 'activiteiten', 'buurtgroepen', 'categorieen',
       'clubjes', 'nieuws', 'partners', 'netwerken',
-      'terugkerende_activiteiten', 'aanmeldingen', 'buurtgroep_aanvragen',
+      'terugkerende_activiteiten', 'aanmeldingen', 'buurtgroep_aanvragen', 'meldingen',
       'contact_berichten', 'boek_bestellingen', 'inzending_notities', 'profiles'
     ];
 
@@ -6227,6 +6306,7 @@ if (_hash.includes('type=recovery')) {
         'contact_berichten',
         'formulieren_instellingen',
         'inzending_notities',
+        'meldingen',
         'netwerken',
         'nieuws',
         'partners',
