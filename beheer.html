@@ -2239,14 +2239,17 @@ function ActiviteitEdit({ item, onBack }) {
     const idx = DATA.activiteiten.findIndex(a => a.id === item.id);
     if (idx >= 0) {
       DATA.activiteiten[idx] = toSave;
+      window.__syncToSite && window.__syncToSite();
+      window.__supabaseUpsert('activiteiten', toSave);
+      window.__showToast && window.__showToast('Activiteit opgeslagen!');
     } else {
-      const newId = DATA.activiteiten.length > 0 ? Math.max(...DATA.activiteiten.map(a => Number(a.id) || 0)) + 1 : 1;
-      toSave = { ...toSave, id: newId };
-      DATA.activiteiten.push(toSave);
+      window.__supabaseInsert('activiteiten', toSave).then(created => {
+        if (!created) return;
+        DATA.activiteiten.push({ ...toSave, id: created.id });
+        window.__syncToSite && window.__syncToSite();
+        window.__showToast && window.__showToast('Activiteit opgeslagen!');
+      });
     }
-    window.__syncToSite && window.__syncToSite();
-    window.__supabaseUpsert('activiteiten', toSave);
-    window.__showToast && window.__showToast('Activiteit opgeslagen!');
   }
 
   function handleDelete() {
@@ -2442,14 +2445,17 @@ function AgendaEdit({ item, onBack }) {
     const idx = DATA.agenda.findIndex(a => a.id === item.id);
     if (idx >= 0) {
       DATA.agenda[idx] = toSave;
+      window.__syncToSite && window.__syncToSite();
+      window.__supabaseUpsert('agenda', toSave);
+      window.__showToast && window.__showToast('Agenda-item opgeslagen!');
     } else {
-      const newId = DATA.agenda.length > 0 ? Math.max(...DATA.agenda.map(a => Number(a.id) || 0)) + 1 : 1;
-      toSave = { ...toSave, id: newId };
-      DATA.agenda.push(toSave);
+      window.__supabaseInsert('agenda', toSave).then(created => {
+        if (!created) return;
+        DATA.agenda.push({ ...toSave, id: created.id });
+        window.__syncToSite && window.__syncToSite();
+        window.__showToast && window.__showToast('Agenda-item opgeslagen!');
+      });
     }
-    window.__syncToSite && window.__syncToSite();
-    window.__supabaseUpsert('agenda', toSave);
-    window.__showToast && window.__showToast('Agenda-item opgeslagen!');
   }
 
   function handleDelete() {
@@ -2673,14 +2679,17 @@ function NieuwsEdit({ item, onBack }) {
     const idx = DATA.nieuws.findIndex(n => n.id === item.id);
     if (idx >= 0) {
       DATA.nieuws[idx] = toSave;
+      window.__syncToSite && window.__syncToSite();
+      window.__supabaseUpsert('nieuws', toSave);
+      window.__showToast && window.__showToast('Nieuwsbericht opgeslagen!');
     } else {
-      const newId = DATA.nieuws.length > 0 ? Math.max(...DATA.nieuws.map(n => Number(n.id) || 0)) + 1 : 1;
-      toSave = { ...toSave, id: newId };
-      DATA.nieuws.push(toSave);
+      window.__supabaseInsert('nieuws', toSave).then(created => {
+        if (!created) return;
+        DATA.nieuws.push({ ...toSave, id: created.id });
+        window.__syncToSite && window.__syncToSite();
+        window.__showToast && window.__showToast('Nieuwsbericht opgeslagen!');
+      });
     }
-    window.__syncToSite && window.__syncToSite();
-    window.__supabaseUpsert('nieuws', toSave);
-    window.__showToast && window.__showToast('Nieuwsbericht opgeslagen!');
   }
 
   function handleDelete() {
@@ -3202,14 +3211,17 @@ function PartnerEdit({ item, onBack }) {
     const idx = DATA.partners.findIndex(p => p.id === item.id);
     if (idx >= 0) {
       DATA.partners[idx] = toSave;
+      window.__syncToSite && window.__syncToSite();
+      window.__supabaseUpsert('partners', toSave);
+      window.__showToast && window.__showToast('Partner opgeslagen!');
     } else {
-      const newId = DATA.partners.length > 0 ? Math.max(...DATA.partners.map(p => Number(p.id) || 0)) + 1 : 1;
-      toSave = { ...toSave, id: newId };
-      DATA.partners.push(toSave);
+      window.__supabaseInsert('partners', toSave).then(created => {
+        if (!created) return;
+        DATA.partners.push({ ...toSave, id: created.id });
+        window.__syncToSite && window.__syncToSite();
+        window.__showToast && window.__showToast('Partner opgeslagen!');
+      });
     }
-    window.__syncToSite && window.__syncToSite();
-    window.__supabaseUpsert('partners', toSave);
-    window.__showToast && window.__showToast('Partner opgeslagen!');
   }
 
   function handleDelete() {
@@ -3358,14 +3370,17 @@ function NetwerkEdit({ item, onBack }) {
     const idx = DATA.netwerken.findIndex(n => n.id === item.id);
     if (idx >= 0) {
       DATA.netwerken[idx] = toSave;
+      window.__syncToSite && window.__syncToSite();
+      window.__supabaseUpsert('netwerken', toSave);
+      window.__showToast && window.__showToast('Netwerk opgeslagen!');
     } else {
-      const newId = DATA.netwerken.length > 0 ? Math.max(...DATA.netwerken.map(n => Number(n.id) || 0)) + 1 : 1;
-      toSave = { ...toSave, id: newId };
-      DATA.netwerken.push(toSave);
+      window.__supabaseInsert('netwerken', toSave).then(created => {
+        if (!created) return;
+        DATA.netwerken.push({ ...toSave, id: created.id });
+        window.__syncToSite && window.__syncToSite();
+        window.__showToast && window.__showToast('Netwerk opgeslagen!');
+      });
     }
-    window.__syncToSite && window.__syncToSite();
-    window.__supabaseUpsert('netwerken', toSave);
-    window.__showToast && window.__showToast('Netwerk opgeslagen!');
   }
 
   function handleDelete() {
@@ -6361,6 +6376,24 @@ window.__supabaseUpsert = async function(tabel, item) {
   } catch(e) {
     console.warn('Supabase upsert mislukt:', tabel, e);
     window.__showToast && window.__showToast('Opslaan mislukt — controleer je verbinding en probeer het opnieuw.');
+  }
+};
+
+// Voor het aanmaken van NIEUWE rijen: nooit een zelfgekozen id meesturen.
+// De id-kolom is bij sommige tabellen een strikte identity-kolom die een
+// expliciete waarde weigert — dat deed opslaan tot nu toe stil mislukken.
+// Laat de database zelf een id uitgeven en geef die terug.
+window.__supabaseInsert = async function(tabel, item) {
+  try {
+    const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
+    const { id, ...zonderId } = item;
+    const { data, error } = await window.supabase.from(dbTabel).insert(zonderId).select().single();
+    if (error) throw error;
+    return data;
+  } catch(e) {
+    console.warn('Supabase insert mislukt:', tabel, e);
+    window.__showToast && window.__showToast('Opslaan mislukt — controleer je verbinding en probeer het opnieuw.');
+    return null;
   }
 };
 
