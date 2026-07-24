@@ -2298,6 +2298,26 @@ function ActiviteitEdit({ item, onBack }) {
               <Field label="E-mail"><input type="email" value={fd.email} onChange={e => up('email', e.target.value)} /></Field>
             </div>
           </div>
+          <div className="form-section">
+            <h3>Locatie op de Buurtatlas</h3>
+            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Kloppen de coördinaten niet precies? Pas ze hieronder handmatig aan.</div>
+            <Field label="Adres">
+              <AdresVeld
+                value={fd.adres || ''}
+                onChange={v => up('adres', v)}
+                onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
+              />
+            </Field>
+            <div className="row-2">
+              <Field label="Latitude">
+                <input type="number" step="0.0001" value={fd.lat || ''} onChange={e => up('lat', parseFloat(e.target.value) || fd.lat)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+              </Field>
+              <Field label="Longitude">
+                <input type="number" step="0.0001" value={fd.lng || ''} onChange={e => up('lng', parseFloat(e.target.value) || fd.lng)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+              </Field>
+            </div>
+            {(fd.lat && fd.lng) && <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} />}
+          </div>
         </div>
         <div>
           <div className="side-card">
@@ -3227,6 +3247,26 @@ function PartnerEdit({ item, onBack }) {
             </div>
             <Field label="Website"><input type="url" value={fd.website || ''} onChange={e => up('website', e.target.value)} placeholder="https://" /></Field>
             <Field label="Omschrijving"><textarea value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} rows={3} /></Field>
+          </div>
+          <div className="form-section">
+            <h3>Locatie op de Buurtatlas</h3>
+            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Kloppen de coördinaten niet precies? Pas ze hieronder handmatig aan.</div>
+            <Field label="Adres">
+              <AdresVeld
+                value={fd.adres || ''}
+                onChange={v => up('adres', v)}
+                onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
+              />
+            </Field>
+            <div className="row-2">
+              <Field label="Latitude">
+                <input type="number" step="0.0001" value={fd.lat || ''} onChange={e => up('lat', parseFloat(e.target.value) || fd.lat)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+              </Field>
+              <Field label="Longitude">
+                <input type="number" step="0.0001" value={fd.lng || ''} onChange={e => up('lng', parseFloat(e.target.value) || fd.lng)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+              </Field>
+            </div>
+            {(fd.lat && fd.lng) && <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} />}
           </div>
         </div>
         <div>
