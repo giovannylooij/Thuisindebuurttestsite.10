@@ -1182,6 +1182,9 @@ window.DATA = {
     { id: 'nav-7', label: 'Netwerken',    target: '/netwerken',    visible: true,  level: 0 },
     { id: 'nav-8', label: 'Nieuws',       target: '/nieuws',       visible: true,  level: 0 },
     { id: 'nav-9', label: 'Contact',      target: '/contact',      visible: true,  level: 0 },
+    { id: 'nav-10', label: 'Doe mee',     target: '/doemee',       visible: false, level: 0 },
+    { id: 'nav-11', label: 'Doneren',     target: '/doneren',      visible: false, level: 0 },
+    { id: 'nav-12', label: 'Leven is spelen (boek)', target: '/boek', visible: false, level: 0 },
   ],
 
   // Contact form subject / routing options
@@ -3081,8 +3084,15 @@ function PagesScreen() {
     const updated = pages.map(p => p.id === id ? { ...p, inMenu: v } : p);
     setPages(updated);
     DATA.pages = updated;
-    const navIdx = DATA.nav.findIndex(n => n.target === pages.find(p => p.id === id)?.slug);
-    if (navIdx >= 0) DATA.nav[navIdx].visible = v;
+    const page = pages.find(p => p.id === id);
+    const navIdx = DATA.nav.findIndex(n => n.target === page?.slug);
+    if (navIdx >= 0) {
+      DATA.nav[navIdx].visible = v;
+    } else if (page) {
+      // Pagina had nog geen entry in het navigatiemenu (bv. nieuw toegevoegde
+      // pagina) — zonder dit blijft de toggle hier stil zonder effect op de site.
+      DATA.nav.push({ id: 'nav-' + page.id, label: page.titel, target: page.slug, visible: v, level: 0 });
+    }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast((v ? '✓ Zichtbaar' : '○ Verborgen') + ': ' + pages.find(p => p.id === id)?.titel);
   }
