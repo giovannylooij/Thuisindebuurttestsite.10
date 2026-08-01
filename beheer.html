@@ -3086,13 +3086,20 @@ function PagesScreen() {
     DATA.pages = updated;
     const page = pages.find(p => p.id === id);
     const navIdx = DATA.nav.findIndex(n => n.target === page?.slug);
+    let navEntry;
     if (navIdx >= 0) {
       DATA.nav[navIdx].visible = v;
+      navEntry = DATA.nav[navIdx];
     } else if (page) {
       // Pagina had nog geen entry in het navigatiemenu (bv. nieuw toegevoegde
       // pagina) — zonder dit blijft de toggle hier stil zonder effect op de site.
-      DATA.nav.push({ id: 'nav-' + page.id, label: page.titel, target: page.slug, visible: v, level: 0 });
+      navEntry = { id: 'nav-' + page.id, label: page.titel, target: page.slug, visible: v, level: 0 };
+      DATA.nav.push(navEntry);
     }
+    // Naar Supabase — dit is de bron die de live site (www.thuisindebuurt.nl)
+    // rechtstreeks uitleest. DATA.nav/localStorage alleen bereikt de site niet,
+    // want die draait op een ander domein dan het CMS (app.thuisindebuurt.nl).
+    if (navEntry) window.__supabaseUpsert('site_navigatie', { ...navEntry, visible: v });
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast((v ? '✓ Zichtbaar' : '○ Verborgen') + ': ' + pages.find(p => p.id === id)?.titel);
   }
@@ -6430,13 +6437,15 @@ window.__supabaseBulkUpsert = async function(tabel, items) {
 };
 
 async function loadFromSupabase() {
-  const tabellen = ['clubjes', 'activiteiten', 'agenda', 'nieuws', 'partners', 'netwerken', 'terugkerende_activiteiten'];
+  const tabellen = ['clubjes', 'activiteiten', 'agenda', 'nieuws', 'partners', 'netwerken', 'terugkerende_activiteiten', 'site_navigatie'];
   await Promise.all(tabellen.map(async (tabel) => {
     try {
       const { data, error } = await window.supabase.from(tabel).select('*');
       if (!error && Array.isArray(data) && data.length > 0) {
         if (tabel === 'terugkerende_activiteiten') {
           window.DATA.weekagenda = data;
+        } else if (tabel === 'site_navigatie') {
+          window.DATA.nav = data;
         } else {
           window.DATA[tabel] = data;
         }
