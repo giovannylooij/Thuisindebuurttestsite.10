@@ -1302,6 +1302,7 @@ const BEHEERDER_ROUTES = new Set(['dashboard', 'clubjes']);
 function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
   const role = profile?.role || 'beheerder';
   const HIDDEN = {
+    superadmin: ['agenda', 'buurtatlas'],
     redactie: ['gebruikers', 'huisstijl', 'domein'],
     beheerder: ['clubjes', 'activiteiten', 'agenda', 'nieuws', 'partners',
                 'netwerken', 'buurtatlas', 'categorieen', 'media', 'menu',
