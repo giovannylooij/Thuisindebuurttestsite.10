@@ -37,15 +37,29 @@ on conflict (id) do nothing;
 -- gebruiker) moet het kunnen lezen én wijzigen. Zonder RLS-policies is de
 -- tabel met RLS aan voor iedereen ontoegankelijk (dus zowel CMS als site
 -- zouden een lege lijst terugkrijgen — geen menu-items zonder deze policies).
+--
+-- Let op: het CMS gebruikt .upsert() (window.__supabaseUpsert), niet een
+-- kale .update(). Postgres voert upsert uit als "INSERT ... ON CONFLICT DO
+-- UPDATE" — daarvoor is altijd een insert-policy nodig, ook als de rij al
+-- bestaat en de operatie in de praktijk altijd op de conflict-tak uitkomt.
+-- Zonder insert-policy faalt de toggle in het CMS met "Opslaan mislukt".
 alter table site_navigatie enable row level security;
 
+drop policy if exists "site_navigatie: publiek leesbaar" on site_navigatie;
 create policy "site_navigatie: publiek leesbaar"
   on site_navigatie for select
   to anon, authenticated
   using (true);
 
+drop policy if exists "site_navigatie: ingelogde gebruikers mogen wijzigen" on site_navigatie;
 create policy "site_navigatie: ingelogde gebruikers mogen wijzigen"
   on site_navigatie for update
   to authenticated
   using (true)
+  with check (true);
+
+drop policy if exists "site_navigatie: ingelogde gebruikers mogen upserten" on site_navigatie;
+create policy "site_navigatie: ingelogde gebruikers mogen upserten"
+  on site_navigatie for insert
+  to authenticated
   with check (true);
