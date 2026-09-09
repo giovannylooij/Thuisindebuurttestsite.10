@@ -1,6 +1,6 @@
 # To-do & stand van zaken — Thuis in de Buurt
 
-*Bijgewerkt: 8 september 2026*
+*Bijgewerkt: 9 september 2026*
 
 ## Samenvatting
 
@@ -12,11 +12,14 @@ de website nooit, en de site crashte op onbekende categoriewaarden.
 Daarnaast liggen er nu **drie rapporten** klaar met uitgezocht werk:
 opleverpunten, snelheid en Margareth's feedback (deel 1).
 
+Van Margareth's feedback (deel 1) zijn alle **tekstwijzigingen en het dubbele
+icoontje inmiddels live**. Wat overblijft zijn de zwaardere punten: de velden in
+het CMS die aan elkaar vastzitten, en het categorieblok.
+
 **Wat nu het meest urgent is:**
 1. De categorieën goed regelen — dat blokkeert Margareth's nieuwe categorielijst
    én is de oorzaak van de crash van eerder.
-2. De kleine tekst- en veldwijzigingen uit Margareth's rapport (snel af te ronden,
-   direct zichtbaar voor haar).
+2. B4 afmaken (keuze A/B + SQL-migratie) en daarna B3.
 3. Een besluit over iDEAL (wacht al op een Mollie-account).
 
 **Rode draad in de gevonden problemen:** op meerdere plekken bewaart het CMS
@@ -40,36 +43,33 @@ probleem nog.
 
 ---
 
-## 🔶 Klaar, maar nog niet live
-
-- [ ] **Nieuwe intro-tekst Buurtinitiatieven-pagina** — doorgevoerd en lokaal
-      getest, staat nog ongecommit. *Alleen nog committen + pushen.*
-
----
-
 ## 📋 Margareth's opmerkingen deel 1
 
 > Volledige uitwerking met code-locaties staat in `PLAN-OPMERKINGEN-DEEL1.md` (+ PDF).
 
 ### Tekstwijzigingen — snel af te ronden
-- [x] A1. Intro-tekst Buurtinitiatieven-pagina *(zie hierboven, nog te pushen)*
-- [ ] A2. Detailpagina: "Wil je aansluiten?" verwijst nu naar de Contact-tab,
-      wordt: verwijzing naar het aanmeldformulier
-- [ ] A3. Bevestigingstekst "Margareth (beheerder) ontvangt…" vervangen
-      ⚠️ *besluit nodig: de nieuwe tekst belooft een bevestigingsmail die nog niet bestaat*
-- [ ] A4. "Meld je buurtinitiatief aan" → "Meld jouw buurtinitiatief aan"
+- [x] A1. Intro-tekst Buurtinitiatieven-pagina — **live**
+- [x] A2. Detailpagina: verwijst nu naar het aanmeldformulier — **live**
+      *(laatste zin schakelt mee als de Contact-tab uitstaat)*
+- [x] A3. Bevestigingstekst vervangen — **live**
+      ⚠️ *de tekst belooft een bevestigingsmail die nog steeds niet verstuurd wordt*
+- [x] A4. "Meld jouw buurtinitiatief aan" — **live** (kop én knop)
+- [x] Plusje weg van de knop "Meld jouw buurtinitiatief aan" — **live**
 
 ### Velden opschonen
-- [ ] B1. Veld "Categorie" weg uit het publieke aanmeldformulier
-      *(bewoners kiezen niet meer zelf; beheerder doet dit in het CMS)*
+- [x] B1. Veld "Categorie" weg uit het publieke aanmeldformulier — **live**
+      *(naamveld meteen over de volle breedte gezet)*
 - [ ] B2. Veld "WhatsApp" weg uit het CMS *(is een lege huls, slaat niets op)*
 - [ ] B3. "Wat" loskoppelen van "Categorie" *(zijn nu letterlijk hetzelfde veld)*
-      — vraagt een kleine database-uitbreiding
-- [ ] B4. "Uitgebreide omschrijving" weghalen en "Korte omschrijving" hernoemen
-      naar "Omschrijving" *(het veld is nu een nep-editor zonder opslag)*
+      — vraagt een nieuwe kolom in de database
+- [ ] B4. "Uitgebreide omschrijving" een écht vrij tekstveld maken
+      **→ uitgewerkt, wacht op keuze A of B (tonen op de site of alleen opslaan)
+      en op een SQL-migratie die Giovanny draait.** Zie het actieplan.
 
 ### Bugs
-- [ ] C1. Dubbel icoontje op de kaartjes *(site voegt automatisch een tweede icoon toe)*
+- [x] C1. Dubbel icoontje op de kaartjes — **live**
+      *(alleen bij buurtinitiatieven weggehaald; bij activiteiten is dit het
+      enige icoon, dus daar blijft het staan)*
 - [ ] C2. Nieuwe categorie toevoegen werkt niet *(wordt niet opgeslagen in de lijst)*
 - [ ] C3. **Categorie hernoemen/verwijderen werkt niet door** naar buurtinitiatieven
       en activiteiten — *dit is de oorzaak van de eerdere crash*
@@ -146,12 +146,12 @@ probleem nog.
 
 ## Voorgestelde volgorde
 
-1. **Nu meteen:** de nieuwe intro-tekst pushen (staat klaar).
-2. **Korte klus, veel waarde:** A2, A4, B1, B2, C1 — allemaal klein en direct
-   zichtbaar voor Margareth. In één ronde te doen.
+1. **Kleine restjes:** B2 (WhatsApp-veld weg) — klein en direct zichtbaar.
+2. **B4 afmaken:** keuze A/B maken, SQL draaien, veld aansluiten.
+   Daarna B3 (dat vraagt dezelfde soort ingreep).
 3. **Categorieblok:** C2 → C3 → D → opschonen kapotte waarden. Deze volgorde is
    belangrijk, anders dubbel werk.
 4. **Besluit iDEAL:** zodra het Mollie-account er is.
 5. **Rechten-audit** — laag zichtbaar, maar het gaat om persoonsgegevens.
 6. **Snelheid** — begin met de vier kleine punten, de grote apart inplannen.
-7. **Rest:** B3/B4, opruimen, E.
+7. **Rest:** opruimen, E (teksten zelf beheerbaar maken).

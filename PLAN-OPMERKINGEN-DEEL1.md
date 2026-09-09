@@ -91,13 +91,46 @@ De knop op de pagina zelf ([`clubjes.jsx:375`](bundle-src/clubjes.jsx#L375)) geb
 
 Er zit **geen opslag achter**: wat je erin typt wordt nergens bewaard en verschijnt nergens op de website. Dat bevestigt haar vermoeden ("die tekst is toch nergens zichtbaar op de website, toch?") — klopt.
 
-**Twee opties:**
-1. **Veld helemaal weghalen** — eerlijk en simpel; "Korte omschrijving" (regel 1998, die wél werkt en wél op de site staat) blijft over. Hernoemen naar gewoon "Omschrijving".
-2. **Er een echt werkend veld van maken** — vraagt een extra kolom in `clubjes` én een plek op de detailpagina waar die langere tekst getoond wordt.
+**Besluit Giovanny (9 sep 2026):** het moet een écht vrij tekstveld worden — dus
+niet weghalen. Uitgewerkt en klaargezet, wacht nog op één keuze (zie onder).
 
-**Advies:** optie 1, tenzij Margareth echt behoefte heeft aan een lange tekst per buurtinitiatief op de site.
+#### Wat er precies nodig is
 
-**Complexiteit:** Simpel (optie 1) / Gemiddeld (optie 2).
+**1. Nieuwe kolom in de database.** Ik heb de tabel `clubjes` opgevraagd; de
+kolommen zijn: `id, naam, categorie, wijk, omschrijving, voor_wie, waar,
+wanneer, kosten, contact, email, telefoon, foto_url, lat, lng, status,
+uitgelicht, leden, aangemaakt_op, contact_zichtbaar, beheerder_user_id,
+icoon_url, icoon_label`. Er is dus **geen** kolom voor een uitgebreide
+omschrijving — `omschrijving` is de korte die op de kaartjes en de detailpagina
+staat. Er moet een kolom bij (bijv. `uitgebreide_omschrijving`, type text).
+Kleine SQL-migratie die Giovanny één keer in Supabase draait, zoals bij
+`site_navigatie`.
+
+**2. Het veld echt aansluiten** in het CMS: sjabloontekst eruit, leeg beginnen,
+waarde in de state bijhouden en meesturen bij Opslaan.
+
+**3. Schijn-tekstverwerker vervangen door een gewoon meerregelig tekstvak.**
+De knoppen (vet, cursief, lijst, link, afbeelding) doen nu niets blijvends. Ze
+wél laten werken betekent opgemaakte HTML opslaan en die op de site tonen —
+dat vraagt ontsmetting van de invoer, anders kan er via dat veld code op de
+site terechtkomen. Advies: gewoon vrije tekst. Vet/cursief is desgewenst een
+aparte, zorgvuldige klus.
+
+#### Openstaande keuze: wel of niet tonen op de site
+
+Margareth vraagt zelf: *"Die tekst is toch nergens zichtbaar op de website,
+toch?"* — dat klopt nu. Maar opslaan zonder tonen betekent dat ze een verhaal
+typt dat niemand ziet.
+
+Op de detailpagina staat onder **"Over [naam]"** nu alleen de korte
+omschrijving (bij de Wijkborrel één zin) — daar is ruimte voor meer.
+
+- **A (advies):** opslaan én tonen op de detailpagina, onder de korte
+  omschrijving. Het veld doet dan wat het belooft en detailpagina's worden
+  inhoudelijker.
+- **B:** alleen opslaan, niet tonen — wordt een intern notitieveld.
+
+**Complexiteit:** Gemiddeld (kolom + CMS + weergave op de site).
 
 ---
 
