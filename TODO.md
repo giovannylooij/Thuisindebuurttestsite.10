@@ -1,6 +1,6 @@
 # To-do & stand van zaken — Thuis in de Buurt
 
-*Bijgewerkt: 10 september 2026*
+*Bijgewerkt: 10 september 2026 (bijgewerkt na C2/C3)*
 
 ## Samenvatting
 
@@ -16,13 +16,13 @@ Van Margareth's feedback (deel 1) zijn alle **tekstwijzigingen en het dubbele
 icoontje inmiddels live**. Wat overblijft zijn de zwaardere punten: de velden in
 het CMS die aan elkaar vastzitten, en het categorieblok.
 
-De nieuwe categorielijst staat inmiddels live en alle 19 items zijn eraan
-gekoppeld. Wat nog ontbreekt is de *oorzaak* wegnemen: hernoemt of verwijdert
-iemand straks een categorie in het CMS, dan komen de items er opnieuw los van.
+De nieuwe categorielijst staat live, alle 19 items zijn eraan gekoppeld, en
+het CMS is zo aangepast dat die rommel niet meer kan terugkomen (hernoemen
+loopt mee, verwijderen wordt geblokkeerd zolang een categorie in gebruik is).
 
 **Wat nu het meest urgent is:**
-1. C3 (en C2) — voorkomen dat de categorie-rommel terugkomt.
-2. B4 afmaken (keuze A/B + SQL-migratie) en daarna B3.
+1. B4 afmaken (keuze A of B + SQL-migratie) en daarna B3.
+2. Rechten-audit database — het gaat om persoonsgegevens.
 3. Een besluit over iDEAL (wacht al op een Mollie-account).
 
 **Rode draad in de gevonden problemen:** op meerdere plekken bewaart het CMS
@@ -73,9 +73,14 @@ probleem nog.
 - [x] C1. Dubbel icoontje op de kaartjes — **live**
       *(alleen bij buurtinitiatieven weggehaald; bij activiteiten is dit het
       enige icoon, dus daar blijft het staan)*
-- [ ] C2. Nieuwe categorie toevoegen werkt niet *(wordt niet opgeslagen in de lijst)*
-- [ ] C3. **Categorie hernoemen/verwijderen werkt niet door** naar buurtinitiatieven
-      en activiteiten — *dit is de oorzaak van de eerdere crash*
+- [x] C2. Vrij typen van een categorie verwijderd — **live**
+      *(nieuwe categorieën maak je in het Categorieën-scherm; zo is 'Festival'
+      destijds ontstaan)*
+- [x] C3. Hernoemen loopt nu mee naar buurtinitiatieven én activiteiten;
+      verwijderen wordt geblokkeerd zolang een categorie in gebruik is — **live**
+      *(hiermee kan de categorie-rommel niet meer terugkomen)*
+- [x] Meegefikst: filterknoppen in het CMS stonden vast op de oude categorieën,
+      en nieuwe items kregen standaard het niet meer bestaande 'Sociaal'
 
 ### Overig
 - [x] D. Nieuwe categorielijst doorgevoerd (7 categorieën) — **live**
@@ -151,10 +156,7 @@ probleem nog.
 
 ## Voorgestelde volgorde
 
-1. **C3 + C2 afmaken:** zorgen dat hernoemen/verwijderen van een categorie
-   meeloopt naar de items, en dat nieuwe categorieën netjes worden opgeslagen.
-   Zonder dit ontstaat de rommel die we net hebben opgeruimd gewoon opnieuw.
-2. **B4 afmaken:** keuze A/B maken, SQL draaien, veld aansluiten.
+1. **B4 afmaken:** keuze A of B maken, SQL draaien, veld aansluiten.
    Daarna B3 (dat vraagt dezelfde soort ingreep).
 4. **Besluit iDEAL:** zodra het Mollie-account er is.
 5. **Rechten-audit** — laag zichtbaar, maar het gaat om persoonsgegevens.
