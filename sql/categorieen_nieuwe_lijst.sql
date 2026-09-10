@@ -20,6 +20,10 @@
 -- Dit is wat het keuzemenu in het CMS toont (bij Buurtinitiatieven,
 -- Activiteiten en het scherm Categorieen).
 
+-- Alles in een transactie: deel 1 en deel 2 slagen samen, of er verandert
+-- niets. Zo kan er geen tussentoestand ontstaan waarin items los staan.
+begin;
+
 delete from categorieen;
 
 insert into categorieen (naam, volgorde, kleur, icoon) values
@@ -77,6 +81,8 @@ update activiteiten set categorie = 'Spel'
 
 update activiteiten set categorie = 'Lezen, Schrijven en Vertellen'
   where naam = 'Leeskring';
+
+commit;
 
 
 -- =====================================================================
