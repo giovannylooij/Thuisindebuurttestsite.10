@@ -1,6 +1,6 @@
 # To-do & stand van zaken — Thuis in de Buurt
 
-*Bijgewerkt: 9 september 2026*
+*Bijgewerkt: 10 september 2026*
 
 ## Samenvatting
 
@@ -16,9 +16,12 @@ Van Margareth's feedback (deel 1) zijn alle **tekstwijzigingen en het dubbele
 icoontje inmiddels live**. Wat overblijft zijn de zwaardere punten: de velden in
 het CMS die aan elkaar vastzitten, en het categorieblok.
 
+De nieuwe categorielijst staat inmiddels live en alle 19 items zijn eraan
+gekoppeld. Wat nog ontbreekt is de *oorzaak* wegnemen: hernoemt of verwijdert
+iemand straks een categorie in het CMS, dan komen de items er opnieuw los van.
+
 **Wat nu het meest urgent is:**
-1. De categorieën goed regelen — dat blokkeert Margareth's nieuwe categorielijst
-   én is de oorzaak van de crash van eerder.
+1. C3 (en C2) — voorkomen dat de categorie-rommel terugkomt.
 2. B4 afmaken (keuze A/B + SQL-migratie) en daarna B3.
 3. Een besluit over iDEAL (wacht al op een Mollie-account).
 
@@ -59,7 +62,7 @@ probleem nog.
 ### Velden opschonen
 - [x] B1. Veld "Categorie" weg uit het publieke aanmeldformulier — **live**
       *(naamveld meteen over de volle breedte gezet)*
-- [ ] B2. Veld "WhatsApp" weg uit het CMS *(is een lege huls, slaat niets op)*
+- [x] B2. Veld "WhatsApp" weg uit het CMS — **live** *(was een lege huls die niets opsloeg)*
 - [ ] B3. "Wat" loskoppelen van "Categorie" *(zijn nu letterlijk hetzelfde veld)*
       — vraagt een nieuwe kolom in de database
 - [ ] B4. "Uitgebreide omschrijving" een écht vrij tekstveld maken
@@ -75,10 +78,12 @@ probleem nog.
       en activiteiten — *dit is de oorzaak van de eerdere crash*
 
 ### Overig
-- [ ] D. Nieuwe categorielijst doorvoeren (7 categorieën)
-      ⚠️ *pas ná C3, anders raken alle bestaande items hun categorie kwijt*
-- [ ] Kapotte categoriewaarden in de database opschonen
-      *(o.a. "Happy Feet" heeft een hele zin als categorie)*
+- [x] D. Nieuwe categorielijst doorgevoerd (7 categorieën) — **live**
+      *(Eten · Ontmoeting/Sociaal · Sport en Bewegen · Spel · Lezen, Schrijven
+      en Vertellen · Kunst en Cultuur · Evenement/Festival)*
+- [x] Kapotte categoriewaarden opgeschoond — **live**
+      *(alle 19 items zijn in dezelfde migratie aan een nieuwe categorie
+      gekoppeld; niets staat meer los van de lijst)*
 - [ ] E. Teksten zelf beheerbaar maken voor Margareth *(grotere klus)*
 - [ ] Gesprek over ontbrekende icoontjes — *ik lever vooraf een overzicht van
       alle beschikbare iconen aan*
@@ -146,11 +151,11 @@ probleem nog.
 
 ## Voorgestelde volgorde
 
-1. **Kleine restjes:** B2 (WhatsApp-veld weg) — klein en direct zichtbaar.
+1. **C3 + C2 afmaken:** zorgen dat hernoemen/verwijderen van een categorie
+   meeloopt naar de items, en dat nieuwe categorieën netjes worden opgeslagen.
+   Zonder dit ontstaat de rommel die we net hebben opgeruimd gewoon opnieuw.
 2. **B4 afmaken:** keuze A/B maken, SQL draaien, veld aansluiten.
    Daarna B3 (dat vraagt dezelfde soort ingreep).
-3. **Categorieblok:** C2 → C3 → D → opschonen kapotte waarden. Deze volgorde is
-   belangrijk, anders dubbel werk.
 4. **Besluit iDEAL:** zodra het Mollie-account er is.
 5. **Rechten-audit** — laag zichtbaar, maar het gaat om persoonsgegevens.
 6. **Snelheid** — begin met de vier kleine punten, de grote apart inplannen.
