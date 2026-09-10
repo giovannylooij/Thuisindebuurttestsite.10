@@ -1773,68 +1773,31 @@ function MiniMap({ lat, lng, label }) {
 /* === CategorieSelect — laadt uit categorieen tabel === */
 function CategorieSelect({ value, onChange }) {
   const [opties, setOpties] = React.useState(null);
-  const [nieuwModus, setNieuwModus] = React.useState(false);
-  const [nieuwWaarde, setNieuwWaarde] = React.useState('');
 
   React.useEffect(() => {
     window.supabase
       .from('categorieen')
       .select('naam')
       .order('volgorde')
-      .then(({ data }) => {
-        const namen = data ? data.map(r => r.naam) : [];
-        setOpties(namen);
-        if (value && !namen.includes(value)) {
-          setNieuwModus(true);
-          setNieuwWaarde(value);
-        }
-      });
+      .then(({ data }) => setOpties(data ? data.map(r => r.naam) : []));
   }, []);
-
-  function terugNaarDropdown() {
-    if (nieuwWaarde && !opties.includes(nieuwWaarde)) {
-      setOpties(prev => [...prev, nieuwWaarde]);
-    }
-    setNieuwModus(false);
-  }
 
   if (opties === null) return <select disabled><option>Laden…</option></select>;
 
-  if (nieuwModus) {
-    return (
-      <div style={{ display: 'flex', gap: 6 }}>
-        <input
-          type="text"
-          value={nieuwWaarde}
-          onChange={e => { setNieuwWaarde(e.target.value); onChange(e.target.value); }}
-          placeholder="Typ nieuwe categorie…"
-          autoFocus
-        />
-        <button
-          type="button"
-          onClick={terugNaarDropdown}
-          title="Terug naar dropdown"
-          style={{ background: 'none', border: '1px solid var(--line)', borderRadius: 6, cursor: 'pointer', padding: '0 10px', color: 'var(--muted)', fontSize: 18, lineHeight: 1, flexShrink: 0 }}
-        >×</button>
-      </div>
-    );
-  }
+  // Nieuwe categorieen maak je in het scherm Categorieen, niet hier. Vrij typen
+  // zette de categorie alleen op dit ene item en niet in de gedeelde lijst,
+  // waardoor hij nergens anders verscheen.
+  //
+  // Staat de opgeslagen waarde niet (meer) in de lijst, dan tonen we hem apart.
+  // Anders zou het keuzemenu stilzwijgend een andere categorie laten zien dan
+  // er werkelijk is opgeslagen.
+  const onbekend = value && !opties.includes(value);
 
   return (
-    <select
-      value={opties.includes(value) ? value : (opties[0] || '')}
-      onChange={e => {
-        if (e.target.value === '__nieuw__') {
-          setNieuwModus(true);
-          setNieuwWaarde('');
-        } else {
-          onChange(e.target.value);
-        }
-      }}
-    >
+    <select value={value || ''} onChange={e => onChange(e.target.value)}>
+      {!value && <option value="" disabled>Kies een categorie…</option>}
+      {onbekend && <option value={value}>{value} — staat niet in de lijst</option>}
       {opties.map(naam => <option key={naam} value={naam}>{naam}</option>)}
-      <option disabled>──────────</option>
-      <option value="__nieuw__">+ Nieuwe categorie toevoegen…</option>
     </select>
   );
 }
@@ -1855,7 +1818,10 @@ function ClubjesList({ onNav, onEdit, profile }) {
     window.__showToast && window.__showToast('Buurtinitiatief verwijderd');
     forceUpdate();
   }
-  const cats = ['Alle', 'Sport', 'Cultuur', 'Sociaal', 'Buiten', 'Lezen & leren'];
+  // Afgeleid uit de items zelf, zodat dit meebeweegt met de categorielijst.
+  const cats = ['Alle'].concat(
+    Array.from(new Set(DATA.clubjes.map(c => c.categorie).filter(Boolean))).sort()
+  );
   const rows = DATA.clubjes
     .filter(c => !isBeheerder || c.id === profile.club_id)
     .filter(c => filter === 'Alle' || c.categorie === filter)
@@ -1935,7 +1901,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
 
 function ClubjeEdit({ id, onBack }) {
   const existing = DATA.clubjes.find(c => c.id === id);
-  const defaults = existing || { naam: 'Nieuw buurtinitiatief', categorie: 'Sociaal', wijk: '', omschrijving: '', voor_wie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false, contact_zichtbaar: false };
+  const defaults = existing || { naam: 'Nieuw buurtinitiatief', categorie: 'Ontmoeting/Sociaal', wijk: '', omschrijving: '', voor_wie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false, contact_zichtbaar: false };
   const [fd, setFd] = React.useState({ ...defaults });
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [uitgelicht, setUitgelicht] = React.useState(!!defaults.uitgelicht);
@@ -2361,7 +2327,7 @@ function ActiviteitenScreen() {
     .filter(a => !search || [a.naam, a.type, a.waar, a.contact].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
 
   if (editing !== null) {
-    const item = DATA.activiteiten.find(a => a.id === editing) || { id: null, naam: 'Nieuwe activiteit', type: 'Ontmoeting', categorie: 'Sociaal', wanneer: '', waar: '', kosten: '', contact: '', email: '', herhalend: true, status: 'Concept' };
+    const item = DATA.activiteiten.find(a => a.id === editing) || { id: null, naam: 'Nieuwe activiteit', type: 'Ontmoeting', categorie: 'Ontmoeting/Sociaal', wanneer: '', waar: '', kosten: '', contact: '', email: '', herhalend: true, status: 'Concept' };
     return <ActiviteitEdit item={item} onBack={() => setEditing(null)} />;
   }
 
@@ -3891,16 +3857,47 @@ function CategoriesScreen() {
     setEditKleurIdx(kleuren.indexOf(c.kleur) >= 0 ? kleuren.indexOf(c.kleur) : 0);
   }
 
-  async function saveEdit(id, origIcoon) {
+  async function saveEdit(id, origIcoon, oudeNaam) {
     if (!editNaam.trim()) return;
+    const nieuweNaam = editNaam.trim();
     setSaving(true);
     const { error } = await window.supabase.from('categorieen').update({
-      naam: editNaam.trim(),
+      naam: nieuweNaam,
       kleur: kleuren[editKleurIdx],
       icoon: origIcoon
     }).eq('id', id);
-    if (error) { window.__showToast && window.__showToast('Fout: ' + error.message); }
-    else { window.__showToast && window.__showToast('Categorie opgeslagen: ' + editNaam.trim()); setEditingId(null); await laad(); }
+    if (error) {
+      window.__showToast && window.__showToast('Fout: ' + error.message);
+      setSaving(false);
+      return;
+    }
+
+    // Buurtinitiatieven en activiteiten bewaren hun categorie als losse tekst.
+    // Zonder deze stap houden ze de oude naam en vallen ze buiten de lijst.
+    let meegenomen = 0;
+    let misluktMee = null;
+    if (oudeNaam && oudeNaam !== nieuweNaam) {
+      for (const tabel of ['clubjes', 'activiteiten']) {
+        const res = await window.supabase
+          .from(tabel)
+          .update({ categorie: nieuweNaam })
+          .eq('categorie', oudeNaam)
+          .select('id');
+        if (res.error) misluktMee = res.error.message;
+        else meegenomen += (res.data || []).length;
+      }
+    }
+
+    if (misluktMee) {
+      window.__showToast && window.__showToast('Categorie hernoemd, maar items bijwerken mislukte: ' + misluktMee);
+    } else {
+      window.__showToast && window.__showToast(
+        'Categorie opgeslagen: ' + nieuweNaam +
+        (meegenomen > 0 ? ' — ' + meegenomen + ' item' + (meegenomen === 1 ? '' : 's') + ' meegenomen' : '')
+      );
+    }
+    setEditingId(null);
+    await laad();
     setSaving(false);
   }
 
@@ -3920,12 +3917,34 @@ function CategoriesScreen() {
   }
 
   async function handleDelete(c) {
-    const { count } = await window.supabase.from('clubjes').select('id', { count: 'exact', head: true }).eq('categorie', c.naam);
-    const aantal = count || 0;
-    const msg = aantal > 0
-      ? `${aantal} buurtinitiatief${aantal !== 1 ? 'en' : ''} gebruik${aantal !== 1 ? 'en' : 't'} categorie "${c.naam}". Toch verwijderen?`
-      : `Categorie "${c.naam}" definitief verwijderen?`;
-    if (!window.confirm(msg)) return;
+    // Tel in BEIDE tabellen; eerder keek dit alleen naar buurtinitiatieven,
+    // waardoor activiteiten stilletjes achterbleven met een categorie die niet
+    // meer bestond.
+    const tellingen = [];
+    for (const tabel of ['clubjes', 'activiteiten']) {
+      const res = await window.supabase.from(tabel)
+        .select('id', { count: 'exact', head: true }).eq('categorie', c.naam);
+      tellingen.push({ tabel, aantal: res.count || 0 });
+    }
+    const totaal = tellingen.reduce((s, t) => s + t.aantal, 0);
+
+    if (totaal > 0) {
+      const omschrijving = tellingen
+        .filter(t => t.aantal > 0)
+        .map(t => t.aantal + ' ' + (t.tabel === 'clubjes'
+          ? 'buurtinitiatie' + (t.aantal === 1 ? 'f' : 'ven')
+          : 'activiteit' + (t.aantal === 1 ? '' : 'en')))
+        .join(' en ');
+      window.alert(
+        'Categorie "' + c.naam + '" wordt nog gebruikt door ' + omschrijving + '.\n\n' +
+        'Geef die eerst een andere categorie. Daarna kun je deze verwijderen.\n\n' +
+        'Tip: wil je alleen de naam veranderen, gebruik dan Bewerken — dan gaan ' +
+        'de items automatisch mee.'
+      );
+      return;
+    }
+
+    if (!window.confirm(`Categorie "${c.naam}" definitief verwijderen?`)) return;
     const { error } = await window.supabase.from('categorieen').delete().eq('id', c.id);
     if (error) { window.__showToast && window.__showToast('Fout: ' + error.message); }
     else { window.__showToast && window.__showToast('Verwijderd: ' + c.naam); await laad(); }
@@ -3957,7 +3976,7 @@ function CategoriesScreen() {
                   </div>
                 </Field>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-sm btn-primary" onClick={() => saveEdit(c.id, c.icoon)} disabled={saving}><Icon name="check" size={12} /> Opslaan</button>
+                  <button className="btn btn-sm btn-primary" onClick={() => saveEdit(c.id, c.icoon, c.naam)} disabled={saving}><Icon name="check" size={12} /> Opslaan</button>
                   <button className="btn btn-sm" onClick={() => setEditingId(null)}>Annuleren</button>
                 </div>
               </div>
