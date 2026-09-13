@@ -145,7 +145,7 @@ Die regel geldt voor **alle 13 pagina's** met zo'n kop, niet alleen deze.
 
 **Besluit Giovanny:** alleen de introtekst op de Buurtinitiatieven-pagina.
 
-**Status: uitgevoerd en lokaal getest (13-09), nog niet gepusht.**
+**Status: live (13-09, commit `9b402ac`), lokaal én live getest.**
 - [x] Beide alinea's in `bundle-src/clubjes.jsx` hebben `maxWidth: "80ch"`.
       De algemene regel `.page-head p { max-width: 60ch }` in `template.html`
       is **niet** aangepast, dus andere pagina's blijven gelijk.
@@ -156,7 +156,20 @@ Die regel geldt voor **alle 13 pagina's** met zo'n kop, niet alleen deze.
 - [x] Getest op mobiel (375px): tekst vult de volle breedte (339px), geen
       horizontaal scrollen.
 - [x] Geen consolefouten.
-- [ ] Pushen en live controleren op www.thuisindebuurt.nl.
+- [x] Gepusht en live gecontroleerd op 1440px: Buurtinitiatieven 777px en
+      3 regels, Activiteiten, Buurtatlas en Partners ongewijzigd 583px, geen
+      consolefouten.
+
+**Vervolg (13-09): Giovanny wil het nog breder → 90ch.**
+*Lokaal getest, nog niet gepusht.*
+- [x] Beide alinea's `maxWidth: "80ch"` → `"90ch"` in `bundle-src/clubjes.jsx`.
+- [x] Getest op desktop (1440px):
+      - Buurtinitiatieven: 777 → 874px, eerste alinea 3 regels, tweede 2 regels
+        (de kop is 933px breed)
+      - Activiteiten en Buurtatlas: ongewijzigd, 583px
+- [x] Getest op mobiel (375px): volle breedte (339px), geen horizontaal
+      scrollen.
+- [ ] Pushen en live controleren.
 
 ### F3. Naam en e-mail overal verplicht in aanmeldformulieren
 **Wens:** in elk formulier moet je je naam én een geldig e-mailadres invullen.
