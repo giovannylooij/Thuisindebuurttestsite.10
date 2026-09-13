@@ -213,10 +213,9 @@ daardoor niet zien. In het CMS toont het scherm met aanvragen nu één veld
   (optioneel). "Naam contactpersoon \*" is de verplichte naam.
 - Foutmelding: eigen rode melding onder het veld, niet het browser-pop-upje.
 
-**Status: gebouwd en lokaal getest, NIET gepusht.**
-⚠️ **Eerst `sql/buurtgroep_aanvragen_telefoon.sql` draaien in Supabase**, dan
-pas pushen. De kolom `telefoon` bestaat nu nog niet (gecontroleerd); zonder die
-kolom mislukt elke aanmelding van een buurtinitiatief.
+**Status: live (13-09, commit `99a3cdb`), lokaal én live getest.**
+SQL `sql/buurtgroep_aanvragen_telefoon.sql` is door Giovanny gedraaid. Via de
+API is gecontroleerd dat de kolom `telefoon` nu bestaat.
 
 - [x] Gedeelde controle in `bundle-src/ui.jsx`:
       - `tibControleer` haalt spaties weg, checkt verplichte velden en
@@ -258,11 +257,18 @@ kolom mislukt elke aanmelding van een buurtinitiatief.
         Activiteit 5, Partner 4. Meldingen verdwijnen bij wisselen van tabblad.
       - geen React-waarschuwingen (een rand-waarschuwing bij Aanmelden is
         gevonden en opgelost)
-- [ ] Giovanny: SQL draaien in Supabase.
-- [ ] Na de SQL: pushen en live controleren. Controle zonder testaanmelding:
-      kolom opvragen via de API. Een echte testaanmelding alleen met akkoord
-      van Giovanny.
-- [ ] CMS-scherm aanvragen bekijken na inloggen.
+- [x] Giovanny: SQL gedraaid in Supabase. Kolom `telefoon` bevestigd via de API.
+- [x] Gepusht en live gecontroleerd, met onderschepte opslag zodat er niets in
+      de database is gekomen:
+      - live `index.html` en `beheer.html` zijn identiek aan lokaal
+      - buurtinitiatief-formulier: nieuwe labels, 3 meldingen bij leeg,
+        foutmelding bij nagebootste opslagfout, en bij geldig de juiste rij met
+        `telefoon` apart
+      - contact: spaties en "a@" geweigerd
+      - CMS laadt zonder consolefouten tot het inlogscherm
+- [ ] Nog open: één echte testaanmelding (alleen met akkoord van Giovanny),
+      daarna het CMS-scherm aanvragen bekijken na inloggen en het testrecord
+      verwijderen.
 
 ### F4. Gekleurde bolletjes in de categorieknoppen beter zichtbaar
 **Probleem:** de bolletjes vallen bijna weg, vooral op een geselecteerde knop
