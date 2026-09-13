@@ -108,7 +108,7 @@ standaard al aan staat. Je zou alleen "Spel" willen zien.
 - Klik nog eens op dezelfde categorie → weer alles zichtbaar.
 - "Alle categorieën" → alles zichtbaar.
 
-**Status: uitgevoerd en lokaal getest (13-09), nog niet gepusht.**
+**Status: live (13-09, commit `f30efbb`), lokaal én live getest.**
 - [x] `bundle-src/clubjes.jsx`: functie `toggle` gebruikt nu dezelfde logica als
       `buurtatlas.jsx`.
 - [x] Groene "actief"-markering staat alleen op de ene gekozen categorie.
@@ -129,7 +129,9 @@ standaard al aan staat. Je zou alleen "Spel" willen zien.
       - Alle categorieën: weer 9 kaartjes
       - Eten in lijstweergave: 2 kaartjes
       - geen consolefouten
-- [ ] Pushen en live controleren op www.thuisindebuurt.nl.
+- [x] Gepusht en live gecontroleerd. De live `index.html` is identiek aan
+      lokaal, alle scenario's hierboven geven live dezelfde uitkomst en er zijn
+      geen consolefouten.
 - *Bijvangst, niet opgelost:* 2 van de 9 buurtinitiatieven hebben geen stip op
   de kaart, waarschijnlijk omdat er geen coördinaten zijn ingevuld.
 
@@ -141,14 +143,20 @@ de breedte van de kop), waardoor ze lang en smal onder elkaar staan.
 introteksten (`bundle-src/template.html` regel 1993: `.page-head p { max-width: 60ch }`).
 Die regel geldt voor **alle 13 pagina's** met zo'n kop, niet alleen deze.
 
-**Plan:**
-- [ ] Breedte verhogen naar ongeveer 80 tekens, zodat de tekst ongeveer even
-      breed wordt als de kop erboven. Langer dan ~90 tekens per regel leest
-      minder prettig.
-- [ ] **Keuze:** alleen de Buurtinitiatieven-pagina *(voorstel, dan verandert
-      er verder niets)* of alle pagina's tegelijk *(consistenter)*.
-- [ ] Controleren op mobiel. Daar is het scherm smaller dan de maximale
-      breedte, dus daar zou niets moeten veranderen.
+**Besluit Giovanny:** alleen de introtekst op de Buurtinitiatieven-pagina.
+
+**Status: uitgevoerd en lokaal getest (13-09), nog niet gepusht.**
+- [x] Beide alinea's in `bundle-src/clubjes.jsx` hebben `maxWidth: "80ch"`.
+      De algemene regel `.page-head p { max-width: 60ch }` in `template.html`
+      is **niet** aangepast, dus andere pagina's blijven gelijk.
+- [x] Getest op desktop (1440px):
+      - Buurtinitiatieven: alinea's 583 → 777px breed, 4 → 3 regels per
+        alinea (de kop is 933px breed)
+      - Activiteiten, Buurtatlas en Partners: ongewijzigd, 583px
+- [x] Getest op mobiel (375px): tekst vult de volle breedte (339px), geen
+      horizontaal scrollen.
+- [x] Geen consolefouten.
+- [ ] Pushen en live controleren op www.thuisindebuurt.nl.
 
 ### F3. Naam en e-mail overal verplicht in aanmeldformulieren
 **Wens:** in elk formulier moet je je naam én een geldig e-mailadres invullen.
