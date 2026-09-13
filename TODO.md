@@ -288,15 +288,38 @@ API is gecontroleerd dat de kolom `telefoon` nu bestaat.
 **Besluit Giovanny (13-09):** alleen de bolletjes **wat feller** maken en/of
 een **wit randje** eromheen. **Niet groter maken**, ze blijven 10px.
 
-**Plan:**
-- [ ] Kleuren van de bolletjes wat feller maken (`bundle-src/ui.jsx` regel 267).
-- [ ] Wit randje om het bolletje, in ieder geval op een geselecteerde
-      (groenblauwe) knop (`template.html` bij `.chip .swatch`).
-- [ ] Eerst beide varianten tonen (alleen feller / feller met wit randje), dan
-      kiest Giovanny.
-- [ ] Niet in dit punt: de dubbele kleur van Eten en Evenement/Festival, en de
-      ongebruikte CMS-kleuren. Alleen genoteerd, apart te bespreken.
-- [ ] Buurtatlas blijft ongemoeid.
+**Onderbouwing (contrast, ~3:1 is de richtlijn voor goed zichtbaar):**
+- Op witte knoppen hadden de oude kleuren al 3,1–6,1. Daar was het probleem
+  klein.
+- Op de groenblauwe knop (#2d7f7b) haalt geen enkele kleur 3:1: oud 1,0–1,5,
+  feller hooguit 2,3. Een wit randje haalt 4,7.
+
+**Besluit Giovanny (14-09): variant B, feller + wit randje.** Gekozen na een
+vergelijking van nu / A / B.
+
+**Status: gebouwd en lokaal getest, nog niet gepusht.**
+- [x] `bundle-src/ui.jsx`: `_CAT_COLORS` wordt `#1a73e8 #8e44d6 #1faa59
+      #f57c00 #e53935 #9c7a4a` (was `#2a6fb5 #7e4ca3 #3f8f7a #d97a2c #b94842
+      #7a7363`). De reservekleuren en `CAT_FALLBACK` gebruiken dezelfde set.
+- [x] `template.html`: `.cat-filter .chip.active .swatch { box-shadow: 0 0 0 2px #fff; }`.
+      Een schaduw verandert de maat niet, dus het bolletje blijft 10px.
+- [x] `clubjes.jsx`: de filterbalk heeft class `cat-filter`, zodat het randje
+      alleen daar geldt.
+- [x] Omdat de kleurenlijst gedeeld is, zijn automatisch mee feller: stippen
+      op de Buurtinitiatieven-kaart, de kaart op de homepage, het bolletje op
+      de detailpagina en de kleurrand van de activiteitenkaartjes.
+- [x] Lokaal getest:
+      - filterbolletjes in de nieuwe kleuren, allemaal 10×10px
+      - wit randje alleen op de actieve knop
+      - kaartstippen in de nieuwe kleuren
+      - Buurtatlas: oude kleuren en geen randje
+      - geen consolefouten
+      - screenshots van de echte pagina met Spel en met Sport en Bewegen
+        geselecteerd
+- [ ] Pushen en live controleren.
+- Niet in dit punt, alleen genoteerd: Eten en Evenement/Festival hebben nog
+  steeds dezelfde kleur (6 kleuren voor 7 categorieën), en de kleuren uit het
+  CMS worden nog niet gebruikt.
 
 ### F5. Invoerscherm Activiteit precies gelijk maken aan Buurtinitiatief (CMS)
 **Wens:** het bewerkscherm van een activiteit in het CMS krijgt exact dezelfde
