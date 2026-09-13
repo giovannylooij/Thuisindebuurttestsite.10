@@ -1,6 +1,6 @@
 # To-do & stand van zaken — Thuis in de Buurt
 
-*Bijgewerkt: 10 september 2026 (bijgewerkt na C2/C3)*
+*Bijgewerkt: 13 september 2026 (opmerkingen deel 2 toegevoegd)*
 
 ## Samenvatting
 
@@ -92,6 +92,256 @@ probleem nog.
 - [ ] E. Teksten zelf beheerbaar maken voor Margareth *(grotere klus)*
 - [ ] Gesprek over ontbrekende icoontjes — *ik lever vooraf een overzicht van
       alle beschikbare iconen aan*
+
+---
+
+## 📋 Margareth's opmerkingen deel 2 *(13 september 2026, nog niet uitgevoerd)*
+
+### F1. Categoriefilter op Buurtinitiatieven moet werken zoals bij de Buurtatlas
+**Probleem:** klik je nu op bijv. "Spel", dan verdwijnt Spel juist en blijft de
+rest staan. Dat komt doordat de knop een categorie *aan/uit zet*, terwijl alles
+standaard al aan staat. Je zou alleen "Spel" willen zien.
+
+**Gewenst gedrag (net als de Buurtatlas):**
+- Klik op een categorie → alleen die categorie is zichtbaar, de rest verdwijnt.
+- Klik op een andere categorie → die wordt de enige.
+- Klik nog eens op dezelfde categorie → weer alles zichtbaar.
+- "Alle categorieën" → alles zichtbaar.
+
+**Status: uitgevoerd en lokaal getest (13-09), nog niet gepusht.**
+- [x] `bundle-src/clubjes.jsx`: functie `toggle` gebruikt nu dezelfde logica als
+      `buurtatlas.jsx`.
+- [x] Groene "actief"-markering staat alleen op de ene gekozen categorie.
+- [x] Dubbelklik-functie (`onDoubleClick` / `only`) weggehaald.
+- [x] Tip-tekst aangepast: *"klik op een categorie om alleen die te tonen. Klik
+      er nog eens op om weer alles te zien. Klik op een stip in de kaart voor
+      meer info."*
+- [x] Meegenomen: melding bij 0 resultaten aangepast naar *"Geen
+      buurtinitiatieven in deze categorie. Kies een andere categorie of meld een
+      nieuw buurtinitiatief aan."* (de oude tekst ging nog uit van meerdere
+      categorieën tegelijk)
+- [x] Getest, lokaal met live data:
+      - start: 9 kaartjes, 7 stippen
+      - Spel: 1 kaartje, 1 stip
+      - Spel nog eens: weer 9 kaartjes, 7 stippen
+      - Spel en dan Eten: alleen Eten, 2 kaartjes
+      - Kunst en Cultuur: 0 kaartjes, melding zichtbaar
+      - Alle categorieën: weer 9 kaartjes
+      - Eten in lijstweergave: 2 kaartjes
+      - geen consolefouten
+- [ ] Pushen en live controleren op www.thuisindebuurt.nl.
+- *Bijvangst, niet opgelost:* 2 van de 9 buurtinitiatieven hebben geen stip op
+  de kaart, waarschijnlijk omdat er geen coördinaten zijn ingevuld.
+
+### F2. Introtekst onder "Vind jouw buurtinitiatief in de buurt" breder
+**Probleem:** de twee alinea's staan in een smalle kolom (ongeveer de helft van
+de breedte van de kop), waardoor ze lang en smal onder elkaar staan.
+
+**Oorzaak:** in de opmaak staat een maximale breedte van 60 tekens voor
+introteksten (`bundle-src/template.html` regel 1993: `.page-head p { max-width: 60ch }`).
+Die regel geldt voor **alle 13 pagina's** met zo'n kop, niet alleen deze.
+
+**Plan:**
+- [ ] Breedte verhogen naar ongeveer 80 tekens, zodat de tekst ongeveer even
+      breed wordt als de kop erboven. Langer dan ~90 tekens per regel leest
+      minder prettig.
+- [ ] **Keuze:** alleen de Buurtinitiatieven-pagina *(voorstel, dan verandert
+      er verder niets)* of alle pagina's tegelijk *(consistenter)*.
+- [ ] Controleren op mobiel. Daar is het scherm smaller dan de maximale
+      breedte, dus daar zou niets moeten veranderen.
+
+### F3. Naam en e-mail overal verplicht in aanmeldformulieren
+**Wens:** in elk formulier moet je je naam én een geldig e-mailadres invullen.
+Doe je dat niet, dan kun je niet verzenden. Overal dezelfde controle en dezelfde
+foutmelding.
+
+**Wat ik in de code zag** *(live draait dezelfde code als `bundle-src`, gecontroleerd):*
+
+| Formulier | Waar | Naam verplicht? | E-mail verplicht? | Probleem |
+|---|---|---|---|---|
+| Buurtinitiatief aanmelden | `clubjes.jsx` ~r.197 | ja ("Contactpersoon") | **nee** | Het veld heet "E-mail of telefoon" en accepteert alles, ook "x". Er is geen echt e-mailveld. |
+| Aanmelden bij activiteit/initiatief | `detail.jsx` ~r.67 | ja | half | De controle kijkt alleen of er een @ in staat, dus "a@" gaat erdoor. |
+| Doe mee (3 tabbladen) | `other.jsx` ~r.721 | ja | ja | Alleen spaties als naam gaat erdoor. |
+| Contact | `contact.jsx` ~r.78 | ja | ja | Alleen spaties gaat erdoor. |
+| Boek bestellen | `boek.jsx` ~r.114 | ja | ja | Alleen spaties gaat erdoor. |
+| "Bestaat dit nog?"-melding | `ui.jsx` ~r.370 | geen naamveld | nee (optioneel) | Zie keuze hieronder. |
+| Nieuwsbrief (footer) | `ui.jsx` ~r.240 | geen naamveld | ja | Slaat het adres nergens op, toont alleen "Bedankt". |
+
+Bijkomend: het buurtinitiatief- en het contactformulier tonen ook "Bedankt"
+als het opslaan mislukt. De bezoeker denkt dan dat het gelukt is, maar er komt
+niets binnen.
+
+**Plan:**
+- [ ] Eén gedeelde controle maken in `ui.jsx`. Die haalt spaties weg, checkt
+      of de naam is ingevuld en of het e-mailadres het patroon `naam@domein.nl`
+      heeft. Alle formulieren gebruiken deze controle.
+- [ ] Eén vaste foutmelding onder het veld, bijvoorbeeld *"Vul je naam in."* en
+      *"Vul een geldig e-mailadres in."*. De verzendknop doet niets zolang die
+      niet klopt.
+- [ ] Bij verplichte velden overal een sterretje (*) in het label, met onderaan
+      "Velden met * zijn verplicht", zoals nu al bij Contact.
+- [ ] Buurtinitiatief-formulier: "E-mail of telefoon" splitsen in
+      **E-mailadres \*** en **Telefoon (optioneel)**.
+      ⚠️ In de database is dit nu één kolom (`email_of_telefoon` in
+      `buurtgroep_aanvragen`). Waarschijnlijk is een nieuwe kolom `telefoon`
+      nodig (SQL die Giovanny draait). Ook nagaan hoe het CMS (`beheer.html`)
+      deze aanvragen toont.
+- [ ] Foutafhandeling: bij een mislukte opslag een foutmelding tonen in plaats
+      van "Bedankt" (buurtinitiatief en contact).
+- [ ] **Keuze:** gelden de regels ook voor de "Bestaat dit nog?"-melding (nu
+      anoniem) en de nieuwsbrief (heeft geen naamveld)? *Voorstel:* de melding
+      anoniem laten, zodat buren makkelijk iets doorgeven, en de nieuwsbrief
+      alleen e-mail laten.
+- [ ] Testen per formulier, zonder echt te verzenden:
+      - leeg laten
+      - alleen spaties invullen
+      - "a@" als e-mailadres
+      - geldig invullen (dit wordt de enige keer echt verzenden, met een
+        herkenbaar testrecord dat daarna uit het CMS wordt verwijderd)
+
+### F4. Gekleurde bolletjes in de categorieknoppen beter zichtbaar
+**Probleem:** de bolletjes vallen bijna weg, vooral op een geselecteerde knop
+(groenblauwe achtergrond). "Sport en Bewegen" is groen op groen, en "Eten" en
+"Evenement/Festival" hebben allebei hetzelfde blauw.
+
+**Oorzaak (gevonden in de code):**
+- De site gebruikt een vaste lijst van **6 gedempte kleuren** en deelt die toe
+  op volgorde (`bundle-src/ui.jsx` regel 267). Er zijn nu 7 categorieën, dus
+  de 7e (Evenement/Festival) krijgt weer de kleur van de 1e (Eten).
+- Het groen `#3f8f7a` lijkt bijna precies op de knopkleur `#2d7f7b`.
+- De bolletjes zijn klein, 10px (`template.html` regel 1988).
+- De kleuren die in het CMS bij een categorie staan (kolom `kleur`) gebruikt de
+  site helemaal niet. Die zijn ook dubbel: Eten en Evenement/Festival hebben
+  daar allebei dezelfde oranje tint.
+
+**Besluit Giovanny (13-09):** alleen de bolletjes **wat feller** maken en/of
+een **wit randje** eromheen. **Niet groter maken**, ze blijven 10px.
+
+**Plan:**
+- [ ] Kleuren van de bolletjes wat feller maken (`bundle-src/ui.jsx` regel 267).
+- [ ] Wit randje om het bolletje, in ieder geval op een geselecteerde
+      (groenblauwe) knop (`template.html` bij `.chip .swatch`).
+- [ ] Eerst beide varianten tonen (alleen feller / feller met wit randje), dan
+      kiest Giovanny.
+- [ ] Niet in dit punt: de dubbele kleur van Eten en Evenement/Festival, en de
+      ongebruikte CMS-kleuren. Alleen genoteerd, apart te bespreken.
+- [ ] Buurtatlas blijft ongemoeid.
+
+### F5. Invoerscherm Activiteit precies gelijk maken aan Buurtinitiatief (CMS)
+**Wens:** het bewerkscherm van een activiteit in het CMS krijgt exact dezelfde
+opbouw en velden als het bewerkscherm van een buurtinitiatief.
+*(De foto's kwamen niet mee met het bericht. Uitgewerkt op basis van de code:
+`beheer.html` → `ClubjeEdit` ~r.1902 en `ActiviteitEdit` ~r.2198.)*
+
+**Verschil nu:**
+
+| Onderdeel | Buurtinitiatief | Activiteit |
+|---|---|---|
+| Naam, Categorie | ✅ | ✅ |
+| Wijk / gebied | ✅ | ❌ |
+| Korte omschrijving | ✅ | ❌ |
+| Uitgebreide omschrijving | ✅ *(nep-veld, zie B4)* | ❌ |
+| Praktische informatie (Voor wie / Wat / Waar / Wanneer / Kosten) | ✅ eigen blok | alleen Wanneer, Locatie en Kosten, in Basisgegevens |
+| Contact: "Contact weergeven op website" + Telefoon | ✅ | ❌ (alleen Contactpersoon en E-mail) |
+| Locatie op de Buurtatlas (adres + kaart) | ✅ | ✅ |
+| Afbeelding (upload/URL + alt-tekst) | ✅ | ❌ |
+| Icoon kiezen | ✅ | ❌ |
+| SEO & vindbaarheid | ✅ *(slaat niets op)* | ❌ |
+| Zijbalk: Publicatie + "Opslaan als concept" | ✅ | eenvoudiger |
+| Zijbalk: Uitlichten op homepagina | ✅ | ❌ |
+| Zijbalk: Categorie & tags, Gekoppelde items | ✅ *(vaste nep-waarden)* | ❌ |
+| **Type** (Ontmoeting/Beweging/…) | ❌ | ✅ alleen hier |
+| **Terugkerend**-schakelaar | ❌ | ✅ alleen hier |
+
+**Database:** de tabel `activiteiten` mist de meeste kolommen die
+`clubjes` wel heeft: `wijk`, `omschrijving`, `voor_wie`, `telefoon`,
+`contact_zichtbaar`, `lat`, `lng`, `foto_url`, `icoon_url`, `icoon_label`,
+`uitgelicht`.
+⚠️ **Nagekeken:** het activiteitenscherm heeft al adres- en kaartvelden, maar
+de kolommen `adres`/`lat`/`lng` bestaan niet. De migratie ervoor staat klaar in
+`sql/activiteiten_locatie.sql`, maar is **nooit gedraaid**. Gevolg: opslaan van
+een activiteit mislukt zodra er een locatie is ingevuld. Die migratie meenemen
+in de F5-migratie.
+
+**Plan:**
+- [ ] SQL-migratie: ontbrekende kolommen toevoegen aan `activiteiten`
+      (Giovanny draait die in Supabase). Bestaande data blijft staan.
+- [ ] `ActiviteitEdit` in `beheer.html` opnieuw opbouwen volgens `ClubjeEdit`:
+      dezelfde secties, dezelfde volgorde, dezelfde teksten (met "activiteit"
+      in plaats van "buurtinitiatief").
+- [ ] Website: de detailpagina van een activiteit laat de nieuwe velden ook
+      echt zien (omschrijving, Voor wie, contact-tab, foto, icoon).
+      Nu blijven die leeg voor activiteiten.
+- [ ] Nieuwe activiteiten krijgen dezelfde standaardwaarden als nieuwe
+      buurtinitiatieven.
+- [x] **Besluit Giovanny (13-09):** **Terugkerend blijft behouden**, **Type gaat eruit**.
+  - [ ] Type-veld weghalen uit het invoerscherm.
+  - [ ] Type-filterknoppen en de Type-kolom weghalen uit het
+        activiteitenoverzicht in het CMS (`ActiviteitenScreen` ~r.2323 en
+        ~r.2368). Filteren gaat voortaan op Categorie.
+  - [ ] Nagaan waar de website `type` gebruikt (`other.jsx` r.168 zet het om
+        naar `group`) en daar niets laten breken.
+  - [ ] Kolom `type` in de database laten staan. Niet verwijderen, dan gaat er
+        geen data verloren.
+- [x] **Besluit Giovanny (13-09):** de nep-onderdelen gaan **bij allebei eruit**,
+      zowel bij buurtinitiatief als bij activiteit.
+  - [ ] Blok "SEO & vindbaarheid" weghalen (`ClubjeEdit` ~r.2124). Slaat niets op.
+  - [ ] Zijkaart "Categorie & tags" weghalen (~r.2159). Vaste nep-waarden.
+  - [ ] Zijkaart "Gekoppelde items" weghalen (~r.2168). Vaste nep-waarden.
+  - [ ] Niet meenemen naar het nieuwe activiteitenscherm.
+- [ ] **Volgorde:** eerst B3 ("Wat" los van Categorie) en B4 (echte uitgebreide
+      omschrijving) doen. Anders kopiëren we die fouten mee naar activiteiten.
+- [ ] Testen:
+      - nieuwe activiteit aanmaken met alle velden
+      - opslaan, herladen, alles staat er nog
+      - zichtbaar op de website
+      - bestaande activiteiten zijn niets kwijt
+
+**Na uitvoering:** bundelen, pushen en live controleren op
+www.thuisindebuurt.nl en app.thuisindebuurt.nl.
+
+### F6. Zelf categorieën toevoegen in het CMS werkt niet
+**Wens:** Margareth kan zelf een nieuwe categorie toevoegen en die verschijnt
+daarna overal: in het CMS, op de website en in de filters.
+
+**Wat ik in de code zag** (`beheer.html`, scherm Categorieën ~r.3830–4039).
+Nog niet live nagespeeld, want daarvoor moet ik inloggen:
+- **Knop "+ Nieuwe categorie" rechtsboven doet niets.** Hij roept direct
+  "aanmaken" aan met een lege naam, en dan stopt de functie zonder melding.
+  Het echte formulier staat onderaan de pagina, onder alle kaarten. Dat is
+  makkelijk te missen. Dit is waarschijnlijk het "doet het niet".
+- **"Koppelen aan"** (Buurtinitiatieven/Activiteiten/Agenda/Nieuws) wordt
+  nergens opgeslagen. De knoppen zijn alleen voor de show.
+- **Mogelijk databaserechten:** het is onbekend of `categorieen` een regel
+  heeft die toevoegen toestaat. Dit staat niet in `sql/rls_audit.sql`. Is die
+  regel er niet, dan geeft opslaan een foutmelding. (Eerder hadden we
+  hetzelfde probleem bij `site_navigatie`.)
+- **Website:** een nieuwe categorie krijgt op de site geen eigen kleur. De site
+  deelt 6 vaste kleuren toe op volgorde (zie F4), dus categorie 8 krijgt
+  dezelfde kleur als categorie 2.
+- **Teller "items gekoppeld"** telt alleen buurtinitiatieven, geen activiteiten.
+
+**Plan:**
+- [ ] Knop rechtsboven laten scrollen naar het formulier en de cursor in het
+      naamveld zetten, of het formulier bovenaan zetten.
+- [ ] Bij een lege naam een melding tonen in plaats van niets doen.
+- [ ] Controleren of toevoegen mag in Supabase (SQL Editor → policies op
+      `categorieen`). Zo nodig een regel voor toevoegen maken, alleen voor
+      ingelogde beheerders.
+- [ ] "Koppelen aan" weghalen. Een categorie geldt nu altijd voor
+      buurtinitiatieven én activiteiten.
+- [ ] Controleren of een dubbele naam wordt geweigerd, bijvoorbeeld twee keer
+      "Spel".
+- [ ] Teller ook activiteiten laten meetellen.
+- [ ] Samen met F4 oplossen dat nieuwe categorieën een eigen kleur krijgen.
+- [ ] **Test:**
+  - categorie "Test" toevoegen
+  - die verschijnt in de keuzelijst bij een buurtinitiatief en een activiteit
+  - na publiceren verschijnt die als filterknop op de website
+  - daarna weer verwijderen
+
+**Na uitvoering:** pushen en live controleren op app.thuisindebuurt.nl en
+www.thuisindebuurt.nl.
 
 ---
 
