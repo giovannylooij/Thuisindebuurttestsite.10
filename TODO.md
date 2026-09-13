@@ -297,7 +297,7 @@ een **wit randje** eromheen. **Niet groter maken**, ze blijven 10px.
 **Besluit Giovanny (14-09): variant B, feller + wit randje.** Gekozen na een
 vergelijking van nu / A / B.
 
-**Status: gebouwd en lokaal getest, nog niet gepusht.**
+**Status: live (14-09, commit `9fcbc63`), lokaal én live getest.**
 - [x] `bundle-src/ui.jsx`: `_CAT_COLORS` wordt `#1a73e8 #8e44d6 #1faa59
       #f57c00 #e53935 #9c7a4a` (was `#2a6fb5 #7e4ca3 #3f8f7a #d97a2c #b94842
       #7a7363`). De reservekleuren en `CAT_FALLBACK` gebruiken dezelfde set.
@@ -316,7 +316,43 @@ vergelijking van nu / A / B.
       - geen consolefouten
       - screenshots van de echte pagina met Spel en met Sport en Bewegen
         geselecteerd
+- [x] Gepusht en live gecontroleerd:
+      - live `index.html` is identiek aan lokaal
+      - filterbolletjes in de nieuwe kleuren, 10px
+      - wit randje alleen op de actieve knop (Sport en Bewegen)
+      - Buurtatlas ongewijzigd
+      - geen consolefouten
+      - screenshot van de live filterbalk
+**Uitbreiding (14-09): op verzoek van Giovanny ook bij de Buurtatlas.**
+*Lokaal getest, nog niet gepusht.*
+- [x] `bundle-src/buurtatlas.jsx`: `ATLAS_CATEGORIES` krijgt dezelfde fellere
+      tinten:
+      - Voorzieningen #8e44d6 (was #7e4ca3)
+      - Bewonersinitiatief #e53935 (was #b94842)
+      - Partners #1a73e8 (was #2a6fb5)
+      - Activiteiten #1faa59 (was #3f8f7a)
+- [x] Filterbalk krijgt class `cat-filter`, zodat het bestaande witte randje ook
+      daar werkt.
+- [x] Deze kleuren komen ook terug in de kaartstippen, de pins in de lijst en
+      de tekstkleur van de categorielabels in de lijst.
+- [x] Lokaal getest:
+      - bolletjes 10px in de nieuwe kleuren
+      - wit randje alleen op de actieve knop (Partners)
+      - kaart, pins en labels in de nieuwe kleuren
+      - filter Partners toont 4 plekken
+      - Buurtinitiatieven nog goed
+      - geen consolefouten
+- ⚠️ Nadeel: de labeltekst in de lijst op wit wordt iets minder goed leesbaar.
+  Voor gewone tekst is de richtlijn 4,5:
+  - Voorzieningen 6,1 → 5,3
+  - Bewonersinitiatief 5,2 → 4,2
+  - Partners 5,2 → 4,5
+  - Activiteiten 3,9 → 3,0 (was al onder 4,5)
+
+  Mogelijke oplossing, nog niet gedaan: de labeltekst een donkerdere tint
+  geven en alleen de bolletjes/stippen fel houden.
 - [ ] Pushen en live controleren.
+
 - Niet in dit punt, alleen genoteerd: Eten en Evenement/Festival hebben nog
   steeds dezelfde kleur (6 kleuren voor 7 categorieën), en de kleuren uit het
   CMS worden nog niet gebruikt.
