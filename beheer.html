@@ -5652,7 +5652,10 @@ function BgAanvragenScreen({ onBadgeRefresh }) {
         )
       ),
       React.createElement(DetailField, { label: 'Contactpersoon', value: item.contactpersoon }),
-      React.createElement(DetailField, { label: 'Contact', value: item.email_of_telefoon }),
+      // Sinds F3 staat hier altijd het e-mailadres en telefoon apart. Oudere
+      // aanvragen kunnen in dit veld nog een telefoonnummer hebben.
+      React.createElement(DetailField, { label: (item.email_of_telefoon || '').includes('@') ? 'E-mail' : 'Contact', value: item.email_of_telefoon }),
+      item.telefoon && React.createElement(DetailField, { label: 'Telefoon', value: item.telefoon }),
       React.createElement(DetailField, { label: 'Locatie', value: item.locatie }),
       React.createElement(DetailField, { label: 'Beschrijving', value: item.beschrijving }),
       item.foto_url && React.createElement('div', { style: { marginBottom: 12 } },

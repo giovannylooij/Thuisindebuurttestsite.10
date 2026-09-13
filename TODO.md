@@ -161,7 +161,7 @@ Die regel geldt voor **alle 13 pagina's** met zo'n kop, niet alleen deze.
       consolefouten.
 
 **Vervolg (13-09): Giovanny wil het nog breder → 90ch.**
-*Lokaal getest, nog niet gepusht.*
+*Live (commit `e98edeb`), lokaal én live getest.*
 - [x] Beide alinea's `maxWidth: "80ch"` → `"90ch"` in `bundle-src/clubjes.jsx`.
 - [x] Getest op desktop (1440px):
       - Buurtinitiatieven: 777 → 874px, eerste alinea 3 regels, tweede 2 regels
@@ -169,7 +169,9 @@ Die regel geldt voor **alle 13 pagina's** met zo'n kop, niet alleen deze.
       - Activiteiten en Buurtatlas: ongewijzigd, 583px
 - [x] Getest op mobiel (375px): volle breedte (339px), geen horizontaal
       scrollen.
-- [ ] Pushen en live controleren.
+- [x] Gepusht en live gecontroleerd (1440px): Buurtinitiatieven 874px (3 en
+      2 regels), Activiteiten en Buurtatlas ongewijzigd 583px, geen
+      consolefouten.
 
 ### F3. Naam en e-mail overal verplicht in aanmeldformulieren
 **Wens:** in elk formulier moet je je naam én een geldig e-mailadres invullen.
@@ -188,37 +190,79 @@ foutmelding.
 | "Bestaat dit nog?"-melding | `ui.jsx` ~r.370 | geen naamveld | nee (optioneel) | Zie keuze hieronder. |
 | Nieuwsbrief (footer) | `ui.jsx` ~r.240 | geen naamveld | ja | Slaat het adres nergens op, toont alleen "Bedankt". |
 
-Bijkomend: het buurtinitiatief- en het contactformulier tonen ook "Bedankt"
+Bijkomend: het buurtinitiatief-, contact- én boekformulier tonen ook "Bedankt"
 als het opslaan mislukt. De bezoeker denkt dan dat het gelukt is, maar er komt
-niets binnen.
+niets binnen. *(Oorzaak: de code verwacht een foutmelding via `try/catch`,
+maar Supabase geeft een fout terug in plaats van hem te "gooien". De fout wordt
+dus nooit gezien. "Doe mee", de aanmelding bij een activiteit en de melding
+controleren dit wel goed.)*
 
-**Plan:**
-- [ ] Eén gedeelde controle maken in `ui.jsx`. Die haalt spaties weg, checkt
-      of de naam is ingevuld en of het e-mailadres het patroon `naam@domein.nl`
-      heeft. Alle formulieren gebruiken deze controle.
-- [ ] Eén vaste foutmelding onder het veld, bijvoorbeeld *"Vul je naam in."* en
-      *"Vul een geldig e-mailadres in."*. De verzendknop doet niets zolang die
-      niet klopt.
-- [ ] Bij verplichte velden overal een sterretje (*) in het label, met onderaan
-      "Velden met * zijn verplicht", zoals nu al bij Contact.
-- [ ] Buurtinitiatief-formulier: "E-mail of telefoon" splitsen in
-      **E-mailadres \*** en **Telefoon (optioneel)**.
-      ⚠️ In de database is dit nu één kolom (`email_of_telefoon` in
-      `buurtgroep_aanvragen`). Waarschijnlijk is een nieuwe kolom `telefoon`
-      nodig (SQL die Giovanny draait). Ook nagaan hoe het CMS (`beheer.html`)
-      deze aanvragen toont.
-- [ ] Foutafhandeling: bij een mislukte opslag een foutmelding tonen in plaats
-      van "Bedankt" (buurtinitiatief en contact).
-- [ ] **Keuze:** gelden de regels ook voor de "Bestaat dit nog?"-melding (nu
-      anoniem) en de nieuwsbrief (heeft geen naamveld)? *Voorstel:* de melding
-      anoniem laten, zodat buren makkelijk iets doorgeven, en de nieuwsbrief
-      alleen e-mail laten.
-- [ ] Testen per formulier, zonder echt te verzenden:
-      - leeg laten
-      - alleen spaties invullen
-      - "a@" als e-mailadres
-      - geldig invullen (dit wordt de enige keer echt verzenden, met een
-        herkenbaar testrecord dat daarna uit het CMS wordt verwijderd)
+Verder gecontroleerd: bezoekers kunnen de ingestuurde gegevens niet uitlezen.
+Bij een test met de publieke sleutel gaven `buurtgroep_aanvragen`,
+`aanmeldingen`, `contact_berichten`, `boek_bestellingen` en `meldingen` niets
+terug. Of `buurtgroep_aanvragen` al een aparte telefoonkolom heeft, kon ik
+daardoor niet zien. In het CMS toont het scherm met aanvragen nu één veld
+"Contact" (`beheer.html` ~r.5655).
+
+**Besluiten Giovanny (13-09), alle voorstellen akkoord:**
+- Doen mee: Buurtinitiatief aanmelden, Aanmelden bij activiteit/initiatief,
+  Doe mee (3 tabbladen), Contact, Boek bestellen.
+- Doen niet mee: "Bestaat dit nog?"-melding (blijft anoniem) en nieuwsbrief
+  (blijft alleen e-mail; dat hij niets opslaat staat apart onder Techniek).
+- Buurtinitiatief: "E-mail of telefoon" wordt **E-mailadres \*** + **Telefoon**
+  (optioneel). "Naam contactpersoon \*" is de verplichte naam.
+- Foutmelding: eigen rode melding onder het veld, niet het browser-pop-upje.
+
+**Status: gebouwd en lokaal getest, NIET gepusht.**
+⚠️ **Eerst `sql/buurtgroep_aanvragen_telefoon.sql` draaien in Supabase**, dan
+pas pushen. De kolom `telefoon` bestaat nu nog niet (gecontroleerd); zonder die
+kolom mislukt elke aanmelding van een buurtinitiatief.
+
+- [x] Gedeelde controle in `bundle-src/ui.jsx`:
+      - `tibControleer` haalt spaties weg, checkt verplichte velden en
+        e-mailpatroon `naam@domein.xx`
+      - `tibOpslaan` vangt mislukte opslag écht af
+      - `VeldFout` en `VerplichtUitleg` zorgen voor dezelfde melding en uitleg
+        overal
+- [x] Opmaak in `template.html`: rode tekst `.veld-fout` en rode rand bij
+      `aria-invalid`. Cursor springt naar het eerste veld met een fout.
+- [x] Contact, Boek, Doe mee, Buurtinitiatief en Aanmelden bij activiteit
+      omgebouwd:
+      - sterretjes bij verplichte velden en "Velden met * zijn verplicht."
+      - ingevulde waarden worden zonder spaties opgeslagen
+- [x] Bij mislukte opslag overal dezelfde tekst: *"Versturen is niet gelukt.
+      Probeer het later opnieuw of mail naar info@thuisindebuurt.nl."*
+      Geen "Bedankt" meer, en het formulier blijft ingevuld staan.
+      (Doe mee liet eerst de technische foutmelding aan bezoekers zien; ook
+      aangepast.)
+- [x] Buurtinitiatief-formulier: e-mail en telefoon apart.
+      `email_of_telefoon` bevat voortaan altijd het e-mailadres, `telefoon` is
+      nieuw.
+- [x] CMS (`beheer.html`) scherm aanvragen: toont "E-mail" en "Telefoon".
+      Oudere aanvragen zonder @ blijven "Contact" heten.
+      *Niet getest: daarvoor moet ik inloggen.*
+- [x] SQL klaargezet: `sql/buurtgroep_aanvragen_telefoon.sql` (veilig, voegt
+      alleen een lege kolom toe).
+- [x] Lokaal getest met onderschepte opslag, er is niets naar de database
+      gestuurd. Per formulier:
+      - leeg: alle verplichte velden rood met eigen melding, cursor op het
+        eerste foutveld, niets verstuurd
+      - alleen spaties, "a@", "a@b", "naam@domein" en een telefoonnummer als
+        e-mail: geweigerd
+      - na typen verdwijnt de melding van dat veld
+      - nagebootste opslagfout: foutmelding, geen "Bedankt", formulier blijft
+        staan
+      - geldig: precies 1 keer verstuurd, waarden zonder spaties, "Bedankt"
+        zichtbaar
+      - Doe mee per tabblad het juiste aantal verplichte velden: TIBber 2,
+        Activiteit 5, Partner 4. Meldingen verdwijnen bij wisselen van tabblad.
+      - geen React-waarschuwingen (een rand-waarschuwing bij Aanmelden is
+        gevonden en opgelost)
+- [ ] Giovanny: SQL draaien in Supabase.
+- [ ] Na de SQL: pushen en live controleren. Controle zonder testaanmelding:
+      kolom opvragen via de API. Een echte testaanmelding alleen met akkoord
+      van Giovanny.
+- [ ] CMS-scherm aanvragen bekijken na inloggen.
 
 ### F4. Gekleurde bolletjes in de categorieknoppen beter zichtbaar
 **Probleem:** de bolletjes vallen bijna weg, vooral op een geselecteerde knop
@@ -404,6 +448,9 @@ www.thuisindebuurt.nl.
 - [ ] "Wachtwoord vergeten" ontbreekt volledig in het CMS — beheerders die hun
       wachtwoord kwijt zijn hebben nu een superadmin nodig
 - [ ] Controleren of de e-mailkoppeling (Resend) nog actief en juist ingesteld is
+- [ ] Nieuwsbrief-aanmelding in de footer slaat het e-mailadres nergens op.
+      Hij toont alleen "Bedankt" (`bundle-src/ui.jsx`, `handleNewsletter`).
+      *Gevonden bij F3.*
 - [ ] Contactgegevens in het CMS bereiken de website niet *(zelfde probleem als
       het menu had — oplossing is bekend)*
 - [ ] "Doe mee"/"Doneren"/"Boek"-knoppen reageren niet op de aan/uit-schakelaar
