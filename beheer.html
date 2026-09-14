@@ -3879,19 +3879,27 @@ function CategoriesScreen() {
   const [newNaam, setNewNaam] = React.useState('');
   const [newIcoon, setNewIcoon] = React.useState('users');
   const [newKleurIdx, setNewKleurIdx] = React.useState(2);
-  const [newKoppeling, setNewKoppeling] = React.useState({ Buurtinitiatieven: true, Activiteiten: true, Agenda: false, Nieuws: false });
   const [saving, setSaving] = React.useState(false);
   const kleuren = ['oklch(0.65 0.13 25)','oklch(0.65 0.13 65)','oklch(0.65 0.13 145)','oklch(0.55 0.13 250)','oklch(0.55 0.13 295)','oklch(0.55 0.04 250)'];
 
   async function laad() {
     setLoading(true);
     const { data: catData } = await window.supabase.from('categorieen').select('*').order('volgorde');
+    // Tel in beide tabellen: een categorie geldt voor buurtinitiatieven én activiteiten (F6).
     const { data: clubData } = await window.supabase.from('clubjes').select('categorie');
+    const { data: actData } = await window.supabase.from('activiteiten').select('categorie');
     const counts = {};
-    (clubData || []).forEach(c => { counts[c.categorie] = (counts[c.categorie] || 0) + 1; });
+    [...(clubData || []), ...(actData || [])].forEach(c => { counts[c.categorie] = (counts[c.categorie] || 0) + 1; });
     setCats((catData || []).map(c => ({ ...c, aantal: counts[c.naam] || 0 })));
     setLoading(false);
   }
+
+  // Bestaat deze naam al (hoofdletters en spaties aan de randen tellen niet)?
+  function naamBestaat(naam, behalveId) {
+    const n = naam.trim().toLowerCase();
+    return cats.some(c => c.id !== behalveId && (c.naam || '').trim().toLowerCase() === n);
+  }
+  const toast = (tekst) => window.__showToast && window.__showToast(tekst);
 
   React.useEffect(() => { laad(); }, []);
 
@@ -3902,8 +3910,9 @@ function CategoriesScreen() {
   }
 
   async function saveEdit(id, origIcoon, oudeNaam) {
-    if (!editNaam.trim()) return;
+    if (!editNaam.trim()) { toast('Vul een naam in voor de categorie.'); return; }
     const nieuweNaam = editNaam.trim();
+    if (naamBestaat(nieuweNaam, id)) { toast('Er bestaat al een categorie met de naam "' + nieuweNaam + '".'); return; }
     setSaving(true);
     const { error } = await window.supabase.from('categorieen').update({
       naam: nieuweNaam,
@@ -3946,7 +3955,9 @@ function CategoriesScreen() {
   }
 
   async function handleCreate() {
-    if (!newNaam.trim()) return;
+    if (saving) return;
+    if (!newNaam.trim()) { toast('Vul een naam in voor de nieuwe categorie.'); return; }
+    if (naamBestaat(newNaam)) { toast('Er bestaat al een categorie met de naam "' + newNaam.trim() + '".'); return; }
     setSaving(true);
     const maxVolgorde = cats.length > 0 ? Math.max(...cats.map(c => c.volgorde || 0)) + 1 : 1;
     const { error } = await window.supabase.from('categorieen').insert({
@@ -4000,9 +4011,37 @@ function CategoriesScreen() {
     <>
       <PageHead
         title="Categorieën"
-        sub="Categorieën worden gedeeld door buurtinitiatieven, activiteiten, agenda en nieuws. Kleuren tonen op kaarten en filters."
-        actions={<button className="btn btn-primary" onClick={handleCreate} disabled={saving}><Icon name="plus" size={14} /> Nieuwe categorie</button>}
+        sub="Een categorie geldt voor buurtinitiatieven én activiteiten. Maak hem hier aan en kies hem daarna in de keuzelijst Categorie bij het buurtinitiatief of de activiteit."
       />
+
+      {/* F6: formulier bovenaan (stond onder alle kaarten en was makkelijk te missen) */}
+      <div className="form-section" style={{ marginBottom: 24 }}>
+        <h3>Nieuwe categorie</h3>
+        <div className="row-3">
+          <Field label="Naam"><input type="text" placeholder="bijv. Eten & drinken" value={newNaam} onChange={e => setNewNaam(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }} /></Field>
+          <Field label="Icoon">
+            <select value={newIcoon} onChange={e => setNewIcoon(e.target.value)}>
+              <option value="users">users (Sociaal)</option>
+              <option value="activity">activity (Sport)</option>
+              <option value="book">book (Lezen)</option>
+              <option value="map">map (Buiten)</option>
+              <option value="image">image (Cultuur)</option>
+              <option value="heart">heart (Zorg)</option>
+              <option value="music">music (Muziek)</option>
+              <option value="coffee">coffee (Eten)</option>
+            </select>
+          </Field>
+          <Field label="Kleur">
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', height: 38 }}>
+              {kleuren.map((k, i) => (
+                <span key={i} className={"swatch" + (i === newKleurIdx ? ' selected' : '')} style={{ background: k, cursor: 'pointer' }} onClick={() => setNewKleurIdx(i)}></span>
+              ))}
+            </div>
+          </Field>
+        </div>
+        <div className="hint" style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>Kleur en icoon zijn alleen voor herkenning in het CMS.</div>
+        <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={handleCreate} disabled={saving}><Icon name="plus" size={14} /> Categorie aanmaken</button>
+      </div>
 
       <div className="grid grid-2">
         {cats.map(c => (
@@ -4041,42 +4080,6 @@ function CategoriesScreen() {
             )}
           </div>
         ))}
-      </div>
-
-      <div className="form-section" style={{ marginTop: 24 }}>
-        <h3>Nieuwe categorie</h3>
-        <div className="row-3">
-          <Field label="Naam"><input type="text" placeholder="bijv. Eten & drinken" value={newNaam} onChange={e => setNewNaam(e.target.value)} /></Field>
-          <Field label="Icoon">
-            <select value={newIcoon} onChange={e => setNewIcoon(e.target.value)}>
-              <option value="users">users (Sociaal)</option>
-              <option value="activity">activity (Sport)</option>
-              <option value="book">book (Lezen)</option>
-              <option value="map">map (Buiten)</option>
-              <option value="image">image (Cultuur)</option>
-              <option value="heart">heart (Zorg)</option>
-              <option value="music">music (Muziek)</option>
-              <option value="coffee">coffee (Eten)</option>
-            </select>
-          </Field>
-          <Field label="Kleur">
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', height: 38 }}>
-              {kleuren.map((k, i) => (
-                <span key={i} className={"swatch" + (i === newKleurIdx ? ' selected' : '')} style={{ background: k, cursor: 'pointer' }} onClick={() => setNewKleurIdx(i)}></span>
-              ))}
-            </div>
-          </Field>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Field label="Koppelen aan">
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {Object.keys(newKoppeling).map(k => (
-                <button key={k} className={"chip" + (newKoppeling[k] ? ' active' : '')} onClick={() => setNewKoppeling(s => ({ ...s, [k]: !s[k] }))}>{k}</button>
-              ))}
-            </div>
-          </Field>
-        </div>
-        <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={handleCreate} disabled={saving || !newNaam.trim()}>Categorie aanmaken</button>
       </div>
     </>
   );

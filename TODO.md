@@ -506,7 +506,31 @@ en de live site.
       de groep op de site. Nieuwe activiteiten komen in "Ontmoeting".
 - [x] **Foto en Uitlichten:** weghalen bij allebei.
 
-**Status (14-09): gebouwd en lokaal getest, NIET gepusht.**
+**Status: live (14-09, commit `2cb7bd3`), lokaal én live getest.**
+- [x] Live gecontroleerd: `index.html` en `beheer.html` zijn identiek aan
+      lokaal.
+      - Activiteiten-pagina ongewijzigd (10 activiteiten in dezelfde 3 groepen,
+        "Gesorteerd op type")
+      - homepage "10 terugkerende activiteiten"
+      - Buurtatlas "Activiteiten · 10", ook na een bezoek aan de Agenda
+      - detailpagina met aanmeldformulier
+      - CMS (onderschepte opslag): activiteit en buurtinitiatief hebben
+        dezelfde 5 secties en 17 velden, Terugkerend alleen bij activiteit, en
+        opslaan stuurt `wat` en `uitgebreide_omschrijving` mee
+      - geen consolefouten
+- [x] Echte opslagtest (14-09, Giovanny ingelogd, met toestemming):
+      - Koffie & Soep: "Wat" = TEST, opgeslagen via het CMS
+      - de database toonde `wat` = "TEST"; overige velden en status ongewijzigd
+      - de live detailpagina toonde "Wat: TEST"
+      - daarna weer leeggemaakt en opgeslagen, `wat` = "" in de database
+      - CMS doorgeklikt: waarden in beide bewerkschermen komen overeen met de
+        database, "Nieuwe activiteit" opent goed
+      - geen consolefouten
+- Opgevallen tijdens het testen (niet aangepast):
+  - Parklunch Belgisch Park heeft als e-mail "activiteiten @thuisindebuurt.nl"
+    (met spatie). Mail naar dat adres komt niet aan.
+  - Er staat een gepubliceerd buurtinitiatief "test 2", waarschijnlijk een
+    testrestant.
 - [x] SQL `sql/f5_activiteit_gelijk_aan_buurtinitiatief.sql` gedraaid door
       Giovanny (14-09). Alle nieuwe kolommen bestaan, gecontroleerd via de API.
 - [x] Besluit: Giovanny kiest later zelf via het CMS welke activiteiten blijven.
@@ -593,6 +617,70 @@ en de live site.
 www.thuisindebuurt.nl en app.thuisindebuurt.nl.
 
 ### F6. Zelf categorieën toevoegen in het CMS werkt niet
+
+**Brainstorm met Giovanny (14-09), besluiten:**
+- [x] **Werkwijze:** Margareth maakt een categorie aan in het scherm
+      Categorieën. Daarna koppelt ze die **via het item zelf**: in het
+      bewerkscherm van een buurtinitiatief of activiteit kiest ze hem in de
+      keuzelijst "Categorie". Die keuzelijst leest al uit de categorieëntabel.
+- [x] **Een categorie geldt altijd voor buurtinitiatieven én activiteiten.** De
+      knoppen "Koppelen aan" gaan weg.
+- [x] **Website:** een categorie verschijnt pas als filterknop op de
+      Buurtinitiatieven-pagina als er minstens één buurtinitiatief aan hangt.
+      Nu staan ook lege categorieën er (bijv. Kunst en Cultuur, 0).
+- [x] **Kleur en icoon** blijven alleen voor herkenning in het CMS. De site houdt
+      zijn eigen vaste kleuren.
+
+**Echte test (14-09, Giovanny ingelogd, met toestemming):**
+- [x] **Toevoegen werkt.** Via het formulier onderaan de categorie "TEST"
+      aangemaakt. Hij verscheen in de database (id 13, volgorde 8) en in de
+      CMS-lijst. De databaserechten zijn dus **geen** probleem.
+- [x] **Keuzelijst werkt.** "TEST" stond meteen in de keuzelijst "Categorie" van
+      een activiteit (bekeken, niet opgeslagen).
+- [x] **Website toonde "TEST" direct als filterknop**, terwijl er niets aan hing.
+      Klikken gaf "0 buurtinitiatieven gevonden". Dit bevestigt dat het besluit
+      "pas tonen als er iets aan hangt" nodig is.
+- [x] **Verwijderen werkt.** Via de prullenbak met bevestigingsvraag verwijderd.
+      Weg uit de database, de CMS-lijst en de filterknoppen van de website.
+- [x] Geen consolefouten.
+- **Conclusie:** het toevoegen zelf werkt. Wat "niet werkt" is de bediening:
+  - de knop "+ Nieuwe categorie" rechtsboven doet niets
+  - het echte formulier staat onderaan, onder alle kaarten, en is makkelijk te
+    missen
+  - "Koppelen aan" doet niets
+
+**Besluit (14-09):** knop rechtsboven weg, formulier bovenaan (optie A).
+
+**Status (14-09): gebouwd, nog niet gepusht.**
+- [x] CMS `beheer.html`, alleen binnen `CategoriesScreen`:
+      - knop rechtsboven weg; formulier "Nieuwe categorie" staat bovenaan;
+        Enter in het naamveld maakt de categorie aan
+      - "Koppelen aan" weg (werd nergens opgeslagen)
+      - lege naam geeft een melding, bij aanmaken én hernoemen
+      - dubbele naam geeft een melding, zonder op hoofdletters en spaties aan
+        de randen te letten, ook bij hernoemen
+      - teller "items gekoppeld" telt buurtinitiatieven én activiteiten
+      - uitleg bovenaan aangepast: categorie geldt voor beide en je kiest hem
+        bij het item; kleur en icoon alleen voor het CMS
+- [x] Website `bundle-src/clubjes.jsx`: filterknoppen alleen voor categorieën
+      met minstens één buurtinitiatief.
+- [x] Lokaal getest (14-09). Wegschrijven werd onderschept, er ging niets naar
+      de database:
+      - **website:** filterknoppen zonder "Kunst en Cultuur" (0
+        buurtinitiatieven), de andere 6 staan er; klik Spel → 1 kaartje, nog
+        eens → alle 9
+      - **CMS opbouw:** geen knop rechtsboven, formulier "Nieuwe categorie"
+        staat vóór de kaarten, één formulier, "Koppelen aan" weg, nieuwe uitleg
+      - **tellers:** tellen buurtinitiatieven en activiteiten (bijv. Eten 4 =
+        2 + 2)
+      - **aanmaken:** een lege naam of alleen spaties geeft een melding en er
+        wordt niets opgeslagen; "  eten " geeft "bestaat al" en wordt niet
+        opgeslagen; "  TEST F6  " via Enter geeft een melding en wordt
+        opgeslagen als "TEST F6" met volgorde 8
+      - **hernoemen:** Eten → "Spel" geeft "bestaat al"; leeg geeft een
+        melding; "eTEN" (alleen andere hoofdletters) mag en neemt de items mee
+      - geen consolefouten
+- [ ] Pushen en live testen (Giovanny ingelogd).
 **Wens:** Margareth kan zelf een nieuwe categorie toevoegen en die verschijnt
 daarna overal: in het CMS, op de website en in de filters.
 
