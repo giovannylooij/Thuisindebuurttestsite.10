@@ -320,11 +320,12 @@ vergelijking van nu / A / B.
       - live `index.html` is identiek aan lokaal
       - filterbolletjes in de nieuwe kleuren, 10px
       - wit randje alleen op de actieve knop (Sport en Bewegen)
-      - Buurtatlas ongewijzigd
+      - Buurtatlas toen nog ongewijzigd (later ook aangepast, zie hieronder)
       - geen consolefouten
       - screenshot van de live filterbalk
 **Uitbreiding (14-09): op verzoek van Giovanny ook bij de Buurtatlas.**
-*Lokaal getest, nog niet gepusht.*
+*Live (commit `d658a5d`), lokaal én live getest. Giovanny koos variant A:
+zo online, labeltekst niet donkerder gemaakt.*
 - [x] `bundle-src/buurtatlas.jsx`: `ATLAS_CATEGORIES` krijgt dezelfde fellere
       tinten:
       - Voorzieningen #8e44d6 (was #7e4ca3)
@@ -351,7 +352,13 @@ vergelijking van nu / A / B.
 
   Mogelijke oplossing, nog niet gedaan: de labeltekst een donkerdere tint
   geven en alleen de bolletjes/stippen fel houden.
-- [ ] Pushen en live controleren.
+- [x] Gepusht en live gecontroleerd:
+      - live `index.html` is identiek aan lokaal
+      - bolletjes 10px in de nieuwe kleuren
+      - kaartstippen in de nieuwe kleuren
+      - wit randje alleen op de actieve knop (Activiteiten, 10 plekken)
+      - geen consolefouten
+      - screenshot van de live filterbalk
 
 - Niet in dit punt, alleen genoteerd: Eten en Evenement/Festival hebben nog
   steeds dezelfde kleur (6 kleuren voor 7 categorieën), en de kleuren uit het
@@ -426,6 +433,161 @@ in de F5-migratie.
       - opslaan, herladen, alles staat er nog
       - zichtbaar op de website
       - bestaande activiteiten zijn niets kwijt
+
+#### Uitwerking F5 (14-09): wat er in de code en database gevonden is
+Gecontroleerd in `beheer.html`, `bundle-src/*.jsx`, de database (publieke API)
+en de live site.
+
+**Database nu:**
+- `activiteiten` heeft 10 rijen en de kolommen `id, naam, type, categorie,
+  wanneer, waar, kosten, contact, email, herhalend, status, aangemaakt_op`.
+- Het bewerkscherm heeft al adres- en kaartvelden, maar `adres/lat/lng`
+  bestaan niet. Opslaan mislukt dus zodra je een locatie invult.
+- Voor B3/B4 ontbreken ook bij `clubjes` de kolommen `wat` en
+  `uitgebreide_omschrijving`.
+
+**Gevonden problemen die F5 raken:**
+1. **Type wordt op de website gebruikt.**
+   - De Activiteiten-pagina groepeert op Type: Ontmoeting, Beweging,
+     Cultuur & leren (`other.jsx` r.319–322).
+   - Het label op de detailpagina (`detail.jsx` r.162) en op de
+     Agenda-kaartjes (`other.jsx` r.244) toont ook Type.
+   - Type weghalen uit het CMS vraagt dus ook een aanpassing op de site.
+2. **Concept-activiteiten staan gewoon live.**
+   - 8 van de 10 activiteiten staan op "Concept", maar alle 10 zijn zichtbaar
+     op de live Activiteiten-pagina (gecontroleerd).
+   - De site filtert bij activiteiten niet op status, bij buurtinitiatieven wel.
+3. **Een deel van het buurtinitiatief-scherm werkt zelf niet.** Dat zou dus
+   mee gekopieerd worden:
+   - **"Voor wie" wordt niet opgeslagen.** Het scherm schrijft naar
+     `voor_wie`, maar de opslagfunctie leest `voorWie` (`beheer.html`
+     r.6387). Slechts 1 van de 9 buurtinitiatieven heeft een waarde.
+   - **Foto wordt niet opgeslagen.** Het scherm gebruikt `photo`, de opslag
+     kent alleen `foto_url`. Geen enkel buurtinitiatief heeft een foto, en de
+     site toont ook geen foto (`photo: null`).
+   - **"Uitlichten op homepagina" doet niets.** `uitgelicht` wordt wel
+     opgeslagen, maar komt nergens in de websitecode voor.
+4. **B3 en B4 zijn nog niet gebouwd.**
+   - "Wat" is nog steeds hetzelfde veld als Categorie.
+   - "Uitgebreide omschrijving" is nog de nep-tekstverwerker.
+   - B4 wacht op keuze A (tonen) of B (alleen opslaan).
+
+**Voorstel aanpak, in één keer:**
+1. **Eén SQL-migratie** (Giovanny draait die):
+   - `activiteiten`: `adres, lat, lng, wijk, omschrijving,
+     uitgebreide_omschrijving, voor_wie, wat, telefoon, contact_zichtbaar,
+     icoon_url, icoon_label` erbij
+   - `clubjes`: `wat` en `uitgebreide_omschrijving` erbij
+   - Alleen kolommen toevoegen; niets verwijderen, `type` blijft staan.
+2. **CMS:** één gedeeld bewerkscherm voor buurtinitiatief én activiteit.
+   Daardoor zijn ze gegarandeerd gelijk en blijven ze dat. Verschil: alleen
+   de schakelaar Terugkerend bij activiteiten.
+   - Eigen veld "Wat" (B3).
+   - Echt tekstvak "Uitgebreide omschrijving" (B4).
+   - "Voor wie" wordt echt opgeslagen.
+   - Weg bij allebei: Type, SEO, Categorie & tags, Gekoppelde items.
+3. **Website:**
+   - Activiteiten-pagina groepeert op Categorie in plaats van Type.
+   - Het label toont de categorie.
+   - Detailpagina van een activiteit krijgt dezelfde onderdelen als een
+     buurtinitiatief: Wat, Voor wie, omschrijving, contact-tab, icoon, kaart.
+4. **Testen:** lokaal met onderschepte opslag, daarna live, zoals bij F3.
+
+**Besluiten Giovanny (14-09):**
+- [x] **B4:** A, tonen op de detailpagina. Het veld heet **"Omschrijving"** en
+      staat onder "Korte omschrijving". Database-kolom:
+      `uitgebreide_omschrijving`.
+- [x] ~~Activiteiten-pagina op Categorie~~ en ~~alleen gepubliceerde tonen~~:
+      **teruggedraaid (14-09)**. Giovanny wil dat de Activiteiten-pagina op de
+      website **precies blijft zoals hij is**: groepen Ontmoeting, Beweging en
+      Cultuur & leren, alle 10 activiteiten zichtbaar, dezelfde kaartjes en
+      labels. Welke activiteiten blijven, bepaalt hij later zelf via het CMS.
+      Type is alleen uit het CMS-scherm weg; de kolom blijft bestaan en bepaalt
+      de groep op de site. Nieuwe activiteiten komen in "Ontmoeting".
+- [x] **Foto en Uitlichten:** weghalen bij allebei.
+
+**Status (14-09): gebouwd en lokaal getest, NIET gepusht.**
+- [x] SQL `sql/f5_activiteit_gelijk_aan_buurtinitiatief.sql` gedraaid door
+      Giovanny (14-09). Alle nieuwe kolommen bestaan, gecontroleerd via de API.
+- [x] Besluit: Giovanny kiest later zelf via het CMS welke activiteiten blijven.
+      De website filtert **niet** op status; alle activiteiten blijven zichtbaar
+      zoals nu.
+- [x] Na de split opnieuw getest (onderschepte opslag):
+      - zelfde secties en zijkaarten
+      - labels verschillen alleen in "de activiteit" / "het buurtinitiatief"
+      - Terugkerend alleen bij activiteit
+      - opslaan stuurt `wat`, `uitgebreide_omschrijving` en `voor_wie` mee
+      - nieuwe activiteit zonder id
+      - geen consolefouten
+
+**CMS (`beheer.html`):**
+- [x] **Twee aparte schermen** (op verzoek van Giovanny, geen gedeeld scherm):
+      `ClubjeEdit` en `ActiviteitEdit` hebben exact dezelfde opbouw. Alleen
+      activiteit heeft de schakelaar Terugkerend. In de code staat bij beide
+      een notitie: wijzig je er één, doe dat bij de ander ook.
+      - Secties: Basisgegevens, Praktische informatie, Contact, Locatie, Icoon.
+      - Zijkaarten: Publicatie, Hulp.
+      - "Wat" (B3) en "Omschrijving" (B4) zijn echte velden.
+      - Terugkerend alleen bij activiteit.
+      - Weg: Type, Afbeelding, Uitlichten, SEO, Categorie & tags, Gekoppelde
+        items, en de nep-tekstverwerker.
+- [x] Opslaan:
+      - "Voor wie" wordt nu echt opgeslagen (de bug met `voorWie`).
+      - Nieuwe vertaling `__mapActiviteitenToDb`.
+      - `__supabaseUpsert` meldt nu of het gelukt is; alleen dan verschijnt
+        "opgeslagen".
+      - Nieuwe buurtinitiatieven krijgen hun id van de database (was een zelf
+        verzonnen id).
+      - Geen nep-coördinaten meer voor nieuwe items.
+- [x] Activiteitenoverzicht: kolom en filterknoppen voor Type weg, filteren op
+      categorie. In de lijst met buurtinitiatieven is de ster voor "uitgelicht"
+      weg.
+
+**Website (`bundle-src`):**
+- [x] `ui.jsx`: gedeelde `tibMapActiviteit`.
+      - Alle activiteiten, groep = Type, zelfde standaardlocatie als voorheen
+        als er geen eigen locatie is.
+      - Leest de nieuwe velden ("Wat", "Omschrijving", "Voor wie", telefoon,
+        contact-tab). "Voor wie" van buurtinitiatieven leest nu `voor_wie`.
+- [x] **Activiteiten-pagina: ongewijzigd** (groepen, intro, kaartjes en labels
+      zijn precies zoals voorheen).
+- [x] Detailpagina:
+      - contact-tab en aansluittekst ook bij activiteiten
+      - "Omschrijving" onder de korte omschrijving
+      - knop "Alle ..." gaat naar de juiste lijst
+      - label blijft Type
+- [x] Agenda: zelfde lijst als voorheen, label blijft Type.
+
+**Lokaal getest** (onderschepte opslag, niets naar de database):
+- [x] Website na het terugdraaien, lokaal naast live vergeleken (14-09):
+      - Activiteiten-pagina **identiek**: dezelfde intro, groepen Ontmoeting
+        (4), Beweging (3) en Cultuur & leren (3), dezelfde kaartjes met tijd,
+        "via" en icoon
+      - homepage "10 terugkerende activiteiten", zelfde als live
+      - Agenda: dezelfde lijst en labels (Type)
+      - label op de detailpagina (Type) is gelijk
+      - Buurtatlas "Activiteiten · 10", zelfde als live bij direct openen
+        (live zakte na een bezoek aan de Agenda naar 0 door de oude code; nu
+        blijft het 10)
+      - enige verschil: de rij "Wat" op de detailpagina (B3, zie hieronder)
+      - geen consolefouten
+- [x] CMS:
+      - scherm activiteit en buurtinitiatief hebben identieke secties en
+        velden; alleen Terugkerend is extra
+      - opslaan stuurt `voor_wie`, `wat`, `uitgebreide_omschrijving` en
+        `telefoon` echt mee
+      - lijst zonder Type, filter Sport en Bewegen toont 3
+      - nieuwe activiteit wordt ingevoegd zonder id, daarna verschijnt de
+        Verwijderen-knop
+      - geen consolefouten
+- [ ] Na SQL + publiceren: pushen, live controleren, en een echte opslag in het
+      CMS doen (inloggen door Giovanny).
+
+**Zichtbare gevolgen na de push:**
+- Activiteiten-pagina, Agenda en Buurtatlas: geen verschil.
+- Detailpagina's: de rij "Wat" toont voortaan het eigen veld "Wat" (B3). Tot dat
+  in het CMS is ingevuld verdwijnt die rij. Bij buurtinitiatieven stond daar de
+  categorie, bij activiteiten het Type.
 
 **Na uitvoering:** bundelen, pushen en live controleren op
 www.thuisindebuurt.nl en app.thuisindebuurt.nl.

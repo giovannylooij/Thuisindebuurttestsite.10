@@ -1874,7 +1874,6 @@ function ClubjesList({ onNav, onEdit, profile }) {
                     <div>
                       <div className="strong">
                         {c.naam}
-                        {c.uitgelicht && <Icon name="star" size={12} style={{ marginLeft: 6, color: 'var(--warn)' }} />}
                       </div>
                       <div className="sub">{c.omschrijving}</div>
                     </div>
@@ -1899,36 +1898,68 @@ function ClubjesList({ onNav, onEdit, profile }) {
   );
 }
 
+// Bewerkscherm buurtinitiatief. ActiviteitEdit heeft exact dezelfde opbouw (F5);
+// wijzig je hier iets, doe dat daar ook.
 function ClubjeEdit({ id, onBack }) {
-  const existing = DATA.clubjes.find(c => c.id === id);
-  const defaults = existing || { naam: 'Nieuw buurtinitiatief', categorie: 'Ontmoeting/Sociaal', wijk: '', omschrijving: '', voor_wie: '', waar: '', wanneer: '', kosten: '', contact: '', email: '', telefoon: '', lat: 52.110, lng: 4.290, status: 'Concept', uitgelicht: false, contact_zichtbaar: false };
-  const [fd, setFd] = React.useState({ ...defaults });
-  const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
-  const [uitgelicht, setUitgelicht] = React.useState(!!defaults.uitgelicht);
-  const [published, setPublished] = React.useState(defaults.status === 'Gepubliceerd');
+  const item = id != null ? (DATA.clubjes.find(c => c.id === id) || null) : null;
+  const leeg = {
+    naam: 'Nieuw buurtinitiatief', categorie: 'Ontmoeting/Sociaal', wijk: '',
+    omschrijving: '', uitgebreide_omschrijving: '',
+    voor_wie: '', wat: '', waar: '', wanneer: '', kosten: '',
+    contact: '', email: '', telefoon: '', contact_zichtbaar: false,
+    adres: '', lat: null, lng: null, icoon_url: null, icoon_label: null,
+    status: 'Concept',
+  };
 
-  function handleSave(pubOverride) {
+  const [fd, setFd] = React.useState(() => ({ ...leeg, ...(item || {}) }));
+  const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
+  const [published, setPublished] = React.useState(!!item && item.status === 'Gepubliceerd');
+  const [bezig, setBezig] = React.useState(false);
+  const bestaat = fd.id != null;
+  const toast = (tekst) => window.__showToast && window.__showToast(tekst);
+  const getal = (tekst) => { const n = parseFloat(tekst); return isNaN(n) ? null : n; };
+
+  // Geeft true terug als de database het echt heeft opgeslagen.
+  async function handleSave(pubOverride) {
+    if (bezig) return false;
     const isPublished = pubOverride !== undefined ? pubOverride : published;
-    let toSave = { ...fd, uitgelicht, status: isPublished ? 'Gepubliceerd' : 'Concept' };
-    const idx = DATA.clubjes.findIndex(c => c.id === id);
-    if (idx >= 0) {
-      DATA.clubjes[idx] = toSave;
+    const toSave = { ...fd, status: isPublished ? 'Gepubliceerd' : 'Concept' };
+    const lijst = DATA.clubjes;
+    setBezig(true);
+    let gelukt = false;
+    if (bestaat) {
+      gelukt = await window.__supabaseUpsert('clubjes', toSave);
+      if (gelukt) {
+        const idx = lijst.findIndex(x => x.id === toSave.id);
+        if (idx >= 0) lijst[idx] = toSave; else lijst.push(toSave);
+        setFd(toSave);
+      }
     } else {
-      const newId = DATA.clubjes.length > 0 ? Math.max(...DATA.clubjes.map(c => Number(c.id) || 0)) + 1 : 1;
-      toSave = { ...toSave, id: newId };
-      DATA.clubjes.push(toSave);
+      // Nieuw: de database geeft zelf het id uit (zie __supabaseInsert).
+      const created = await window.__supabaseInsert('clubjes', toSave);
+      if (created) {
+        gelukt = true;
+        const nieuw = { ...toSave, ...created };
+        lijst.push(nieuw);
+        setFd(nieuw);
+      }
     }
-    window.__syncToSite && window.__syncToSite();
-    window.__supabaseUpsert('clubjes', toSave);
-    window.__showToast && window.__showToast('Buurtinitiatief opgeslagen!');
+    setBezig(false);
+    if (gelukt) window.__syncToSite && window.__syncToSite();
+    return gelukt;
+  }
+
+  async function opslaan() {
+    if (await handleSave()) toast('Buurtinitiatief opgeslagen!');
   }
 
   function handleDelete() {
     if (!window.confirm('Buurtinitiatief "' + fd.naam + '" definitief verwijderen?')) return;
-    const idx = DATA.clubjes.findIndex(c => c.id === id);
-    if (idx >= 0) { window.__supabaseDelete('clubjes', id); DATA.clubjes.splice(idx, 1); }
+    const lijst = DATA.clubjes;
+    const idx = lijst.findIndex(x => x.id === fd.id);
+    if (idx >= 0) { window.__supabaseDelete('clubjes', fd.id); lijst.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast('Buurtinitiatief verwijderd');
+    toast('Buurtinitiatief verwijderd');
     onBack();
   }
 
@@ -1936,11 +1967,11 @@ function ClubjeEdit({ id, onBack }) {
     <>
       <PageHead
         title={fd.naam}
-        sub={<><a href="#" onClick={onBack} style={{ color: 'var(--accent-2)' }}>← Terug naar buurtinitiatieven</a></>}
+        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar buurtinitiatieven</a></>}
         actions={<>
-          {id != null && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
+          {bestaat && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
           <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
-          <button className="btn btn-primary" onClick={() => handleSave()}><Icon name="save" size={14} /> Opslaan</button>
+          <button className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>
         </>}
       />
 
@@ -1949,36 +1980,23 @@ function ClubjeEdit({ id, onBack }) {
         <div>
           <div className="form-section">
             <h3>Basisgegevens</h3>
-            <div className="sec-sub">Wat ziet de bezoeker als eerste op de buurtinitiatief-pagina?</div>
+            <div className="sec-sub">Wat ziet de bezoeker als eerste op de pagina van het buurtinitiatief?</div>
             <Field label="Naam van het buurtinitiatief">
-              <input type="text" value={fd.naam} onChange={e => up('naam', e.target.value)} />
+              <input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} />
             </Field>
             <div className="row-2">
               <Field label="Categorie">
                 <CategorieSelect value={fd.categorie} onChange={v => up('categorie', v)} />
               </Field>
               <Field label="Wijk / gebied">
-                <input type="text" value={fd.wijk} onChange={e => up('wijk', e.target.value)} placeholder="bijv. Centrum, Noord, Strand" />
+                <input type="text" value={fd.wijk || ''} onChange={e => up('wijk', e.target.value)} placeholder="bijv. Centrum, Noord, Strand" />
               </Field>
             </div>
             <Field label="Korte omschrijving" hint="1 zin, gebruikt op kaarten en in zoekresultaten.">
-              <input type="text" value={fd.omschrijving} onChange={e => up('omschrijving', e.target.value)} />
+              <input type="text" value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} />
             </Field>
-            <Field label="Uitgebreide omschrijving">
-              <div className="wysiwyg">
-                <div className="wysiwyg-bar">
-                  <button title="Vet" onMouseDown={e => { e.preventDefault(); document.execCommand('bold'); }}><Icon name="bold" size={13} /></button>
-                  <button title="Cursief" onMouseDown={e => { e.preventDefault(); document.execCommand('italic'); }}><Icon name="italic" size={13} /></button>
-                  <div className="sep"></div>
-                  <button title="Lijst" onMouseDown={e => { e.preventDefault(); document.execCommand('insertUnorderedList'); }}><Icon name="list" size={13} /></button>
-                  <button title="Link toevoegen" onMouseDown={e => { e.preventDefault(); const url = window.prompt('Vul de URL in:'); if (url) document.execCommand('createLink', false, url); }}><Icon name="link" size={13} /></button>
-                  <button title="Afbeelding URL" onMouseDown={e => { e.preventDefault(); const url = window.prompt('Afbeelding URL:'); if (url) document.execCommand('insertImage', false, url); }}><Icon name="image" size={13} /></button>
-                </div>
-                <div className="wysiwyg-body" contentEditable suppressContentEditableWarning>
-                  <p>Bij <strong>{fd.naam}</strong> kom je samen met buurtgenoten om {(fd.categorie || '').toLowerCase()} te beoefenen in een ontspannen sfeer.</p>
-                  <p>We zijn er voor iedereen — kom gerust eens kijken, je hoeft je niet aan te melden.</p>
-                </div>
-              </div>
+            <Field label="Omschrijving" hint="Uitgebreide tekst, zichtbaar op de detailpagina onder de korte omschrijving.">
+              <textarea rows={6} value={fd.uitgebreide_omschrijving || ''} onChange={e => up('uitgebreide_omschrijving', e.target.value)} />
             </Field>
           </div>
 
@@ -1986,14 +2004,14 @@ function ClubjeEdit({ id, onBack }) {
             <h3>Praktische informatie</h3>
             <div className="sec-sub">Deze velden vullen automatisch de "Voor wie / Wat / Waar / Wanneer / Kosten"-blokjes op de pagina.</div>
             <div className="row-2">
-              <Field label="Voor wie"><input type="text" value={fd.voor_wie} onChange={e => up('voor_wie', e.target.value)} /></Field>
-              <Field label="Wat"><input type="text" value={fd.categorie} onChange={e => up('categorie', e.target.value)} /></Field>
+              <Field label="Voor wie"><input type="text" value={fd.voor_wie || ''} onChange={e => up('voor_wie', e.target.value)} /></Field>
+              <Field label="Wat"><input type="text" value={fd.wat || ''} onChange={e => up('wat', e.target.value)} placeholder="bijv. Samen koken en eten" /></Field>
             </div>
             <div className="row-2">
-              <Field label="Waar"><input type="text" value={fd.waar} onChange={e => up('waar', e.target.value)} /></Field>
-              <Field label="Wanneer"><input type="text" value={fd.wanneer} onChange={e => up('wanneer', e.target.value)} /></Field>
+              <Field label="Waar"><input type="text" value={fd.waar || ''} onChange={e => up('waar', e.target.value)} /></Field>
+              <Field label="Wanneer"><input type="text" value={fd.wanneer || ''} onChange={e => up('wanneer', e.target.value)} /></Field>
             </div>
-            <Field label="Kosten"><input type="text" value={fd.kosten} onChange={e => up('kosten', e.target.value)} /></Field>
+            <Field label="Kosten"><input type="text" value={fd.kosten || ''} onChange={e => up('kosten', e.target.value)} /></Field>
           </div>
 
           <div className="form-section">
@@ -2010,11 +2028,11 @@ function ClubjeEdit({ id, onBack }) {
               </label>
             </Field>
             <div className="row-2">
-              <Field label="Contactpersoon"><input type="text" value={fd.contact} onChange={e => up('contact', e.target.value)} /></Field>
-              <Field label="E-mailadres"><input type="email" value={fd.email} onChange={e => up('email', e.target.value)} /></Field>
+              <Field label="Contactpersoon"><input type="text" value={fd.contact || ''} onChange={e => up('contact', e.target.value)} /></Field>
+              <Field label="E-mailadres"><input type="email" value={fd.email || ''} onChange={e => up('email', e.target.value)} /></Field>
             </div>
             <div className="row-2">
-              <Field label="Telefoon (optioneel)"><input type="tel" value={fd.telefoon} onChange={e => up('telefoon', e.target.value)} /></Field>
+              <Field label="Telefoon (optioneel)"><input type="tel" value={fd.telefoon || ''} onChange={e => up('telefoon', e.target.value)} /></Field>
             </div>
           </div>
 
@@ -2030,61 +2048,13 @@ function ClubjeEdit({ id, onBack }) {
             </Field>
             <div className="row-2">
               <Field label="Latitude">
-                <input type="number" step="0.0001" value={fd.lat || ''} onChange={e => up('lat', parseFloat(e.target.value) || fd.lat)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+                <input type="number" step="0.0001" value={fd.lat != null ? fd.lat : ''} onChange={e => up('lat', getal(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
               </Field>
               <Field label="Longitude">
-                <input type="number" step="0.0001" value={fd.lng || ''} onChange={e => up('lng', parseFloat(e.target.value) || fd.lng)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+                <input type="number" step="0.0001" value={fd.lng != null ? fd.lng : ''} onChange={e => up('lng', getal(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
               </Field>
             </div>
-            {(fd.lat && fd.lng) && <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} />}
-          </div>
-
-          <div className="form-section">
-            <h3>Afbeelding</h3>
-            <div className="sec-sub">Upload een foto of vul een URL in. Aanbevolen formaat: liggend, minimaal 1200×800 px.</div>
-
-            {fd.photo && (
-              <div style={{ marginBottom: 12 }}>
-                <img
-                  src={fd.photo}
-                  alt={fd.photoAlt || fd.naam}
-                  style={{ maxWidth: 300, width: '100%', height: 'auto', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)', display: 'block' }}
-                />
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-              <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
-                <Icon name="upload" size={13} /> Foto uploaden
-                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
-                  const file = e.target.files && e.target.files[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = ev => up('photo', ev.target.result);
-                  reader.readAsDataURL(file);
-                }} />
-              </label>
-              {fd.photo && (
-                <button className="btn btn-ghost btn-danger" onClick={() => { up('photo', null); up('photoAlt', ''); }}>
-                  <Icon name="trash" size={13} /> Verwijderen
-                </button>
-              )}
-            </div>
-
-            <Field label="Of vul een foto-URL in" hint="Alternatief voor upload — directe link naar een afbeelding.">
-              <input
-                type="url"
-                placeholder="https://example.com/foto.jpg"
-                value={fd.photo && fd.photo.startsWith('http') ? fd.photo : ''}
-                onChange={e => up('photo', e.target.value)}
-              />
-            </Field>
-
-            {fd.photo && (
-              <Field label="Alt-tekst" hint="Beschrijf wat er op de foto te zien is (voor schermlezers).">
-                <input type="text" value={fd.photoAlt || ''} onChange={e => up('photoAlt', e.target.value)} placeholder="Bijv. 'Schaakspelers aan een tafel in Buurthuis De Pier'" />
-              </Field>
-            )}
+            {fd.lat != null && fd.lng != null ? <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} /> : null}
           </div>
 
           <div className="form-section">
@@ -2120,20 +2090,6 @@ function ClubjeEdit({ id, onBack }) {
               })}
             </div>
           </div>
-
-          <div className="form-section">
-            <h3>SEO &amp; vindbaarheid</h3>
-            <Field label="SEO-titel" hint="Wordt getoond op Google en in browsertabs."><input type="text" defaultValue={fd.naam + ' — Thuis in de Buurt'} /></Field>
-            <Field label="Meta description" hint="Max. 160 tekens.">
-              <textarea defaultValue={fd.omschrijving}></textarea>
-            </Field>
-            <Field label="URL-slug">
-              <div className="url-slug">
-                <span className="prefix">thuisindebuurt.org/clubjes/</span>
-                <input type="text" defaultValue={(fd.naam || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')} />
-              </div>
-            </Field>
-          </div>
         </div>
 
         {/* Sidebar */}
@@ -2141,35 +2097,13 @@ function ClubjeEdit({ id, onBack }) {
           <div className="side-card">
             <h4>Publicatie</h4>
             <div className="row"><span>Status</span><strong>{published ? 'Gepubliceerd' : 'Concept'}</strong></div>
-            <div className="row"><span>Zichtbaarheid</span><strong>Openbaar</strong></div>
-            <div className="row"><span>Publicatiedatum</span><strong>Direct</strong></div>
+            <div className="row"><span>Zichtbaarheid</span><strong>{published ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
             <div className="divider"></div>
-            <Toggle on={published} label="Publiceren" sub="Direct zichtbaar op de website" onChange={setPublished} />
+            <Toggle on={published} label="Publiceren" sub="Zichtbaar op de website na opslaan" onChange={setPublished} />
             <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-              <button className="btn btn-sm" style={{ flex: 1 }} onClick={() => { setPublished(false); handleSave(false); window.__showToast && window.__showToast('Opgeslagen als concept'); }}>Opslaan als concept</button>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => { setPublished(true); handleSave(true); window.__showToast && window.__showToast('Gepubliceerd!'); }}>Publiceer</button>
+              <button className="btn btn-sm" style={{ flex: 1 }} disabled={bezig} onClick={async () => { if (await handleSave(false)) { setPublished(false); toast('Opgeslagen als concept'); } }}>Opslaan als concept</button>
+              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={bezig} onClick={async () => { if (await handleSave(true)) { setPublished(true); toast('Gepubliceerd!'); } }}>Publiceer</button>
             </div>
-          </div>
-
-          <div className="side-card">
-            <h4>Uitlichten</h4>
-            <Toggle on={uitgelicht} label="Toon op de homepagina" sub="Verschijnt in de sectie 'Uitgelichte buurtinitiatieven'" onChange={setUitgelicht} />
-          </div>
-
-          <div className="side-card">
-            <h4>Categorie & tags</h4>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <span className="pill">Cultuur</span>
-              <span className="pill">55+</span>
-              <span className="pill">+ Tag</span>
-            </div>
-          </div>
-
-          <div className="side-card">
-            <h4>Gekoppelde items</h4>
-            <div className="row"><span>Agenda-items</span><strong>3</strong></div>
-            <div className="row"><span>Nieuwsberichten</span><strong>1</strong></div>
-            <div className="row"><span>Buurtatlas pin</span><strong>Aan</strong></div>
           </div>
 
           <div className="side-card" style={{ background: 'var(--cream-2)' }}>
@@ -2195,37 +2129,68 @@ window.ClubjesScreen = ClubjesScreen;
 /* === screens/content.jsx === */
 // Activiteiten, Agenda, Nieuws — list views (compact, share style)
 
-function ActiviteitEdit({ item, onBack }) {
-  const [fd, setFd] = React.useState({ ...item });
-  const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
-  const [gepubliceerd, setGepubliceerd] = React.useState(item.status === 'Gepubliceerd');
-  const [herhalend, setHerhalend] = React.useState(item.herhalend);
+// Bewerkscherm activiteit: exact dezelfde opbouw als ClubjeEdit (F5), plus de
+// schakelaar Terugkerend. Wijzig je hier iets, doe dat bij ClubjeEdit ook.
+function ActiviteitEdit({ item: itemProp, onBack }) {
+  const item = itemProp && itemProp.id != null ? itemProp : null;
+  const leeg = {
+    naam: 'Nieuwe activiteit', categorie: 'Ontmoeting/Sociaal', wijk: '',
+    omschrijving: '', uitgebreide_omschrijving: '',
+    voor_wie: '', wat: '', waar: '', wanneer: '', kosten: '',
+    contact: '', email: '', telefoon: '', contact_zichtbaar: false,
+    adres: '', lat: null, lng: null, icoon_url: null, icoon_label: null,
+    status: 'Concept', herhalend: true,
+  };
 
-  function handleSave(pubOverride) {
-    const isPublished = pubOverride !== undefined ? pubOverride : gepubliceerd;
-    let toSave = { ...fd, herhalend, status: isPublished ? 'Gepubliceerd' : 'Concept' };
-    const idx = DATA.activiteiten.findIndex(a => a.id === item.id);
-    if (idx >= 0) {
-      DATA.activiteiten[idx] = toSave;
-      window.__syncToSite && window.__syncToSite();
-      window.__supabaseUpsert('activiteiten', toSave);
-      window.__showToast && window.__showToast('Activiteit opgeslagen!');
+  const [fd, setFd] = React.useState(() => ({ ...leeg, ...(item || {}) }));
+  const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
+  const [published, setPublished] = React.useState(!!item && item.status === 'Gepubliceerd');
+  const [bezig, setBezig] = React.useState(false);
+  const bestaat = fd.id != null;
+  const toast = (tekst) => window.__showToast && window.__showToast(tekst);
+  const getal = (tekst) => { const n = parseFloat(tekst); return isNaN(n) ? null : n; };
+
+  // Geeft true terug als de database het echt heeft opgeslagen.
+  async function handleSave(pubOverride) {
+    if (bezig) return false;
+    const isPublished = pubOverride !== undefined ? pubOverride : published;
+    const toSave = { ...fd, status: isPublished ? 'Gepubliceerd' : 'Concept' };
+    const lijst = DATA.activiteiten;
+    setBezig(true);
+    let gelukt = false;
+    if (bestaat) {
+      gelukt = await window.__supabaseUpsert('activiteiten', toSave);
+      if (gelukt) {
+        const idx = lijst.findIndex(x => x.id === toSave.id);
+        if (idx >= 0) lijst[idx] = toSave; else lijst.push(toSave);
+        setFd(toSave);
+      }
     } else {
-      window.__supabaseInsert('activiteiten', toSave).then(created => {
-        if (!created) return;
-        DATA.activiteiten.push({ ...toSave, id: created.id });
-        window.__syncToSite && window.__syncToSite();
-        window.__showToast && window.__showToast('Activiteit opgeslagen!');
-      });
+      // Nieuw: de database geeft zelf het id uit (zie __supabaseInsert).
+      const created = await window.__supabaseInsert('activiteiten', toSave);
+      if (created) {
+        gelukt = true;
+        const nieuw = { ...toSave, ...created };
+        lijst.push(nieuw);
+        setFd(nieuw);
+      }
     }
+    setBezig(false);
+    if (gelukt) window.__syncToSite && window.__syncToSite();
+    return gelukt;
+  }
+
+  async function opslaan() {
+    if (await handleSave()) toast('Activiteit opgeslagen!');
   }
 
   function handleDelete() {
     if (!window.confirm('Activiteit "' + fd.naam + '" definitief verwijderen?')) return;
-    const idx = DATA.activiteiten.findIndex(a => a.id === item.id);
-    if (idx >= 0) { window.__supabaseDelete('activiteiten', item.id); DATA.activiteiten.splice(idx, 1); }
+    const lijst = DATA.activiteiten;
+    const idx = lijst.findIndex(x => x.id === fd.id);
+    if (idx >= 0) { window.__supabaseDelete('activiteiten', fd.id); lijst.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast('Activiteit verwijderd');
+    toast('Activiteit verwijderd');
     onBack();
   }
 
@@ -2235,40 +2200,74 @@ function ActiviteitEdit({ item, onBack }) {
         title={fd.naam}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar activiteiten</a></>}
         actions={<>
-          {item.id != null && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
+          {bestaat && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
           <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
-          <button className="btn btn-primary" onClick={() => { handleSave(); onBack(); }}><Icon name="save" size={14} /> Opslaan</button>
+          <button className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>
         </>}
       />
+
       <div className="form-grid">
+        {/* Main */}
         <div>
           <div className="form-section">
             <h3>Basisgegevens</h3>
-            <Field label="Naam van de activiteit"><input type="text" value={fd.naam} onChange={e => up('naam', e.target.value)} /></Field>
+            <div className="sec-sub">Wat ziet de bezoeker als eerste op de pagina van de activiteit?</div>
+            <Field label="Naam van de activiteit">
+              <input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} />
+            </Field>
             <div className="row-2">
-              <Field label="Type">
-                <select value={fd.type} onChange={e => up('type', e.target.value)}>
-                  <option>Ontmoeting</option><option>Beweging</option><option>Cultuur &amp; leren</option><option>Hulp</option>
-                </select>
-              </Field>
               <Field label="Categorie">
                 <CategorieSelect value={fd.categorie} onChange={v => up('categorie', v)} />
               </Field>
+              <Field label="Wijk / gebied">
+                <input type="text" value={fd.wijk || ''} onChange={e => up('wijk', e.target.value)} placeholder="bijv. Centrum, Noord, Strand" />
+              </Field>
+            </div>
+            <Field label="Korte omschrijving" hint="1 zin, gebruikt op kaarten en in zoekresultaten.">
+              <input type="text" value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} />
+            </Field>
+            <Field label="Omschrijving" hint="Uitgebreide tekst, zichtbaar op de detailpagina onder de korte omschrijving.">
+              <textarea rows={6} value={fd.uitgebreide_omschrijving || ''} onChange={e => up('uitgebreide_omschrijving', e.target.value)} />
+            </Field>
+          </div>
+
+          <div className="form-section">
+            <h3>Praktische informatie</h3>
+            <div className="sec-sub">Deze velden vullen automatisch de "Voor wie / Wat / Waar / Wanneer / Kosten"-blokjes op de pagina.</div>
+            <div className="row-2">
+              <Field label="Voor wie"><input type="text" value={fd.voor_wie || ''} onChange={e => up('voor_wie', e.target.value)} /></Field>
+              <Field label="Wat"><input type="text" value={fd.wat || ''} onChange={e => up('wat', e.target.value)} placeholder="bijv. Samen koken en eten" /></Field>
             </div>
             <div className="row-2">
-              <Field label="Wanneer"><input type="text" value={fd.wanneer} onChange={e => up('wanneer', e.target.value)} /></Field>
-              <Field label="Locatie"><input type="text" value={fd.waar} onChange={e => up('waar', e.target.value)} /></Field>
+              <Field label="Waar"><input type="text" value={fd.waar || ''} onChange={e => up('waar', e.target.value)} /></Field>
+              <Field label="Wanneer"><input type="text" value={fd.wanneer || ''} onChange={e => up('wanneer', e.target.value)} /></Field>
             </div>
-            <Field label="Kosten"><input type="text" value={fd.kosten} onChange={e => up('kosten', e.target.value)} /></Field>
-            <Toggle on={herhalend} label="Terugkerend" sub="Activiteit herhaalt wekelijks of maandelijks" onChange={setHerhalend} />
+            <Field label="Kosten"><input type="text" value={fd.kosten || ''} onChange={e => up('kosten', e.target.value)} /></Field>
+            <Toggle on={fd.herhalend !== false} label="Terugkerend" sub="Activiteit herhaalt wekelijks of maandelijks" onChange={v => up('herhalend', v)} />
           </div>
+
           <div className="form-section">
             <h3>Contact</h3>
+            <Field label="Contact weergeven op website">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={!!fd.contact_zichtbaar}
+                  onChange={e => up('contact_zichtbaar', e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: 'var(--accent-1)', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.92rem' }}>Toon Contact-tab op de detailpagina van de activiteit</span>
+              </label>
+            </Field>
             <div className="row-2">
-              <Field label="Contactpersoon"><input type="text" value={fd.contact} onChange={e => up('contact', e.target.value)} /></Field>
-              <Field label="E-mail"><input type="email" value={fd.email} onChange={e => up('email', e.target.value)} /></Field>
+              <Field label="Contactpersoon"><input type="text" value={fd.contact || ''} onChange={e => up('contact', e.target.value)} /></Field>
+              <Field label="E-mailadres"><input type="email" value={fd.email || ''} onChange={e => up('email', e.target.value)} /></Field>
+            </div>
+            <div className="row-2">
+              <Field label="Telefoon (optioneel)"><input type="tel" value={fd.telefoon || ''} onChange={e => up('telefoon', e.target.value)} /></Field>
             </div>
           </div>
+
           <div className="form-section">
             <h3>Locatie op de Buurtatlas</h3>
             <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Kloppen de coördinaten niet precies? Pas ze hieronder handmatig aan.</div>
@@ -2281,23 +2280,69 @@ function ActiviteitEdit({ item, onBack }) {
             </Field>
             <div className="row-2">
               <Field label="Latitude">
-                <input type="number" step="0.0001" value={fd.lat || ''} onChange={e => up('lat', parseFloat(e.target.value) || fd.lat)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+                <input type="number" step="0.0001" value={fd.lat != null ? fd.lat : ''} onChange={e => up('lat', getal(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
               </Field>
               <Field label="Longitude">
-                <input type="number" step="0.0001" value={fd.lng || ''} onChange={e => up('lng', parseFloat(e.target.value) || fd.lng)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+                <input type="number" step="0.0001" value={fd.lng != null ? fd.lng : ''} onChange={e => up('lng', getal(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
               </Field>
             </div>
-            {(fd.lat && fd.lng) && <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} />}
+            {fd.lat != null && fd.lng != null ? <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} /> : null}
+          </div>
+
+          <div className="form-section">
+            <h3>Icoon</h3>
+            <div className="sec-sub">Kies een icoon dat de activiteit vertegenwoordigt. Dit icoon is zichtbaar op de kaartjes op de Activiteiten-pagina.</div>
+            {fd.icoon_url && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '8px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8 }}>
+                <img src={fd.icoon_url} alt={fd.icoon_label || ''} style={{ width: 36, height: 36, borderRadius: 8 }} />
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase' }}>Huidig icoon</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#166534' }}>{fd.icoon_label}</div>
+                </div>
+                <button className="btn btn-ghost btn-danger" style={{ marginLeft: 'auto' }} onClick={() => { up('icoon_url', null); up('icoon_label', null); }}>
+                  <Icon name="trash" size={13} /> Verwijderen
+                </button>
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, maxHeight: 280, overflowY: 'auto', padding: 8, border: '1px solid #e5e7eb', borderRadius: 10, background: '#f9fafb' }}>
+              {CMS_ICONEN.map(icon => {
+                const url = CMS_ICOON_BASE_URL + icon.bestand;
+                const isSelected = fd.icoon_label === icon.label;
+                return (
+                  <div
+                    key={icon.label}
+                    onClick={() => { up('icoon_url', url); up('icoon_label', icon.label); }}
+                    title={icon.label}
+                    style={{ background: 'white', border: isSelected ? '2px solid #2d6a4f' : '2px solid transparent', borderRadius: 8, padding: 6, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}
+                  >
+                    <img src={url} alt={icon.label} style={{ width: 28, height: 28, objectFit: 'contain' }} />
+                    <span style={{ fontSize: 8, color: '#6b7280', textAlign: 'center' }}>{icon.label}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
+
+        {/* Sidebar */}
         <div>
           <div className="side-card">
             <h4>Publicatie</h4>
-            <Toggle on={gepubliceerd} label="Gepubliceerd" sub="Zichtbaar op de website" onChange={setGepubliceerd} />
+            <div className="row"><span>Status</span><strong>{published ? 'Gepubliceerd' : 'Concept'}</strong></div>
+            <div className="row"><span>Zichtbaarheid</span><strong>{published ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
+            <div className="divider"></div>
+            <Toggle on={published} label="Publiceren" sub="Zichtbaar op de website na opslaan" onChange={setPublished} />
             <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-              <button className="btn btn-sm" style={{ flex: 1 }} onClick={() => setGepubliceerd(false)}>Concept</button>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => { setGepubliceerd(true); handleSave(true); window.__showToast && window.__showToast('Activiteit gepubliceerd!'); }}>Publiceer</button>
+              <button className="btn btn-sm" style={{ flex: 1 }} disabled={bezig} onClick={async () => { if (await handleSave(false)) { setPublished(false); toast('Opgeslagen als concept'); } }}>Opslaan als concept</button>
+              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={bezig} onClick={async () => { if (await handleSave(true)) { setPublished(true); toast('Gepubliceerd!'); } }}>Publiceer</button>
             </div>
+          </div>
+
+          <div className="side-card" style={{ background: 'var(--cream-2)' }}>
+            <h4>Hulp nodig?</h4>
+            <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
+              Mail naar info@thuisindebuurt.nl.
+            </p>
           </div>
         </div>
       </div>
@@ -2308,7 +2353,7 @@ function ActiviteitEdit({ item, onBack }) {
 function ActiviteitenScreen() {
   const [tab, setTab] = React.useState('alle');
   const [search, setSearch] = React.useState('');
-  const [typeFilter, setTypeFilter] = React.useState('alle');
+  const [filter, setFilter] = React.useState('Alle');
   const [editing, setEditing] = React.useState(null);
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
 
@@ -2320,14 +2365,17 @@ function ActiviteitenScreen() {
     window.__showToast && window.__showToast('Activiteit verwijderd');
     forceUpdate();
   }
-  const typeChips = ['alle', 'Beweging', 'Sociaal', 'Spel', 'Hulp', 'Cultuur'];
+  // Afgeleid uit de items zelf, net als bij buurtinitiatieven (Type bestaat niet meer, F5).
+  const cats = ['Alle'].concat(
+    Array.from(new Set(DATA.activiteiten.map(a => a.categorie).filter(Boolean))).sort()
+  );
   const rows = DATA.activiteiten
     .filter(a => tab === 'alle' ? true : tab === 'concept' ? a.status === 'Concept' : a.status === 'Gepubliceerd')
-    .filter(a => typeFilter === 'alle' || a.type === typeFilter)
-    .filter(a => !search || [a.naam, a.type, a.waar, a.contact].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
+    .filter(a => filter === 'Alle' || a.categorie === filter)
+    .filter(a => !search || [a.naam, a.categorie, a.waar, a.contact].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
 
   if (editing !== null) {
-    const item = DATA.activiteiten.find(a => a.id === editing) || { id: null, naam: 'Nieuwe activiteit', type: 'Ontmoeting', categorie: 'Ontmoeting/Sociaal', wanneer: '', waar: '', kosten: '', contact: '', email: '', herhalend: true, status: 'Concept' };
+    const item = editing === 'new' ? null : (DATA.activiteiten.find(a => a.id === editing) || null);
     return <ActiviteitEdit item={item} onBack={() => setEditing(null)} />;
   }
 
@@ -2352,10 +2400,8 @@ function ActiviteitenScreen() {
           <Icon name="search" size={14} />
           <input placeholder="Zoek activiteit…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        {typeChips.map(t => (
-          <button key={t} className={"chip" + (typeFilter === t ? ' active' : '')} onClick={() => setTypeFilter(t)}>
-            {t === 'alle' ? 'Alle types' : t}
-          </button>
+        {cats.map(c => (
+          <button key={c} className={"chip" + (filter === c ? ' active' : '')} onClick={() => setFilter(c)}>{c}</button>
         ))}
       </div>
 
@@ -2365,7 +2411,6 @@ function ActiviteitenScreen() {
             <tr>
               <th style={{ width: 36 }}></th>
               <th>Activiteit</th>
-              <th>Type</th>
               <th>Categorie</th>
               <th>Wanneer</th>
               <th>Locatie</th>
@@ -2382,7 +2427,6 @@ function ActiviteitenScreen() {
                   <div className="activity-icon-badge" title={a.naam}><Icon name={getActivityIcon(a.naam)} size={22} /></div>
                   <div className="strong">{a.naam}</div>
                 </div></td>
-                <td>{a.type}</td>
                 <td>{a.categorie}</td>
                 <td>{a.wanneer}</td>
                 <td>{a.waar}</td>
@@ -6377,6 +6421,9 @@ function App() {
   );
 }
 
+// Leeg of ongeldig getal wordt null (coördinaten).
+function __getalOfNull(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
+
 function __mapClubjesToDb(item) {
   const mapped = {
     id:            item.id,
@@ -6384,16 +6431,21 @@ function __mapClubjesToDb(item) {
     categorie:     item.categorie,
     wijk:          item.wijk,
     omschrijving:  item.omschrijving,
-    voor_wie:      item.voorWie,
+    uitgebreide_omschrijving: item.uitgebreide_omschrijving,
+    // Het scherm schrijft `voor_wie`. Eerder las deze functie alleen `voorWie`
+    // (oude startdata), waardoor "Voor wie" nooit werd opgeslagen.
+    voor_wie:      item.voor_wie !== undefined ? item.voor_wie : item.voorWie,
+    wat:           item.wat,
     waar:          item.waar,
     wanneer:       item.wanneer,
     kosten:        item.kosten,
     contact:       item.contact,
     email:         item.email,
     telefoon:      item.telefoon,
+    adres:         item.adres,
     foto_url:      item.fotoUrl || item.foto_url || null,
-    lat:           item.lat,
-    lng:           item.lng,
+    lat:           __getalOfNull(item.lat),
+    lng:           __getalOfNull(item.lng),
     status:        item.status,
     uitgelicht:       item.uitgelicht,
     leden:            item.leden,
@@ -6405,15 +6457,52 @@ function __mapClubjesToDb(item) {
   return mapped;
 }
 
+// Zelfde velden als buurtinitiatieven (F5), plus `herhalend`.
+function __mapActiviteitenToDb(item) {
+  return {
+    id:            item.id,
+    naam:          item.naam,
+    // Kolom `type` wordt niet meer gebruikt maar blijft bestaan: bestaande
+    // waarde bewaren, nieuwe activiteiten een geldige waarde geven.
+    type:          item.type || 'Ontmoeting',
+    categorie:     item.categorie,
+    wijk:          item.wijk,
+    omschrijving:  item.omschrijving,
+    uitgebreide_omschrijving: item.uitgebreide_omschrijving,
+    voor_wie:      item.voor_wie,
+    wat:           item.wat,
+    waar:          item.waar,
+    wanneer:       item.wanneer,
+    kosten:        item.kosten,
+    contact:       item.contact,
+    email:         item.email,
+    telefoon:      item.telefoon,
+    adres:         item.adres,
+    lat:           __getalOfNull(item.lat),
+    lng:           __getalOfNull(item.lng),
+    herhalend:     item.herhalend !== false,
+    status:        item.status,
+    aangemaakt_op: item.aangemaakt_op || null,
+    contact_zichtbaar: item.contact_zichtbaar === true,
+    icoon_url:     item.icoon_url || null,
+    icoon_label:   item.icoon_label || null,
+  };
+}
+
+const __DB_VERTALING = { clubjes: __mapClubjesToDb, activiteiten: __mapActiviteitenToDb };
+
+// Geeft true terug bij succes, false bij een fout (en toont dan zelf een melding).
 window.__supabaseUpsert = async function(tabel, item) {
   try {
     const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
-    const dbItem = tabel === 'clubjes' ? __mapClubjesToDb(item) : item;
+    const dbItem = __DB_VERTALING[tabel] ? __DB_VERTALING[tabel](item) : item;
     const { error } = await window.supabase.from(dbTabel).upsert(dbItem, { onConflict: 'id' });
     if (error) throw error;
+    return true;
   } catch(e) {
     console.warn('Supabase upsert mislukt:', tabel, e);
     window.__showToast && window.__showToast('Opslaan mislukt — controleer je verbinding en probeer het opnieuw.');
+    return false;
   }
 };
 
@@ -6424,7 +6513,10 @@ window.__supabaseUpsert = async function(tabel, item) {
 window.__supabaseInsert = async function(tabel, item) {
   try {
     const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
-    const { id, ...zonderId } = item;
+    const bron = __DB_VERTALING[tabel] ? __DB_VERTALING[tabel](item) : item;
+    const { id, ...zonderId } = bron;
+    // Geen lege aanmaakdatum meesturen: dan vult de database zelf de standaardwaarde in.
+    if (!zonderId.aangemaakt_op) delete zonderId.aangemaakt_op;
     const { data, error } = await window.supabase.from(dbTabel).insert(zonderId).select().single();
     if (error) throw error;
     return data;
