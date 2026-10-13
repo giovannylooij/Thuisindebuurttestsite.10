@@ -926,7 +926,9 @@ kolom "Eenmalige Activiteiten".**
 - [x] Lokaal getest: Walking Dinner Belgisch Park staat links met "03 APR",
       rechts staan 12 terugkerende activiteiten, weekkalender ongewijzigd,
       geen consolefouten.
-- [ ] Pushen en live nalopen.
+- [x] Gepusht (commit 764922a) en live gecontroleerd op www.thuisindebuurt.nl:
+      links 6 eenmalige items (incl. Walking Dinner Belgisch Park 03 apr),
+      rechts 12 terugkerende, geen consolefouten.
 - *Opgemerkt, niet aangepast:* in de linkerkolom staan ook evenementen uit het
   verleden (mei tot juli 2026). De site filtert daar niet op.
 
