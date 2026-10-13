@@ -894,8 +894,23 @@ pagina.**
 - "Walking Dinner Belgisch Park" staat op **niet-herhalend**, met als wanneer
   "zaterdag 3 april 2027". De weekkalender kijkt alleen of er een dagnaam in de
   tekst staat en toont hem daardoor elke zaterdag.
-- [ ] De schakelaar Terugkerend respecteren en een echte datum herkennen, zodat
-      een eenmalige activiteit alleen op die datum verschijnt.
+**Gebouwd en lokaal getest (13-10), nog niet gepusht.**
+- [x] `ui.jsx`: `tibDatumUitTekst` herkent een datum in het vrije tekstveld
+      "Wanneer" ("3 april 2027", "03-04-2027"); de mapper geeft die mee als
+      `datum`.
+- [x] `other.jsx` weekkalender: staat Terugkerend uit, dan verschijnt de
+      activiteit alleen op die ene datum. Zonder herkenbare datum verschijnt hij
+      niet in de kalender, maar nog wel in de lijsten.
+- [x] `other.jsx` kalenderweergave per weekdag: alleen terugkerende
+      activiteiten.
+- [x] Lokaal getest:
+      - Walking Dinner staat niet meer in de weekkalender
+      - een testactiviteit (eenmalig, woensdag deze week) verscheen precies één
+        keer, op woensdag
+      - terugkerende activiteiten staan nog op hun eigen dagen
+      - kalenderweergave toont geen eenmalige activiteiten
+      - geen consolefouten
+- [ ] Pushen en live nalopen.
 
 ### G10. Wijk en icoon niet zichtbaar op de website
 - `wijk` wordt wel opgeslagen (bijv. Walking Dinner: Belgisch Park) maar nergens
@@ -1018,8 +1033,10 @@ weekkalender die Walking Dinner elke zaterdag toont.
 
 ### Volgorde die ik voorstel
 1. ~~G1, G6/G7, G8, G10~~ — live (commit `67cd8ef`)
-2. G2, G3, G5 — gebouwd en lokaal getest, wacht op push
-3. G9 (kalender)
+2. ~~G2, G3, G5~~ — live (commit `35e8ec7`), live gecontroleerd:
+   introtekst 1124px op alle pagina's, korte zin nog 1x op de detailpagina,
+   CMS-lijsten 8 en 13 eigen icoontjes, 0 blauwe, geen consolefouten
+3. G9 — gebouwd en lokaal getest, wacht op push
 4. G11 kleuren, daarna G13 iconen uploaden
 5. G14/G15 (CMS-schermen die niets doorsturen)
 6. G12 meerdere categorieën, als aparte klus
