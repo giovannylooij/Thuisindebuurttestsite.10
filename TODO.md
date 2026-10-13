@@ -944,6 +944,22 @@ kolom "Eenmalige Activiteiten".**
 - *Let op voor Margareth:* in de agendatabel staat nu geen enkel komend
   evenement meer; alle 5 zijn van mei t/m juli 2026.
 
+**Homepagina "vandaag" + kleur eenmalig (13-10): klaar, nog niet gepusht.**
+- [x] Homepagina toont wat er *die dag* te doen is (dinsdag andere items dan
+      donderdag), inclusief terugkerende activiteiten. Is er die dag niets,
+      dan de eerstvolgende dag met iets (tot 14 dagen vooruit).
+- [x] Kop verandert mee: "Vandaag in de buurt / Dit is er vandaag te doen.",
+      anders "morgen" of bv. "donderdag 15 oktober".
+- [x] Meer dan 3 items op die dag: regel "En nog X activiteiten ...".
+- [x] Eenmalige activiteit krijgt nu de groene kleur "Eenmalig" in plaats van
+      het oranje van terugkerend (Agenda-pagina + homepagina).
+- [x] Dag-logica staat nu één keer in ui.jsx (tibAgendaOpDag /
+      tibActiviteitOpDag); de weekkalender gebruikt dezelfde functies.
+- [x] Lokaal getest 13-10 (dinsdag): homepagina toont Inloop koffie-ochtend en
+      Bridgeclub De Hinde, Piano Lunchconcert terecht niet (eerste dinsdag);
+      weekkalender en rechterkolom ongewijzigd; geen consolefouten.
+- [ ] Pushen en live nalopen.
+
 ### G10. Wijk en icoon niet zichtbaar op de website
 - `wijk` wordt wel opgeslagen (bijv. Walking Dinner: Belgisch Park) maar nergens
   getoond; het icoon ook niet (zie G8).
