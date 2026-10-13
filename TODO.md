@@ -975,6 +975,43 @@ kolom "Eenmalige Activiteiten".**
       een kleurkiezer in plaats van vaste kleuren. Dan moet de site de kleur uit
       het CMS gaan gebruiken (nu negeert hij die).
 
+### G11 + G13 — uitgevoerd op 13-10 *(nog niet gepusht, CMS-test open)*
+
+**G11 kleuren**
+- Bevinding: de app had 6 kleuren voor 8 categorieën. Eten en
+  Evenement/Festival hadden dezelfde kleur, Sport en Bewegen en Overig ook.
+  De website negeerde de kleur uit de app volledig en gebruikte een eigen
+  rijtje van 6 kleuren op volgorde.
+- [x] Website (`ui.jsx`): de kleur komt nu uit de app; geen kleur in de app =
+      terugvallen op het oude rijtje.
+- [x] CMS: palet van 10 kleuren plus een neutrale voor Overig, én een
+      kleurkiezer voor een eigen kleur. Waarschuwing als een andere categorie
+      dezelfde kleur al heeft. Een nieuwe categorie begint bij een vrije kleur.
+- [x] Tekst onder het formulier klopt nu: de kleur staat ook op de website.
+- [x] Database: de 8 categorieën hebben elk een eigen kleur gekregen
+      (`sql/g11_categorie_kleuren.sql`, met de oude waarden erin om terug te
+      draaien).
+- [x] Lokaal getest: site leest Eten #E07A3A, Ontmoeting/Sociaal #2E8B57,
+      Sport en Bewegen #D6453F, Spel #2F6DB5, Lezen #5B52C4, Kunst en Cultuur
+      #8E44AD, Evenement/Festival #C2457E, Overig #7A7363.
+- [ ] CMS-scherm Categorieën nog testen met een ingelogde beheerder.
+
+**G13 iconen uploaden**
+- Bevinding: de uploadknop toonde alleen een melding; de iconenlijst stond
+  vast in de code (64 stuks). Daarnaast mocht *iedereen* met de publieke
+  sleutel bestanden in de map `icons` zetten.
+- [x] Mediabibliotheek: echte upload (png, svg, jpg, max 1 MB, meerdere
+      tegelijk), nette melding per bestand, bestaande naam wordt niet
+      overschreven.
+- [x] De iconenlijst komt nu uit de opslagmap zelf, met de vaste lijst als
+      terugval. Een nieuw icoon staat meteen in de keuzelijst bij
+      buurtinitiatieven en activiteiten.
+- [x] Rechten aangescherpt: uploaden mag alleen nog ingelogd
+      (`sql/g13_iconen_upload.sql`); lezen blijft openbaar.
+- [ ] Upload nog echt testen met een ingelogde beheerder.
+- Nog niet gedaan (bewust): geen verwijderknop voor iconen — een icoon dat nog
+  bij een item hoort zou dan een leeg vlak worden.
+
 ### G12. Meerdere categorieën per buurtinitiatief of activiteit
 - Nu één categorie per item (een tekstveld).
 - [ ] Kan, maar is een grotere ingreep: database, CMS (meerkeuze) en de site

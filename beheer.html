@@ -1770,6 +1770,56 @@ function MiniMap({ lat, lng, label }) {
   return <div ref={ref} style={{ height: 200, marginTop: 8, borderRadius: 8, border: '1px solid var(--line)', zIndex: 0 }} />;
 }
 
+const TIB_CAT_KLEUREN = [
+  { hex: '#D6453F', naam: 'Koraalrood' },
+  { hex: '#E07A3A', naam: 'Oranje' },
+  { hex: '#B07A10', naam: 'Oker' },
+  { hex: '#6A9A1F', naam: 'Limoengroen' },
+  { hex: '#2E8B57', naam: 'Grasgroen' },
+  { hex: '#17868C', naam: 'Turquoise' },
+  { hex: '#2F6DB5', naam: 'Blauw' },
+  { hex: '#5B52C4', naam: 'Indigo' },
+  { hex: '#8E44AD', naam: 'Paars' },
+  { hex: '#C2457E', naam: 'Roze' },
+  { hex: '#7A7363', naam: 'Neutraal grijs' },
+];
+// De kleurkiezer van de browser werkt alleen met hex-codes; een oudere
+// categorie kan nog een oklch-waarde hebben, dan tonen we een nette standaard.
+function tibHexOf(kleur) {
+  return /^#[0-9a-f]{6}$/i.test(String(kleur || '')) ? kleur : '#2d7f7b';
+}
+
+// G11: vaste kleuren om uit te kiezen plus een eigen kleur, met een melding
+// als een andere categorie dezelfde kleur al heeft.
+function KleurKiezer({ waarde, opKies, kleuren, inGebruik }) {
+  const isEigen = kleuren.map(k => k.toLowerCase()).indexOf(String(waarde || '').toLowerCase()) === -1;
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        {TIB_CAT_KLEUREN.map(k => (
+          <span
+            key={k.hex}
+            title={k.naam}
+            className={"swatch" + (String(waarde || '').toLowerCase() === k.hex.toLowerCase() ? ' selected' : '')}
+            style={{ background: k.hex, cursor: 'pointer' }}
+            onClick={() => opKies(k.hex)}
+          ></span>
+        ))}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 6, fontSize: 12.5, color: 'var(--ink-soft)', cursor: 'pointer' }}>
+          <input type="color" value={tibHexOf(waarde)} onChange={e => opKies(e.target.value)} style={{ width: 32, height: 26, padding: 0, border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer' }} />
+          Eigen kleur
+        </label>
+      </div>
+      {isEigen && (
+        <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>Eigen kleur: {waarde}</div>
+      )}
+      {inGebruik && (
+        <div style={{ fontSize: 12.5, color: '#b45309', marginTop: 6 }}>Let op: "{inGebruik}" heeft deze kleur al. Op de website zijn ze dan niet uit elkaar te houden.</div>
+      )}
+    </div>
+  );
+}
+
 /* === CategorieSelect — laadt uit categorieen tabel === */
 function CategorieSelect({ value, onChange }) {
   const [opties, setOpties] = React.useState(null);
@@ -1904,6 +1954,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
 // Bewerkscherm buurtinitiatief. ActiviteitEdit heeft exact dezelfde opbouw (F5);
 // wijzig je hier iets, doe dat daar ook.
 function ClubjeEdit({ id, onBack }) {
+  const iconenLijst = useIconen(); // G13: lijst uit de opslagmap, incl. nieuw geüploade
   const item = id != null ? (DATA.clubjes.find(c => c.id === id) || null) : null;
   const leeg = {
     naam: 'Nieuw buurtinitiatief', categorie: 'Ontmoeting/Sociaal', wijk: '',
@@ -2076,7 +2127,7 @@ function ClubjeEdit({ id, onBack }) {
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, maxHeight: 280, overflowY: 'auto', padding: 8, border: '1px solid #e5e7eb', borderRadius: 10, background: '#f9fafb' }}>
-              {CMS_ICONEN.map(icon => {
+              {iconenLijst.map(icon => {
                 const url = CMS_ICOON_BASE_URL + icon.bestand;
                 const isSelected = fd.icoon_label === icon.label;
                 return (
@@ -2135,6 +2186,7 @@ window.ClubjesScreen = ClubjesScreen;
 // Bewerkscherm activiteit: exact dezelfde opbouw als ClubjeEdit (F5), plus de
 // schakelaar Terugkerend. Wijzig je hier iets, doe dat bij ClubjeEdit ook.
 function ActiviteitEdit({ item: itemProp, onBack }) {
+  const iconenLijst = useIconen(); // G13: lijst uit de opslagmap, incl. nieuw geüploade
   const item = itemProp && itemProp.id != null ? itemProp : null;
   const leeg = {
     naam: 'Nieuwe activiteit', categorie: 'Ontmoeting/Sociaal', wijk: '',
@@ -2308,7 +2360,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, maxHeight: 280, overflowY: 'auto', padding: 8, border: '1px solid #e5e7eb', borderRadius: 10, background: '#f9fafb' }}>
-              {CMS_ICONEN.map(icon => {
+              {iconenLijst.map(icon => {
                 const url = CMS_ICOON_BASE_URL + icon.bestand;
                 const isSelected = fd.icoon_label === icon.label;
                 return (
@@ -3881,12 +3933,14 @@ function CategoriesScreen() {
   const [loading, setLoading] = React.useState(true);
   const [editingId, setEditingId] = React.useState(null);
   const [editNaam, setEditNaam] = React.useState('');
-  const [editKleurIdx, setEditKleurIdx] = React.useState(0);
+  const [editKleur, setEditKleur] = React.useState('#D6453F');
   const [newNaam, setNewNaam] = React.useState('');
   const [newIcoon, setNewIcoon] = React.useState('users');
-  const [newKleurIdx, setNewKleurIdx] = React.useState(2);
+  const [newKleur, setNewKleur] = React.useState('#2E8B57');
   const [saving, setSaving] = React.useState(false);
-  const kleuren = ['oklch(0.65 0.13 25)','oklch(0.65 0.13 65)','oklch(0.65 0.13 145)','oklch(0.55 0.13 250)','oklch(0.55 0.13 295)','oklch(0.55 0.04 250)'];
+  // G11: 10 duidelijk verschillende kleuren plus een neutrale voor "Overig".
+  // Deze kleur staat nu ook op de website (bolletjes en filterknoppen).
+  const kleuren = TIB_CAT_KLEUREN.map(k => k.hex);
 
   async function laad() {
     setLoading(true);
@@ -3907,12 +3961,26 @@ function CategoriesScreen() {
   }
   const toast = (tekst) => window.__showToast && window.__showToast(tekst);
 
+  // Twee categorieën met dezelfde kleur zijn op de site niet uit elkaar te
+  // houden; we blokkeren het niet, maar we melden het wel.
+  function kleurInGebruik(kleur, behalveId) {
+    const k = String(kleur || '').toLowerCase();
+    const hit = cats.find(c => c.id !== behalveId && String(c.kleur || '').toLowerCase() === k);
+    return hit ? hit.naam : null;
+  }
+  function eersteVrijeKleur() {
+    const bezet = cats.map(c => String(c.kleur || '').toLowerCase());
+    return kleuren.find(k => bezet.indexOf(k.toLowerCase()) === -1) || kleuren[0];
+  }
+
   React.useEffect(() => { laad(); }, []);
+  // Zodra de lijst geladen is: begin bij een kleur die nog niemand heeft.
+  React.useEffect(() => { if (cats.length) setNewKleur(eersteVrijeKleur()); }, [cats.length]);
 
   function startEdit(c) {
     setEditingId(c.id);
     setEditNaam(c.naam);
-    setEditKleurIdx(kleuren.indexOf(c.kleur) >= 0 ? kleuren.indexOf(c.kleur) : 0);
+    setEditKleur(c.kleur || kleuren[0]);
   }
 
   async function saveEdit(id, origIcoon, oudeNaam) {
@@ -3922,7 +3990,7 @@ function CategoriesScreen() {
     setSaving(true);
     const { error } = await window.supabase.from('categorieen').update({
       naam: nieuweNaam,
-      kleur: kleuren[editKleurIdx],
+      kleur: editKleur,
       icoon: origIcoon
     }).eq('id', id);
     if (error) {
@@ -3969,7 +4037,7 @@ function CategoriesScreen() {
     const { error } = await window.supabase.from('categorieen').insert({
       naam: newNaam.trim(),
       icoon: newIcoon,
-      kleur: kleuren[newKleurIdx],
+      kleur: newKleur,
       volgorde: maxVolgorde
     });
     if (error) { window.__showToast && window.__showToast('Fout: ' + error.message); }
@@ -4038,14 +4106,10 @@ function CategoriesScreen() {
             </select>
           </Field>
           <Field label="Kleur">
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', height: 38 }}>
-              {kleuren.map((k, i) => (
-                <span key={i} className={"swatch" + (i === newKleurIdx ? ' selected' : '')} style={{ background: k, cursor: 'pointer' }} onClick={() => setNewKleurIdx(i)}></span>
-              ))}
-            </div>
+            <KleurKiezer waarde={newKleur} opKies={setNewKleur} kleuren={kleuren} inGebruik={kleurInGebruik(newKleur)} />
           </Field>
         </div>
-        <div className="hint" style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>Kleur en icoon zijn alleen voor herkenning in het CMS.</div>
+        <div className="hint" style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>De kleur zie je ook op de website: in de bolletjes bij de categorieknoppen en op de kaart. Het icoon is alleen voor herkenning hier in het CMS.</div>
         <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={handleCreate} disabled={saving}><Icon name="plus" size={14} /> Categorie aanmaken</button>
       </div>
 
@@ -4058,11 +4122,7 @@ function CategoriesScreen() {
                   <input type="text" value={editNaam} onChange={e => setEditNaam(e.target.value)} autoFocus />
                 </Field>
                 <Field label="Kleur">
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', height: 38 }}>
-                    {kleuren.map((k, i) => (
-                      <span key={i} className={"swatch" + (i === editKleurIdx ? ' selected' : '')} style={{ background: k, cursor: 'pointer' }} onClick={() => setEditKleurIdx(i)}></span>
-                    ))}
-                  </div>
+                  <KleurKiezer waarde={editKleur} opKies={setEditKleur} kleuren={kleuren} inGebruik={kleurInGebruik(editKleur, c.id)} />
                 </Field>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="btn btn-sm btn-primary" onClick={() => saveEdit(c.id, c.icoon, c.naam)} disabled={saving}><Icon name="check" size={12} /> Opslaan</button>
@@ -4159,8 +4219,51 @@ const CMS_ICONEN = [
 ];
 const CMS_ICOON_BASE_URL = 'https://bxklumejqczcmhrpzstt.supabase.co/storage/v1/object/public/icons/';
 
+// G13: de iconenlijst komt uit de opslagmap "icons" in Supabase, zodat een
+// geüpload icoon meteen te kiezen is. Lukt ophalen niet (geen verbinding, geen
+// rechten), dan blijft de vaste lijst hierboven in gebruik.
+let _tibIconenCache = null;
+const _tibIconenLuisteraars = [];
+async function tibLaadIconen(opnieuw) {
+  if (_tibIconenCache && !opnieuw) return _tibIconenCache;
+  try {
+    const { data, error } = await window.supabase.storage
+      .from('icons')
+      .list('', { limit: 1000, sortBy: { column: 'name', order: 'asc' } });
+    if (error) throw error;
+    const lijst = (data || [])
+      .filter(f => f && f.name && /\.(png|svg|jpe?g)$/i.test(f.name))
+      .map(f => ({ label: f.name.replace(/\.[^.]+$/, ''), bestand: f.name }));
+    if (lijst.length > 0) _tibIconenCache = lijst;
+  } catch (e) {
+    console.warn('Iconen ophalen mislukt, vaste lijst wordt gebruikt:', e && e.message);
+  }
+  if (!_tibIconenCache) _tibIconenCache = CMS_ICONEN;
+  _tibIconenLuisteraars.forEach(fn => fn(_tibIconenCache));
+  return _tibIconenCache;
+}
+function useIconen() {
+  const [lijst, setLijst] = React.useState(_tibIconenCache || CMS_ICONEN);
+  React.useEffect(() => {
+    let levend = true;
+    const luister = (l) => { if (levend) setLijst(l); };
+    _tibIconenLuisteraars.push(luister);
+    tibLaadIconen().then(l => { if (levend) setLijst(l); });
+    return () => {
+      levend = false;
+      const i = _tibIconenLuisteraars.indexOf(luister);
+      if (i >= 0) _tibIconenLuisteraars.splice(i, 1);
+    };
+  }, []);
+  return lijst;
+}
+
 function MediaScreen() {
   const [copiedLabel, setCopiedLabel] = React.useState(null);
+  const [bezig, setBezig] = React.useState(false);
+  const [melding, setMelding] = React.useState(null);
+  const iconenLijst = useIconen();
+  const bestandRef = React.useRef(null);
 
   function kopieerIconUrl(url, label) {
     navigator.clipboard.writeText(url).then(() => {
@@ -4169,25 +4272,77 @@ function MediaScreen() {
     });
   }
 
+  // G13: echt uploaden naar de opslagmap "icons". De bestandsnaam wordt
+  // opgeschoond; een bestaande naam wordt niet overschreven.
+  async function uploadBestanden(bestanden) {
+    const lijst = Array.from(bestanden || []);
+    if (lijst.length === 0) return;
+    setBezig(true);
+    setMelding(null);
+    let gelukt = 0;
+    const fouten = [];
+    for (const bestand of lijst) {
+      const naam = bestand.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9.\-_]/g, '');
+      if (!/\.(png|svg|jpe?g)$/i.test(naam)) { fouten.push(bestand.name + ' — alleen png, svg of jpg'); continue; }
+      if (bestand.size > 1024 * 1024) { fouten.push(bestand.name + ' — groter dan 1 MB'); continue; }
+      const { error } = await window.supabase.storage
+        .from('icons')
+        .upload(naam, bestand, { upsert: false, contentType: bestand.type || undefined });
+      if (error) {
+        const bestaatAl = /exists|duplicate/i.test(error.message || '');
+        fouten.push(bestand.name + (bestaatAl ? ' — er is al een icoon met deze naam' : ' — ' + error.message));
+      } else {
+        gelukt++;
+      }
+    }
+    await tibLaadIconen(true);
+    setBezig(false);
+    if (bestandRef.current) bestandRef.current.value = '';
+    const tekst = (gelukt > 0 ? gelukt + ' icoon' + (gelukt === 1 ? '' : 'tjes') + ' toegevoegd' : 'Niets toegevoegd')
+      + (fouten.length > 0 ? ' — niet gelukt: ' + fouten.join('; ') : '');
+    setMelding({ fout: fouten.length > 0, tekst: tekst });
+    window.__showToast && window.__showToast(tekst);
+  }
+
   return (
     <>
       <PageHead
         title="Mediabibliotheek"
         sub="Alle afbeeldingen en iconen op één plek."
-        actions={<button className="btn btn-primary" onClick={() => window.__showToast && window.__showToast('Bestand uploaden…')}><Icon name="upload" size={14} /> Upload</button>}
+        actions={
+          <button className="btn btn-primary" onClick={() => bestandRef.current && bestandRef.current.click()} disabled={bezig}>
+            <Icon name="upload" size={14} /> {bezig ? 'Bezig met uploaden…' : 'Upload'}
+          </button>
+        }
       />
+      <input
+        ref={bestandRef}
+        type="file"
+        accept="image/png,image/svg+xml,image/jpeg"
+        multiple
+        style={{ display: 'none' }}
+        onChange={e => uploadBestanden(e.target.files)}
+      />
+      {melding && (
+        <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, fontSize: 13, background: melding.fout ? '#fef3c7' : '#f0fdf4', color: melding.fout ? '#92400e' : '#166534', border: '1px solid ' + (melding.fout ? '#fcd34d' : '#bbf7d0') }}>
+          {melding.tekst}
+        </div>
+      )}
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Iconen ({CMS_ICONEN.length})</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Iconen ({iconenLijst.length})</h3>
           <span style={{ fontSize: 12, color: '#6b7280' }}>Klik op een icoon om de URL te kopiëren</span>
         </div>
+        <div style={{ fontSize: 12.5, color: '#6b7280', marginBottom: 12 }}>
+          Nieuwe iconen: png, svg of jpg, maximaal 1 MB per bestand. Ze staan daarna meteen in de keuzelijst bij buurtinitiatieven en activiteiten.
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 10 }}>
-          {CMS_ICONEN.map(icon => {
+          {iconenLijst.map(icon => {
             const url = CMS_ICOON_BASE_URL + icon.bestand;
             const isCopied = copiedLabel === icon.label;
             return (
               <div
-                key={icon.label}
+                key={icon.bestand}
                 onClick={() => kopieerIconUrl(url, icon.label)}
                 title={'Kopieer URL: ' + icon.label}
                 style={{ background: isCopied ? '#f0fdf4' : 'white', border: isCopied ? '1px solid #2d6a4f' : '1px solid #e5e7eb', borderRadius: 10, padding: '10px 6px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, transition: 'box-shadow 0.15s' }}
