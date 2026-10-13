@@ -938,7 +938,9 @@ kolom "Eenmalige Activiteiten".**
 - [x] Lokaal getest (13 okt 2026): links 1 komend item (03 apr Walking Dinner
       Belgisch Park), knop toont 5 afgelopen items, rechts 12 terugkerende,
       homepagina 1 kaart (3 Apr Walking Dinner Belgisch Park).
-- [ ] Pushen en live nalopen.
+- [x] Gepusht (commit f4741f1) en live gecontroleerd: homepagina 1 komende
+      kaart, Agenda links 1 komend item, knop zet 5 afgelopen items erbij,
+      rechts 12 terugkerende, geen consolefouten.
 - *Let op voor Margareth:* in de agendatabel staat nu geen enkel komend
   evenement meer; alle 5 zijn van mei t/m juli 2026.
 
