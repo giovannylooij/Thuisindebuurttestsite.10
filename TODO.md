@@ -90,6 +90,50 @@ probleem nog.
       *(alle 19 items zijn in dezelfde migratie aan een nieuwe categorie
       gekoppeld; niets staat meer los van de lijst)*
 - [ ] E. Teksten zelf beheerbaar maken voor Margareth *(grotere klus)*
+      **Brainstorm (14-09), nog niet uitgevoerd.** Uitwerking hieronder.
+
+      **Nu:**
+      - Alle paginateksten staan vast in de websitecode.
+      - De CMS-schermen Contact en Doneren slaan alleen op in de browser
+        (`localStorage`) en bereiken de site nooit.
+      - In Supabase is geen tabel voor teksten.
+
+      **Besluiten Giovanny:**
+      - [x] Omvang: **paginakoppen**. Per pagina label, titel en intro.
+      - [x] Je/u: **vaste tekst, zoals Margareth typt.** Het automatisch
+            wisselen tussen "jouw" en "uw" vervalt voor deze teksten.
+      - [x] **Alleen gewone tekst.** Een witregel wordt een nieuwe alinea.
+      - [x] **Contact en Doneren meenemen:** die schermen gaan ook naar
+            Supabase opslaan.
+
+      **Plan:**
+      - [ ] SQL (Giovanny draait): tabel bijv. `pagina_teksten` (pagina, label,
+            titel, intro). Iedereen mag lezen, alleen ingelogde beheerders
+            mogen schrijven.
+      - [ ] CMS: nieuw scherm "Paginateksten" met per pagina label, titel en
+            intro, opslaan naar Supabase.
+      - [ ] CMS: Contact en Doneren omzetten van `localStorage` naar Supabase.
+      - [ ] Website: 11 paginakoppen lezen uit de tabel. Is een veld leeg, dan
+            blijft de huidige tekst uit de code staan (nooit een lege pagina).
+            Pagina's: Buurtinitiatieven (2 alinea's), Activiteiten, Agenda,
+            Buurtatlas, Partners, Netwerken, Nieuws, Doe mee, Doneren, Contact,
+            Boek. De homepage valt erbuiten (andere opbouw, eventueel later).
+      - [ ] Testen: lokaal, daarna live met Giovanny ingelogd.
+
+      **Nog te beslissen of te weten:**
+      - [ ] De Nieuws-intro bevat een link naar BNS, maar gewone tekst kan
+            geen link bevatten. Kiezen tussen:
+            - die intro vast laten staan
+            - een webadres in de tekst automatisch klikbaar maken
+            - de link weglaten
+      - [ ] Wie mag bewerken: alleen superadmin, of ook beheerders van een
+            buurtinitiatief?
+      - [ ] De Doneren-kop staat in u-vorm, de rest van de site in je-vorm.
+            Margareth kan dat gelijktrekken zodra het veld er is.
+      - [ ] De standaardtekst van Contact en Doneren noemt nog
+            `doneren@thuisindebuurt.org`. Meenemen in het rechtzetten.
+      - Een extra ophaalstap bij het laden van de site, net als bij het menu.
+        Klein effect op de snelheid.
 - [ ] Gesprek over ontbrekende icoontjes — *ik lever vooraf een overzicht van
       alle beschikbare iconen aan*
 
@@ -680,7 +724,19 @@ www.thuisindebuurt.nl en app.thuisindebuurt.nl.
       - **hernoemen:** Eten → "Spel" geeft "bestaat al"; leeg geeft een
         melding; "eTEN" (alleen andere hoofdletters) mag en neemt de items mee
       - geen consolefouten
-- [ ] Pushen en live testen (Giovanny ingelogd).
+- [x] **Live (14-09, commit `8d1127c`), live getest met Giovanny ingelogd:**
+      - live `index.html` en `beheer.html` zijn identiek aan lokaal
+      - **website:** filterknoppen zonder "Kunst en Cultuur"; Spel → 1 kaartje
+      - **CMS opbouw:** geen knop rechtsboven, formulier bovenaan, "Koppelen
+        aan" weg, nieuwe uitleg; tellers tellen beide soorten (Eten 4)
+      - **lege naam:** melding "Vul een naam in voor de nieuwe categorie."
+      - **" Spel ":** melding in beeld "Er bestaat al een categorie met de naam
+        "Spel"."; geen tweede Spel in de database
+      - **echte test "TEST F6":** aangemaakt (database id 14, volgorde 8); de
+        website kreeg hem binnen maar toonde **geen** filterknop (0
+        buurtinitiatieven); daarna verwijderd via de prullenbak en weg uit de
+        database (weer 7 categorieën)
+      - geen consolefouten
 **Wens:** Margareth kan zelf een nieuwe categorie toevoegen en die verschijnt
 daarna overal: in het CMS, op de website en in de filters.
 
@@ -769,6 +825,253 @@ www.thuisindebuurt.nl.
 - [ ] Contactgegevens in het CMS bereiken de website niet *(zelfde probleem als
       het menu had — oplossing is bekend)*
 - [ ] "Doe mee"/"Doneren"/"Boek"-knoppen reageren niet op de aan/uit-schakelaar
+
+---
+
+## 📋 Margareth's opmerkingen deel 3 *(13 oktober 2026, nog niet uitgevoerd)*
+
+Gecontroleerd in de code en de database op 13-10.
+
+### G1. Concept-activiteiten staan tóch op de website
+- 19 activiteiten, waarvan **5 op Concept**: Koffie & Soep, Buurtwandeling,
+  Nordic Walking, Schaakavond, Leeskring. Ze staan op de homepage én op de
+  Activiteiten-pagina.
+- Oorzaak: de site filtert bij activiteiten niet op status (bij
+  buurtinitiatieven wel). In september is dit filter bewust teruggedraaid.
+- [ ] Alsnog filteren op "Gepubliceerd", op de homepage, Activiteiten, Agenda
+      en de Buurtatlas.
+
+### G2. Introtekst moet doorlopen op álle pagina's
+- Nu staat de regelbreedte op 60 tekens (`template.html`), behalve op
+  Buurtinitiatieven (90 tekens, F2).
+- [ ] Dezelfde ruimere breedte voor alle pagina's.
+
+### G3. Korte omschrijving staat twee keer op de detailpagina
+- De korte omschrijving staat onder de titel én nog eens onder "Over ...".
+- [ ] De tweede weghalen; daar komt de uitgebreide "Omschrijving" (B4).
+- **Antwoord op haar vraag** over "1 zin, gebruikt op kaarten en in
+  zoekresultaten": dat is de uitleg bij **Korte omschrijving**. Die ene zin
+  staat op de kaartjes in het overzicht en bovenaan de detailpagina.
+
+### G4. Waar gaat de melding "Bestaat dit nog?" heen?
+- Naar de tabel `meldingen`, zichtbaar in het CMS onder **Meldingen**.
+- **Er gaat geen e-mail uit.** Je ziet het dus alleen als je in het CMS kijkt.
+- [ ] Besluit: willen we hier een e-mail bij? Dat vraagt de e-mailkoppeling
+      (Resend), die ook nog gecontroleerd moet worden.
+
+### G5. Blauwe icoontjes nog zichtbaar in het CMS
+- In de lijsten Buurtinitiatieven (`beheer.html` r.1873) en Activiteiten
+  (r.2427) staat nog het automatische icoon op basis van de naam.
+- [ ] Weghalen; in plaats daarvan het zelfgekozen icoon tonen.
+
+### G6/G7. Activiteiten-pagina: tekst, groepen en categorieën
+- De site groepeert op het veld **Type** (Ontmoeting, Beweging, Cultuur &
+  leren). Dat zijn de "oude categorienamen" die Margareth ziet. De echte
+  categorie wordt op die pagina nergens getoond.
+- [ ] Groeperen op **categorie** (zoals in september gebouwd en daarna
+      teruggedraaid).
+- [ ] Introtekst wordt: "Activiteiten, georganiseerd door Thuis in de Buurt
+      zelf en haar partners. Gesorteerd op categorie."
+- [ ] Knop "Per rubriek" wordt "Per categorie".
+- [ ] Label op de detailpagina en de Agenda-kaartjes: categorie in plaats van
+      Type.
+
+### G8. Icoontjes van activiteiten niet op de website
+- 14 van de 19 activiteiten hebben een icoon gekozen, maar de site toont ze
+  niet en zet er een automatisch blauw icoon bij.
+- [ ] Zelfgekozen icoon tonen, automatisch icoon weg (zoals bij
+      buurtinitiatieven).
+
+### G9. Walking Dinner komt wekelijks terug in de kalender
+- "Walking Dinner Belgisch Park" staat op **niet-herhalend**, met als wanneer
+  "zaterdag 3 april 2027". De weekkalender kijkt alleen of er een dagnaam in de
+  tekst staat en toont hem daardoor elke zaterdag.
+- [ ] De schakelaar Terugkerend respecteren en een echte datum herkennen, zodat
+      een eenmalige activiteit alleen op die datum verschijnt.
+
+### G10. Wijk en icoon niet zichtbaar op de website
+- `wijk` wordt wel opgeslagen (bijv. Walking Dinner: Belgisch Park) maar nergens
+  getoond; het icoon ook niet (zie G8).
+- [ ] Wijk tonen op de detailpagina, icoon op de kaartjes.
+
+### G11. Categorieën: kleuren
+- Nu 6 vaste kleuren in het CMS en 6 op de website; bij 8 categorieën krijgen
+  twee dezelfde kleur.
+- [ ] 10 duidelijk verschillende, vrolijke kleuren.
+- [ ] **Vraag van Margareth:** zelf een kleur toevoegen of aanpassen? Kan: met
+      een kleurkiezer in plaats van vaste kleuren. Dan moet de site de kleur uit
+      het CMS gaan gebruiken (nu negeert hij die).
+
+### G12. Meerdere categorieën per buurtinitiatief of activiteit
+- Nu één categorie per item (een tekstveld).
+- [ ] Kan, maar is een grotere ingreep: database, CMS (meerkeuze) en de site
+      (filters, groepen, labels). Apart inplannen.
+
+### G13. Mediabibliotheek: uploaden werkt niet
+- De knop "Uploaden" toont alleen een melding; er gebeurt niets.
+- De iconenlijst staat vast in de code (`CMS_ICONEN`), niet uit de opslagmap.
+- [ ] Echt uploaden naar de opslagmap `icons` en de lijst daaruit halen, zodat
+      een nieuwe set vanzelf verschijnt.
+
+### G14. Scherm Navigatie — uitleg + bevinding
+- Bedoeld om menu-items te hernoemen, te verbergen, te verwijderen of toe te
+  voegen.
+- **Bevinding:** dit scherm slaat alleen op in de browser (`localStorage`) en
+  bereikt de website niet. Alleen de aan/uit-schakelaar bij **Pagina's** schrijft
+  wel naar de database.
+- [ ] Navigatie-scherm laten opslaan in de database.
+
+### G15. Scherm Formulieren — uitleg + bevinding
+- Drie tabbladen: ingekomen berichten, de onderwerpkeuzes van het
+  contactformulier, en instellingen met de ontvangende e-mailadressen.
+- **Bevinding:** "Verstuur antwoord" toont alleen een melding en verstuurt
+  niets; de instellingen blijven in de browser hangen.
+- [ ] Of echt laten werken (vraagt e-mailkoppeling), of de knoppen weghalen tot
+      het zover is.
+
+### Blok 1 — uitgewerkt plan *(13-10, wacht op akkoord)*
+
+Raakt alleen de **website** (`bundle-src`), niet het CMS. Geen SQL nodig.
+
+**1. Statusfilter (G1)**
+- `ui.jsx`: bij het laden alleen activiteiten met status "Gepubliceerd".
+- `other.jsx` (Agenda-pagina): hetzelfde filter bij het ophalen.
+- Gevolg: **14 in plaats van 19** activiteiten op de site. Deze 5 verdwijnen
+  tot Margareth ze publiceert: Koffie & Soep, Buurtwandeling, Nordic Walking,
+  Schaakavond, Leeskring.
+- Werkt door op: homepage-teller en -kaartjes, Activiteiten, Agenda,
+  weekkalender en de stippen op de Buurtatlas.
+
+**2. Groeperen op categorie (G6/G7)**
+- `other.jsx`: groepen komen uit de categorieënlijst in plaats van uit Type.
+  Lege groepen worden overgeslagen. Met de huidige gegevens worden dat:
+  Eten (2), Ontmoeting/Sociaal (3), Sport en Bewegen (3), Spel (3),
+  Kunst en Cultuur (1), Overig (2).
+- Introtekst wordt: "Activiteiten, georganiseerd door Thuis in de Buurt zelf en
+  haar partners. Gesorteerd op categorie."
+- Knop "Per rubriek" wordt "Per categorie".
+- `detail.jsx`: het label boven de titel toont de categorie in plaats van Type.
+- Agenda-kaartjes: label toont de categorie.
+- Type blijft in de database staan, maar wordt nergens meer getoond.
+
+**3. Icoontjes (G8)**
+- `other.jsx`: op de kaartjes het **zelfgekozen** icoon tonen, zoals bij
+  buurtinitiatieven. Het automatische blauwe icoon verdwijnt helemaal.
+- Heeft een activiteit geen icoon, dan blijft het bestaande fotovlak staan.
+  Nu hebben 14 van de 19 een icoon; 5 nog niet.
+
+**4. Wijk tonen (G10)**
+- `detail.jsx`: rij **Wijk** toevoegen in het blokje Voor wie / Wat / Waar /
+  Wanneer / Kosten, voor buurtinitiatieven én activiteiten. Leeg veld = geen rij.
+
+**Status: gebouwd en lokaal getest (13-10), nog niet gepusht.**
+- [x] `ui.jsx`: statusfilter terug (`tibIsGepubliceerd`).
+- [x] `other.jsx`: Agenda-loader filtert op gepubliceerd; groepen uit de
+      categorieënlijst; nieuwe introtekst; "Per categorie"; eigen icoon op de
+      kaartjes; automatisch blauw icoon weg.
+- [x] `detail.jsx`: label toont de categorie; rij "Wijk" toegevoegd.
+- [x] Lokaal getest:
+      - 14 activiteiten in de lijst, alleen status "Gepubliceerd"
+      - homepage: "14 terugkerende activiteiten"
+      - groepen: Eten (2), Ontmoeting/Sociaal (3), Sport en Bewegen (3),
+        Spel (3), Kunst en Cultuur (1), Overig (2)
+      - knop heet "Per categorie", introtekst aangepast
+      - 13 van de 14 kaartjes tonen het eigen icoon (Hatha Yoga heeft er geen),
+        0 blauwe icoontjes
+      - Walking Dinner: label "Eten", rij "Wijk: Belgisch Park"
+      - buurtinitiatief Parklunch: rij "Wijk: Belgisch Park e.o."
+      - Agenda-labels tonen categorieën; Buurtatlas "Activiteiten · 14"
+      - geen consolefouten
+- [ ] Pushen en live nalopen.
+
+**Wat Margareth daarna zelf kan controleren**
+1. Homepage: telt "14 terugkerende activiteiten".
+2. Activiteiten: groepen heten nu Eten, Ontmoeting/Sociaal, Sport en Bewegen,
+   Spel, Kunst en Cultuur, Overig. De knop heet "Per categorie".
+3. De 5 concepten staan er niet meer; publiceert ze in het CMS en ze komen
+   terug.
+4. Op de kaartjes staan haar eigen icoontjes, geen blauwe meer.
+5. Detailpagina van bijv. Walking Dinner: label "Eten" en een rij "Wijk" met
+   Belgisch Park.
+
+**Niet in blok 1** (staat in blok 2 en verder): dubbele omschrijving op de
+detailpagina, bredere introteksten, blauwe icoontjes in het CMS zelf, en de
+weekkalender die Walking Dinner elke zaterdag toont.
+
+### Volgorde die ik voorstel
+1. G1, G6/G7, G8, G10 (website klopt weer met het CMS)
+2. G2, G3, G5 (tekst en beeld opschonen)
+3. G9 (kalender)
+4. G11 kleuren, daarna G13 iconen uploaden
+5. G14/G15 (CMS-schermen die niets doorsturen)
+6. G12 meerdere categorieën, als aparte klus
+
+---
+
+## 💾 Wekelijkse back-up van de database *(plan, 5 oktober 2026)*
+
+**Waarom:** nu bestaat er alleen een handmatige knop in het CMS. Gaat er iets
+mis, dan is er geen recente kopie om op terug te vallen.
+
+**Wat ik heb nagekeken:**
+- De back-upknop in het CMS haalt 16 tabellen op en biedt die aan als
+  JSON-bestand. **Het menu (`site_navigatie`) en de huisstijlkleuren
+  (`huisstijl_secties`) zitten er niet in.**
+- Mislukt een tabel, dan komt die als **lege lijst** in het bestand, zonder
+  waarschuwing. Je krijgt dan een back-up die compleet lijkt maar dat niet is.
+- Er zijn **drie** back-upfuncties in `beheer.html`; de knop rechtsboven en de
+  knop bij Instellingen gebruiken verschillende versies.
+- **Terugzetten kan nu niet**: er is geen functie om een back-up terug te
+  plaatsen.
+- Op deze computer staan geen `pg_dump`, `supabase` of `gh`.
+- **Supabase-project nagekeken (5 okt):** `thuisindebuurt1.0`
+  (`bxklumejqczcmhrpzstt`), organisatie **Luxsoft**, regio eu-north-1,
+  **abonnement: gratis**. Op het gratis abonnement maakt Supabase **geen**
+  automatische back-ups en is terugzetten naar een eerder tijdstip niet
+  mogelijk. Een eigen wekelijkse back-up is dus echt nodig.
+- **De database heeft 19 tabellen; de knop neemt er 16 mee.** Ontbreken:
+  `site_navigatie`, `huisstijl_secties` en `huisstijl_instellingen`.
+
+### Keuze: waar draait de wekelijkse back-up?
+
+| | Hoe | Voordeel | Nadeel |
+|---|---|---|---|
+| **A. GitHub Actions** *(advies)* | Gratis taak bij GitHub draait elke week, haalt de tabellen op en bewaart het bestand | Draait altijd, ook als jouw laptop uit staat; gratis; versiebeheer | Sleutel moet als geheim bij GitHub; repo moet privé |
+| **B. Supabase betaald abonnement** | Supabase maakt zelf dagelijkse back-ups | Officieel, terugzetten wordt ondersteund | Kost geld (ca. €25 per maand per organisatie); nu staat het op gratis |
+| **C. Vercel-taak** | Wekelijkse taak op Vercel schrijft naar Supabase Storage | Alles blijft binnen de bestaande hosting | Extra code die onderhouden moet worden |
+| **D. Jouw Mac** | Wekelijkse taak op je eigen computer | Geen externe partij | Draait alleen als de laptop aanstaat |
+
+### Plan bij keuze A
+- [ ] **Privacy eerst.** De back-up bevat persoonsgegevens (aanmeldingen,
+      bestellingen met adres, contactberichten). Daarom: privé-repo, beperkte
+      bewaartermijn en niet in de openbare website-repo.
+- [ ] **Sleutel:** een `service_role`-sleutel uit Supabase als geheim bij
+      GitHub zetten. Die geeft volledige toegang, dus alleen daar en nergens
+      anders. Giovanny plaatst hem zelf; ik krijg hem niet te zien.
+- [ ] **Taak:** draait elke week, bijvoorbeeld maandagochtend. Hij haalt
+      **alle 19 tabellen** op, dus ook `site_navigatie`, `huisstijl_secties` en
+      `huisstijl_instellingen`. De lijst wordt opgehaald uit de database zelf,
+      zodat een nieuwe tabel automatisch meegaat.
+- [ ] **Controle:** mislukt een tabel, dan mislukt de hele taak zichtbaar, met
+      een melding per e-mail. Geen stille lege lijsten meer.
+- [ ] **Bewaren:** de laatste 8 weken bewaren, oudere automatisch opruimen.
+- [ ] **Terugzetten:** een script dat een back-upbestand terugzet in de
+      database, plus een korte handleiding. Eerst oefenen op een testomgeving,
+      niet op de echte site.
+- [ ] **Testen:** één keer handmatig laten draaien, het bestand controleren op
+      aantallen per tabel, en een proef-terugzetting doen.
+
+### Verbeteringen aan de knop in het CMS (los van de automatische back-up)
+- [ ] Menu en huisstijl meenemen in de back-up.
+- [ ] Mislukte tabellen melden in plaats van stil een lege lijst opnemen.
+- [ ] De drie versies terugbrengen naar één.
+
+### Open vragen voor Giovanny
+- [x] Abonnement nagekeken: **gratis**, dus geen automatische back-ups.
+- [ ] Waar mag de back-up staan: privé-repo bij GitHub, Supabase Storage, of
+      allebei?
+- [ ] Hoe lang bewaren? Voorstel: 8 weken.
+- [ ] Naar welk e-mailadres mag een foutmelding?
 
 ---
 
