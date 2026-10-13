@@ -1870,7 +1870,10 @@ function ClubjesList({ onNav, onEdit, profile }) {
                 <td><input type="checkbox" onClick={e => e.stopPropagation()} /></td>
                 <td>
                   <div className="cell-flex">
-                    <div className="activity-icon-badge" title={c.naam}><Icon name={getActivityIcon(c.naam)} size={22} /></div>
+                    {/* G5: eigen icoon uit het CMS; het automatische blauwe icoon is weg */}
+                    <div className="activity-icon-badge" title={c.icoon_label || c.naam}>
+                      {c.icoon_url && <img src={c.icoon_url} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />}
+                    </div>
                     <div>
                       <div className="strong">
                         {c.naam}
@@ -2424,7 +2427,10 @@ function ActiviteitenScreen() {
               <tr key={a.id} onClick={() => setEditing(a.id)} style={{ cursor: 'pointer' }}>
                 <td><input type="checkbox" onClick={e => e.stopPropagation()} /></td>
                 <td><div className="cell-flex">
-                  <div className="activity-icon-badge" title={a.naam}><Icon name={getActivityIcon(a.naam)} size={22} /></div>
+                  {/* G5: eigen icoon uit het CMS; het automatische blauwe icoon is weg */}
+                  <div className="activity-icon-badge" title={a.icoon_label || a.naam}>
+                    {a.icoon_url && <img src={a.icoon_url} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />}
+                  </div>
                   <div className="strong">{a.naam}</div>
                 </div></td>
                 <td>{a.categorie}</td>

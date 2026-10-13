@@ -842,13 +842,19 @@ Gecontroleerd in de code en de database op 13-10.
       en de Buurtatlas.
 
 ### G2. Introtekst moet doorlopen op álle pagina's
-- Nu staat de regelbreedte op 60 tekens (`template.html`), behalve op
-  Buurtinitiatieven (90 tekens, F2).
-- [ ] Dezelfde ruimere breedte voor alle pagina's.
+**Besluit Giovanny (13-10): optie A, volledig uitlijnen met de rest van de
+pagina.**
+- [x] Maximale regelbreedte weg uit `template.html`; ook de 90ch van
+      Buurtinitiatieven (F2) verwijderd.
+- [x] Lokaal getest op 1440px: op Buurtinitiatieven, Activiteiten, Agenda,
+      Partners, Netwerken en Buurtatlas is de tekstbreedte exact gelijk aan de
+      inhoudsbreedte (1124px).
 
 ### G3. Korte omschrijving staat twee keer op de detailpagina
 - De korte omschrijving staat onder de titel én nog eens onder "Over ...".
-- [ ] De tweede weghalen; daar komt de uitgebreide "Omschrijving" (B4).
+- [x] De tweede is weg; daar staat nu alleen de uitgebreide "Omschrijving"
+      (B4). Lokaal getest op Walking Dinner: de korte zin staat nog één keer op
+      de pagina.
 - **Antwoord op haar vraag** over "1 zin, gebruikt op kaarten en in
   zoekresultaten": dat is de uitleg bij **Korte omschrijving**. Die ene zin
   staat op de kaartjes in het overzicht en bovenaan de detailpagina.
@@ -862,7 +868,9 @@ Gecontroleerd in de code en de database op 13-10.
 ### G5. Blauwe icoontjes nog zichtbaar in het CMS
 - In de lijsten Buurtinitiatieven (`beheer.html` r.1873) en Activiteiten
   (r.2427) staat nog het automatische icoon op basis van de naam.
-- [ ] Weghalen; in plaats daarvan het zelfgekozen icoon tonen.
+- [x] Weggehaald; de lijsten tonen nu het zelfgekozen icoon. Lokaal getest:
+      buurtinitiatieven 8 van 8 met eigen icoon, activiteiten 13 van 19, nul
+      blauwe icoontjes.
 
 ### G6/G7. Activiteiten-pagina: tekst, groepen en categorieën
 - De site groepeert op het veld **Type** (Ontmoeting, Beweging, Cultuur &
@@ -929,7 +937,7 @@ Gecontroleerd in de code en de database op 13-10.
 - [ ] Of echt laten werken (vraagt e-mailkoppeling), of de knoppen weghalen tot
       het zover is.
 
-### Blok 1 — uitgewerkt plan *(13-10, wacht op akkoord)*
+### Blok 1 — uitgevoerd en live *(13-10, commit `67cd8ef`)*
 
 Raakt alleen de **website** (`bundle-src`), niet het CMS. Geen SQL nodig.
 
@@ -982,7 +990,17 @@ Raakt alleen de **website** (`bundle-src`), niet het CMS. Geen SQL nodig.
       - buurtinitiatief Parklunch: rij "Wijk: Belgisch Park e.o."
       - Agenda-labels tonen categorieën; Buurtatlas "Activiteiten · 14"
       - geen consolefouten
-- [ ] Pushen en live nalopen.
+- [x] **Live (13-10, commit `67cd8ef`)** en live nagelopen:
+      - 14 activiteiten, alleen status "Gepubliceerd"
+      - homepage "14 terugkerende activiteiten"
+      - groepen Eten (2), Ontmoeting/Sociaal (3), Sport en Bewegen (3),
+        Spel (3), Kunst en Cultuur (1), Overig (2)
+      - knop "Per categorie", nieuwe introtekst
+      - 13 eigen icoontjes, 0 blauwe
+      - Walking Dinner: label "Eten", rij "Wijk: Belgisch Park"
+      - Agenda-labels tonen categorieën, Buurtatlas "Activiteiten · 14"
+      - geen consolefouten
+- [ ] Giovanny/Margareth: zelf nalopen in de site.
 
 **Wat Margareth daarna zelf kan controleren**
 1. Homepage: telt "14 terugkerende activiteiten".
@@ -999,8 +1017,8 @@ detailpagina, bredere introteksten, blauwe icoontjes in het CMS zelf, en de
 weekkalender die Walking Dinner elke zaterdag toont.
 
 ### Volgorde die ik voorstel
-1. G1, G6/G7, G8, G10 (website klopt weer met het CMS)
-2. G2, G3, G5 (tekst en beeld opschonen)
+1. ~~G1, G6/G7, G8, G10~~ — live (commit `67cd8ef`)
+2. G2, G3, G5 — gebouwd en lokaal getest, wacht op push
 3. G9 (kalender)
 4. G11 kleuren, daarna G13 iconen uploaden
 5. G14/G15 (CMS-schermen die niets doorsturen)
