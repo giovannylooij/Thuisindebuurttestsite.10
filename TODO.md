@@ -958,7 +958,9 @@ kolom "Eenmalige Activiteiten".**
 - [x] Lokaal getest 13-10 (dinsdag): homepagina toont Inloop koffie-ochtend en
       Bridgeclub De Hinde, Piano Lunchconcert terecht niet (eerste dinsdag);
       weekkalender en rechterkolom ongewijzigd; geen consolefouten.
-- [ ] Pushen en live nalopen.
+- [x] Gepusht (commit e7fa92b) en live gecontroleerd op 13-10: homepagina
+      "Vandaag in de buurt" met Inloop koffie-ochtend en Bridgeclub De Hinde,
+      Agenda links het groene eenmalige item, rechts 12 terugkerende.
 
 ### G10. Wijk en icoon niet zichtbaar op de website
 - `wijk` wordt wel opgeslagen (bijv. Walking Dinner: Belgisch Park) maar nergens
