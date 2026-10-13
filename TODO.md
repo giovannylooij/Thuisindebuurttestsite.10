@@ -929,8 +929,18 @@ kolom "Eenmalige Activiteiten".**
 - [x] Gepusht (commit 764922a) en live gecontroleerd op www.thuisindebuurt.nl:
       links 6 eenmalige items (incl. Walking Dinner Belgisch Park 03 apr),
       rechts 12 terugkerende, geen consolefouten.
-- *Opgemerkt, niet aangepast:* in de linkerkolom staan ook evenementen uit het
-  verleden (mei tot juli 2026). De site filtert daar niet op.
+**Afgelopen evenementen (13-10, "pak op"): klaar, nog niet gepusht.**
+- [x] Agenda: afgelopen evenementen staan niet meer tussen de komende; eronder
+      staat de knop "Toon afgelopen evenementen (aantal)" die ze erbij zet.
+- [x] Homepagina "De eerstvolgende evenementen": afgelopen items eruit, op
+      datum gesorteerd, en eenmalige activiteiten horen er nu ook bij.
+- [x] Items zonder leesbare datum blijven altijd zichtbaar (onderaan).
+- [x] Lokaal getest (13 okt 2026): links 1 komend item (03 apr Walking Dinner
+      Belgisch Park), knop toont 5 afgelopen items, rechts 12 terugkerende,
+      homepagina 1 kaart (3 Apr Walking Dinner Belgisch Park).
+- [ ] Pushen en live nalopen.
+- *Let op voor Margareth:* in de agendatabel staat nu geen enkel komend
+  evenement meer; alle 5 zijn van mei t/m juli 2026.
 
 ### G10. Wijk en icoon niet zichtbaar op de website
 - `wijk` wordt wel opgeslagen (bijv. Walking Dinner: Belgisch Park) maar nergens
