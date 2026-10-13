@@ -994,6 +994,8 @@ kolom "Eenmalige Activiteiten".**
 - [x] Lokaal getest: site leest Eten #E07A3A, Ontmoeting/Sociaal #2E8B57,
       Sport en Bewegen #D6453F, Spel #2F6DB5, Lezen #5B52C4, Kunst en Cultuur
       #8E44AD, Evenement/Festival #C2457E, Overig #7A7363.
+- [x] Gepusht (commit 34b9ac7) en live gecontroleerd op www.thuisindebuurt.nl:
+      de site leest de 8 kleuren uit de app, filterbolletjes kloppen.
 - [ ] CMS-scherm Categorieën nog testen met een ingelogde beheerder.
 
 **G13 iconen uploaden**
@@ -1008,6 +1010,7 @@ kolom "Eenmalige Activiteiten".**
       buurtinitiatieven en activiteiten.
 - [x] Rechten aangescherpt: uploaden mag alleen nog ingelogd
       (`sql/g13_iconen_upload.sql`); lezen blijft openbaar.
+- [x] Gepusht (commit 34b9ac7); beheer.html staat live op app.thuisindebuurt.nl.
 - [ ] Upload nog echt testen met een ingelogde beheerder.
 - Nog niet gedaan (bewust): geen verwijderknop voor iconen — een icoon dat nog
   bij een item hoort zou dan een leeg vlak worden.
