@@ -910,7 +910,25 @@ pagina.**
       - terugkerende activiteiten staan nog op hun eigen dagen
       - kalenderweergave toont geen eenmalige activiteiten
       - geen consolefouten
+- [x] **Live (13-10, commit `3687fb7`)**, live nagelopen:
+      - weekkalender toont 10 activiteiten deze week, Walking Dinner zit er
+        niet meer bij
+      - Walking Dinner staat nog wel gewoon in de lijst ernaast
+      - kalenderweergave per weekdag: 12 items, geen eenmalige
+      - geen consolefouten
+
+**Aanvulling (13-10, op verzoek van Giovanny): eenmalige activiteiten naar de
+kolom "Eenmalige Activiteiten".**
+- [x] Agenda-pagina: eenmalige activiteiten staan nu links bij de evenementen,
+      op datum gesorteerd; rechts alleen terugkerende.
+- [x] Het datumblokje toont de echte datum in plaats van de eerstvolgende
+      weekdag.
+- [x] Lokaal getest: Walking Dinner Belgisch Park staat links met "03 APR",
+      rechts staan 12 terugkerende activiteiten, weekkalender ongewijzigd,
+      geen consolefouten.
 - [ ] Pushen en live nalopen.
+- *Opgemerkt, niet aangepast:* in de linkerkolom staan ook evenementen uit het
+  verleden (mei tot juli 2026). De site filtert daar niet op.
 
 ### G10. Wijk en icoon niet zichtbaar op de website
 - `wijk` wordt wel opgeslagen (bijv. Walking Dinner: Belgisch Park) maar nergens
@@ -1036,7 +1054,7 @@ weekkalender die Walking Dinner elke zaterdag toont.
 2. ~~G2, G3, G5~~ — live (commit `35e8ec7`), live gecontroleerd:
    introtekst 1124px op alle pagina's, korte zin nog 1x op de detailpagina,
    CMS-lijsten 8 en 13 eigen icoontjes, 0 blauwe, geen consolefouten
-3. G9 — gebouwd en lokaal getest, wacht op push
+3. ~~G9~~ — live (commit `3687fb7`)
 4. G11 kleuren, daarna G13 iconen uploaden
 5. G14/G15 (CMS-schermen die niets doorsturen)
 6. G12 meerdere categorieën, als aparte klus
