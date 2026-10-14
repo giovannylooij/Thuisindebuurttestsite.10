@@ -1200,6 +1200,18 @@ mis, dan is er geen recente kopie om op terug te vallen.
 
 ---
 
+## 🔢 Versienummer in het CMS *(14-10, klaar, nog niet gepusht)*
+
+- [x] Onder de zijbalk en op het inlogscherm staat "Versie 1.0.x · datum".
+- [x] `tools/tib-versie.mjs` zet het nummer op 1.0.<aantal commits> met de
+      datum van vandaag.
+- [x] Git-hook draait dat script automatisch bij elke commit waarin
+      beheer.html meegaat. Kopie in `tools/hooks/pre-commit`; na een verse
+      kloon eenmalig installeren met het commando in dat bestand.
+- [x] Getest: nummer met de hand op "test" gezet, gecommit, hook zette hem
+      terug op 1.0.178 (14-10-2026) en nam hem mee in de commit.
+- [ ] Pushen en live nalopen op app.thuisindebuurt.nl.
+
 ## 🧹 Opruimen
 
 - [ ] `TIB Beheer.html` loopt ~220 regels achter op het echte `beheer.html` —
