@@ -1210,7 +1210,8 @@ mis, dan is er geen recente kopie om op terug te vallen.
       kloon eenmalig installeren met het commando in dat bestand.
 - [x] Getest: nummer met de hand op "test" gezet, gecommit, hook zette hem
       terug op 1.0.178 (14-10-2026) en nam hem mee in de commit.
-- [ ] Pushen en live nalopen op app.thuisindebuurt.nl.
+- [x] Gepusht (commit 183a335) en live gecontroleerd: app.thuisindebuurt.nl
+      toont op het inlogscherm "Versie 1.0.178 · 14-10-2026".
 
 ## 🧹 Opruimen
 
