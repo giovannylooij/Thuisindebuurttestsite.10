@@ -1,0 +1,10 @@
+#!/bin/sh
+# Houdt het versienummer in het CMS bij. Draait alleen als beheer.html in deze
+# commit meegaat, zodat het nummer alleen verspringt als het CMS echt verandert.
+#
+# Installeren (eenmalig, na een verse kloon):
+#   cp tools/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+if git diff --cached --name-only | grep -qx 'beheer.html'; then
+  node tools/tib-versie.mjs || exit 1
+  git add beheer.html
+fi

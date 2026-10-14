@@ -1081,6 +1081,11 @@ window.getActivityIcon = getActivityIcon;
 // Sample data — overgenomen uit de bestaande site (ui.jsx in jouw HTML)
 // Dit is wat het CMS in werkelijkheid uitserveert naar de frontend.
 
+// Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
+// tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
+// met de hand aanpassen.
+const CMS_VERSIE = { nummer: '1.0.178', datum: '14-10-2026' };
+
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
   categories: [
@@ -1367,6 +1372,11 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
         >
           <Icon name="arrow" size={15} style={{ transform: 'rotate(180deg)' }} />
         </button>
+      </div>
+      <div
+        title={'Versie ' + CMS_VERSIE.nummer + ', bijgewerkt op ' + CMS_VERSIE.datum}
+        style={{ fontSize: 10.5, color: 'oklch(0.72 0.02 85)', textAlign: 'center', padding: '2px 0 10px' }}>
+        Versie {CMS_VERSIE.nummer} · {CMS_VERSIE.datum}
       </div>
     </aside>
   );
@@ -6144,6 +6154,7 @@ function LoginScreen({ onLogin }) {
               />
             </div>
             <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 4 }}>Beheeromgeving</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 2 }}>Versie {CMS_VERSIE.nummer} · {CMS_VERSIE.datum}</div>
           </div>
 
           <div className="card" style={{ padding: '28px 28px 24px' }}>
@@ -6245,6 +6256,7 @@ function LoginScreen({ onLogin }) {
             />
           </div>
           <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 4 }}>Beheeromgeving</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 2 }}>Versie {CMS_VERSIE.nummer} · {CMS_VERSIE.datum}</div>
         </div>
 
         {/* Card */}
