@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.178', datum: '14-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.181', datum: '15-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1158,7 +1158,6 @@ window.DATA = {
 
 
   // Realistische inkomende berichten op de 4 mailboxen uit jouw site
-  formulieren: [],
 
   // De 9 pagina's uit jouw site (NAV_ITEMS) + Doe mee / Doneren / Boek (uit CTAs)
   pages: [
@@ -1280,7 +1279,6 @@ const NAV = [
     { id: "categorieen", label: "Categorieën", icon: "filter" },
     { id: "media", label: "Mediabibliotheek", icon: "media" },
     { id: "menu", label: "Navigatie", icon: "menu" },
-    { id: "formulieren", label: "Formulieren", icon: "inbox", badge: 0 },
   ]},
   { group: "Inzendingen", items: [
     { id: "aanmeldingen",      label: "Aanmeldingen",        icon: "inbox" },
@@ -1604,21 +1602,10 @@ function Dashboard({ onNav, onPreview }) {
           <div className="card">
             <div className="card-head">
               <h3 className="card-title">Contact via het contactformulier</h3>
-              <a className="card-link" href="#" onClick={() => onNav('formulieren')}>Inbox openen →</a>
+              <a className="card-link" href="#" onClick={() => onNav('berichten')}>Inbox openen →</a>
             </div>
-            <div className="list">
-              {DATA.formulieren.slice(0, 3).map(f => (
-                <div key={f.id} className="list-row">
-                  <div className="avatar" style={{ width: 28, height: 28, fontSize: 11, background: 'var(--cream-3)', color: 'var(--ink)' }}>
-                    {f.naam.split(' ').map(s => s[0]).slice(0, 2).join('')}
-                  </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div><span style={{ fontWeight: 500 }}>{f.naam}</span> <span style={{ color: 'var(--ink-mute)' }}>· {f.onderwerp}</span></div>
-                    <div style={{ color: 'var(--ink-soft)', fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.bericht}</div>
-                  </div>
-                  <Pill variant={f.status === 'Nieuw' ? 'published' : ''}>{f.status}</Pill>
-                </div>
-              ))}
+            <div style={{ padding: '28px 20px', textAlign: 'center', color: 'var(--ink-mute)', fontSize: 13 }}>
+              Berichten van bezoekers staan onder Contact in het menu.
             </div>
           </div>
         </div>
@@ -5138,279 +5125,6 @@ function GebruikersScreen() {
   );
 }
 
-function FormulierenScreen() {
-  const [tab, setTab] = React.useState('inzendingen');
-  const [selected, setSelected] = React.useState(1);
-  const [search, setSearch] = React.useState('');
-  const [statuses, setStatuses] = React.useState(
-    Object.fromEntries(DATA.formulieren.map(f => [f.id, f.status]))
-  );
-  const [reply, setReply] = React.useState('');
-  const replyRef = React.useRef(null);
-  const [instEmail, setInstEmail] = React.useState(() => (DATA.formulieren.instellingen && DATA.formulieren.instellingen.emailContact) || 'info@thuisindebuurt.nl');
-  const [instEmailClubje, setInstEmailClubje] = React.useState(() => (DATA.formulieren.instellingen && DATA.formulieren.instellingen.emailClubje) || 'aanmeldingen@thuisindebuurt.nl');
-
-  function saveInstellingen() {
-    if (!DATA.formulieren.instellingen) DATA.formulieren.instellingen = {};
-    DATA.formulieren.instellingen.emailContact = instEmail;
-    DATA.formulieren.instellingen.emailClubje = instEmailClubje;
-    window.__showToast && window.__showToast('Instellingen opgeslagen');
-  }
-
-  // Contact opties state
-  const [contactOpties, setContactOpties] = React.useState(() => [...DATA.contactOpties]);
-  const [newOptie, setNewOptie] = React.useState('');
-  const [editOptieIdx, setEditOptieIdx] = React.useState(null);
-  const [editOptieVal, setEditOptieVal] = React.useState('');
-
-  function saveContactOpties(opts) {
-    DATA.contactOpties = opts;
-    window.__syncToSite && window.__syncToSite();
-  }
-  function handleDeleteOptie(idx) {
-    const label = contactOpties[idx];
-    if (!window.confirm('Contactoptie "' + label + '" verwijderen?')) return;
-    const next = contactOpties.filter((_, i) => i !== idx);
-    setContactOpties(next);
-    saveContactOpties(next);
-    window.__showToast && window.__showToast('Optie verwijderd: ' + label);
-  }
-  function handleAddOptie() {
-    if (!newOptie.trim()) return;
-    const next = [...contactOpties, newOptie.trim()];
-    setContactOpties(next);
-    saveContactOpties(next);
-    setNewOptie('');
-    window.__showToast && window.__showToast('Optie toegevoegd: ' + newOptie.trim());
-  }
-  function commitEditOptie() {
-    if (!editOptieVal.trim() || editOptieIdx === null) return;
-    const next = contactOpties.map((o, i) => i === editOptieIdx ? editOptieVal.trim() : o);
-    setContactOpties(next);
-    saveContactOpties(next);
-    setEditOptieIdx(null);
-    window.__showToast && window.__showToast('Optie bijgewerkt');
-  }
-
-  const [inzendingen, setInzendingen] = React.useState(() => [...DATA.formulieren]);
-
-  const role = window._tibProfile?.role || 'beheerder';
-  const clubId = window._tibProfile?.club_id || null;
-
-  function handleArchiveer(id) {
-    const updated = inzendingen
-      .map(f => f.id === id ? { ...f, status: 'Gearchiveerd' } : f)
-      .sort((a, b) => {
-        if (a.status === 'Gearchiveerd' && b.status !== 'Gearchiveerd') return 1;
-        if (b.status === 'Gearchiveerd' && a.status !== 'Gearchiveerd') return -1;
-        return 0;
-      });
-    setInzendingen(updated);
-    DATA.formulieren = updated;
-    setStatuses(s => ({ ...s, [id]: 'Gearchiveerd' }));
-    window.__showToast && window.__showToast('Inzending gearchiveerd');
-    const next = updated.find(f => f.status !== 'Gearchiveerd');
-    if (next) setSelected(next.id);
-  }
-
-  function handleVerwijder(id, naam) {
-    if (!window.confirm('Inzending van "' + naam + '" definitief verwijderen?')) return;
-    const updated = inzendingen.filter(f => f.id !== id);
-    setInzendingen(updated);
-    DATA.formulieren = updated;
-    const next = updated[0];
-    if (next) setSelected(next.id);
-    window.__showToast && window.__showToast('Inzending verwijderd');
-  }
-
-  const baseInzendingen = (role === 'beheerder' && clubId !== null)
-    ? inzendingen.filter(i => String(i.club_id) === String(clubId))
-    : inzendingen;
-  const visibleItems = baseInzendingen.filter(item =>
-    !search || [item.naam, item.onderwerp, item.bericht].some(v => v && v.toLowerCase().includes(search.toLowerCase()))
-  );
-  const f = inzendingen.find(x => x.id === selected);
-  if (role === 'beheerder' && clubId === null) {
-    return <div style={{ padding: 40, color: '#888', fontSize: 16 }}>Je bent nog niet gekoppeld aan een buurtinitiatief.</div>;
-  }
-  const fStatus = statuses[selected] || (f && f.status);
-  const handleSend = () => {
-    if (!reply.trim()) return;
-    setStatuses(s => ({ ...s, [selected]: 'Beantwoord' }));
-    setReply('');
-    window.__showToast && window.__showToast('Antwoord verstuurd!');
-  };
-  return (
-    <>
-      <PageHead
-        title="Formulieren"
-        sub="Berichten via het contactformulier. Routering naar de juiste mailbox gebeurt automatisch."
-      />
-
-      <div className="tabs">
-        <div className={"tab" + (tab === 'inzendingen' ? ' active' : '')} onClick={() => setTab('inzendingen')}>Inzendingen</div>
-        <div className={"tab" + (tab === 'opties' ? ' active' : '')} onClick={() => setTab('opties')}>Contact opties</div>
-        <div className={"tab" + (tab === 'instellingen' ? ' active' : '')} onClick={() => setTab('instellingen')}>Instellingen</div>
-      </div>
-
-      {tab === 'opties' && (
-        <div>
-          <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-head">
-              <h3 className="card-title">Onderwerp-opties contactformulier</h3>
-              <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>Verschijnen als keuzes op de live website</span>
-            </div>
-            <div style={{ padding: 14 }}>
-              {contactOpties.map((opt, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 7, marginBottom: 6 }}>
-                  {editOptieIdx === idx ? (
-                    <>
-                      <input type="text" value={editOptieVal} onChange={e => setEditOptieVal(e.target.value)}
-                        style={{ flex: 1, fontSize: 13.5, border: '1px solid var(--accent)', borderRadius: 5, padding: '3px 8px' }}
-                        onKeyDown={e => { if (e.key === 'Enter') commitEditOptie(); if (e.key === 'Escape') setEditOptieIdx(null); }}
-                        autoFocus />
-                      <button className="btn btn-sm btn-primary" onClick={commitEditOptie}><Icon name="check" size={12} /> Opslaan</button>
-                      <button className="btn btn-sm" onClick={() => setEditOptieIdx(null)}>Annuleren</button>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ flex: 1, fontSize: 13.5 }}>{opt}</span>
-                      <button className="icon-btn" title="Bewerken" onClick={() => { setEditOptieIdx(idx); setEditOptieVal(opt); }}><Icon name="edit" size={13} /></button>
-                      <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => handleDeleteOptie(idx)}><Icon name="trash" size={13} /></button>
-                    </>
-                  )}
-                </div>
-              ))}
-              {contactOpties.length === 0 && <div style={{ color: 'var(--ink-mute)', fontSize: 13, padding: '10px 0' }}>Geen opties. Voeg hieronder een optie toe.</div>}
-            </div>
-            <div style={{ padding: '12px 14px', borderTop: '1px solid var(--line-soft)', display: 'flex', gap: 8 }}>
-              <input type="text" placeholder="Nieuwe optie, bijv. Vrijwilligerswerk"
-                value={newOptie} onChange={e => setNewOptie(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddOptie()}
-                style={{ flex: 1, fontSize: 13.5, border: '1px solid var(--line)', borderRadius: 6, padding: '7px 10px' }} />
-              <button className="btn btn-primary" onClick={handleAddOptie}><Icon name="plus" size={13} /> Toevoegen</button>
-            </div>
-          </div>
-          <HintCard variant="info" icon="info">
-            Wijzigingen zijn direct zichtbaar op de live preview-website. De onderwerp-opties bepalen ook de e-mailroutering.
-          </HintCard>
-        </div>
-      )}
-
-      {tab === 'inzendingen' && <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: 18 }}>
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="card-head">
-            <div className="search" style={{ width: '100%' }}><Icon name="search" size={14} /><input placeholder="Zoek inzendingen…" value={search} onChange={e => setSearch(e.target.value)} /></div>
-          </div>
-          <div className="list">
-            {visibleItems.map(item => {
-              const itemStatus = statuses[item.id] || item.status;
-              return (
-              <div key={item.id} className="list-row" style={{ background: item.id === selected ? 'var(--cream-2)' : 'transparent', cursor: 'pointer', borderLeft: item.id === selected ? '3px solid var(--accent)' : '3px solid transparent', paddingLeft: 15 }} onClick={() => setSelected(item.id)}>
-                <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--cream-3)', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 600 }}>
-                  {item.naam.split(' ').map(s => s[0]).slice(0,2).join('')}
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: itemStatus === 'Nieuw' ? 600 : 500 }}>{item.naam}</span>
-                    {itemStatus === 'Nieuw' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)' }}></span>}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.onderwerp} · {item.bericht.slice(0, 40)}…</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 2 }}>{item.datum}</div>
-                </div>
-              </div>
-            )})}
-
-          </div>
-        </div>
-
-        {f ? (
-        <div className="card">
-          <div className="card-head">
-            <h3 className="card-title">{f.onderwerp}</h3>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button className="btn btn-sm" onClick={() => handleArchiveer(f.id)}><Icon name="archive" size={12} /> Archief</button>
-              <button className="btn btn-sm" onClick={() => handleVerwijder(f.id, f.naam)}><Icon name="trash" size={12} /> Verwijder</button>
-              <button className="btn btn-sm btn-primary" onClick={() => { replyRef.current && replyRef.current.focus(); replyRef.current && replyRef.current.scrollIntoView({ behavior: 'smooth' }); }}><Icon name="mail" size={12} /> Beantwoorden</button>
-            </div>
-          </div>
-          <div className="card-pad">
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 18 }}>
-              <div className="avatar" style={{ width: 44, height: 44, background: 'var(--ink)', fontSize: 14 }}>
-                {f.naam.split(' ').map(s => s[0]).slice(0,2).join('')}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{f.naam}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{f.email}</div>
-                <div style={{ fontSize: 12, color: 'var(--ink-mute)', marginTop: 2 }}>Ontvangen: {f.datum}</div>
-              </div>
-              <Pill variant={fStatus === 'Nieuw' ? 'published' : ''}>{fStatus}</Pill>
-            </div>
-
-            <div className="status-row">
-              <Icon name="mail" size={14} />
-              <div style={{ flex: 1 }}><div className="name">Geroute naar</div><div className="sub">{f.route}thuisindebuurt.org</div></div>
-            </div>
-            <div className="status-row">
-              <Icon name="check" size={14} />
-              <div style={{ flex: 1 }}><div className="name">Bevestigingsmail verstuurd</div><div className="sub">automatisch — direct na inzending</div></div>
-            </div>
-            <div className="status-row">
-              <Icon name="shield" size={14} />
-              <div style={{ flex: 1 }}><div className="name">Spamcheck</div><div className="sub">Geslaagd (honeypot + score 0,2)</div></div>
-            </div>
-
-            <div style={{ marginTop: 16, padding: 16, background: 'var(--cream-2)', borderRadius: 8, fontSize: 14, lineHeight: 1.6 }}>
-              {f.bericht}
-            </div>
-
-            <Field label="Antwoord" hint="Wordt verstuurd vanaf het onderwerp-mailadres.">
-              <textarea ref={replyRef} placeholder="Beste..." style={{ minHeight: 120 }} value={reply} onChange={e => setReply(e.target.value)}></textarea>
-            </Field>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-primary" onClick={handleSend}><Icon name="mail" size={13} /> Verstuur antwoord</button>
-              <button className="btn" onClick={() => window.__showToast && window.__showToast('Concept opgeslagen')}>Sla op als concept</button>
-            </div>
-          </div>
-        </div>
-        ) : (
-        <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
-          <div style={{ textAlign: 'center', color: 'var(--ink-soft)', fontSize: 14 }}>Nog geen inzendingen.</div>
-        </div>
-        )}
-      </div>}
-
-      {tab === 'inzendingen' && <HintCard variant="warn" icon="warn" style={{ marginTop: 16 }}>
-        <strong>AVG-tip:</strong> berichten worden 12 maanden bewaard en daarna automatisch verwijderd. Bezoekers krijgen altijd een privacyvermelding bij het versturen.
-      </HintCard>}
-
-      {tab === 'instellingen' && (
-        <div className="form-grid">
-          <div>
-            <div className="form-section">
-              <h3>E-mailadressen</h3>
-              <Field label="E-mail voor contactformulier" hint="Inzendingen via het contactformulier worden hier naartoe gestuurd.">
-                <input type="email" value={instEmail} onChange={e => setInstEmail(e.target.value)} />
-              </Field>
-              <Field label="E-mail voor buurtinitiatief aanmeldingen" hint="Aanmeldingen voor buurtinitiatieven worden hier naartoe gestuurd.">
-                <input type="email" value={instEmailClubje} onChange={e => setInstEmailClubje(e.target.value)} />
-              </Field>
-              <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={saveInstellingen}>
-                <Icon name="save" size={14} /> Opslaan
-              </button>
-            </div>
-          </div>
-          <div>
-            <HintCard variant="info" icon="info">
-              E-mailkoppeling wordt ingesteld door de developer. Deze adressen worden gebruikt zodra de koppeling actief is.
-            </HintCard>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 window.__handleJsonBackup = async function() {
   const btn = document.getElementById('tib-backup-btn');
   const errEl = document.getElementById('tib-backup-error');
@@ -5528,7 +5242,7 @@ function DomeinScreen() {
   );
 }
 
-Object.assign(window, { HuisstijlScreen, GebruikersScreen, FormulierenScreen, DomeinScreen });
+Object.assign(window, { HuisstijlScreen, GebruikersScreen, DomeinScreen });
 
 
 /* === toast.jsx === */
@@ -6556,7 +6270,6 @@ function App() {
     categorieen: { crumbs: ['Categorieën'], render: () => <CategoriesScreen /> },
     media: { crumbs: ['Mediabibliotheek'], render: () => <MediaScreen /> },
     menu: { crumbs: ['Navigatie'], render: () => <MenuScreen /> },
-    formulieren: { crumbs: ['Formulieren'], render: () => <FormulierenScreen /> },
     huisstijl: { crumbs: ['Huisstijl'], render: () => <HuisstijlScreen /> },
     gebruikers: { crumbs: ['Gebruikers'], render: () => <GebruikersScreen /> },
     domein: { crumbs: ['Website & domein'], render: () => <DomeinScreen /> },
@@ -6571,7 +6284,7 @@ function App() {
   const role = profile?.role || 'beheerder';
   const REDACTIE_BLOCKED = ['gebruikers', 'huisstijl', 'domein'];
   const isBlocked =
-    (role === 'beheerder' && route !== 'formulieren') ||
+    (role === 'beheerder' && !BEHEERDER_ROUTES.has(route)) ||
     (role === 'redactie' && REDACTIE_BLOCKED.includes(route));
 
   const current = screens[route] || screens.dashboard;

@@ -1039,8 +1039,21 @@ kolom "Eenmalige Activiteiten".**
   contactformulier, en instellingen met de ontvangende e-mailadressen.
 - **Bevinding:** "Verstuur antwoord" toont alleen een melding en verstuurt
   niets; de instellingen blijven in de browser hangen.
-- [ ] Of echt laten werken (vraagt e-mailkoppeling), of de knoppen weghalen tot
-      het zover is.
+- [x] **Besluit Giovanny 14-10: scherm eruit.** Verwijderd uit het menu en uit
+      de code (FormulierenScreen, het lege voorbeeldlijstje `DATA.formulieren`
+      en de route). De dashboardkaart "Contact via het contactformulier"
+      verwijst nu naar het scherm Contact, waar de echte berichten staan.
+- [x] Rolcontrole hersteld: een initiatief-beheerder mocht alléén het scherm
+      Formulieren zien; dat bestaat niet meer, dus nu geldt de lijst die er al
+      voor klaarstond (dashboard en buurtinitiatieven).
+- [ ] Nog te pushen en na te lopen met een ingelogde beheerder.
+- *Vervallen met het scherm:* de onderwerpen van het contactformulier konden
+  daar "aangepast" worden, maar dat werkte niet (bleef in de browser hangen).
+  Bezoekers zien nog steeds dezelfde vijf onderwerpen uit de site. Wil je ze
+  echt beheerbaar maken, dan is dat een aparte klus: klein tabelletje in de
+  database, een blokje in het scherm Contact, en de site die het uitleest.
+- *Mailadressen:* de tabel `formulieren_instellingen` bestaat al en is leeg;
+  die pakken we op zodra de e-mailkoppeling (Resend) aangaat.
 
 ### Blok 1 — uitgevoerd en live *(13-10, commit `67cd8ef`)*
 
