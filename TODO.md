@@ -1046,7 +1046,9 @@ kolom "Eenmalige Activiteiten".**
 - [x] Rolcontrole hersteld: een initiatief-beheerder mocht alléén het scherm
       Formulieren zien; dat bestaat niet meer, dus nu geldt de lijst die er al
       voor klaarstond (dashboard en buurtinitiatieven).
-- [ ] Nog te pushen en na te lopen met een ingelogde beheerder.
+- [x] Gepusht (commit 242b6d5), live op app.thuisindebuurt.nl (versie 1.0.181).
+- [ ] Na inloggen nog even nalopen: menu zonder Formulieren, dashboardkaart
+      verwijst naar Contact.
 - *Vervallen met het scherm:* de onderwerpen van het contactformulier konden
   daar "aangepast" worden, maar dat werkte niet (bleef in de browser hangen).
   Bezoekers zien nog steeds dezelfde vijf onderwerpen uit de site. Wil je ze
