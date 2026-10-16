@@ -1042,10 +1042,18 @@ kolom "Eenmalige Activiteiten".**
       terugval. Lokaal getest: menu volgt de database.
 - [x] Nepdingen uit het scherm gehaald: "CTA-knoppen" (hardcoded) en de drie
       schakelaars onder "Mobiel menu" (deden niets).
-- [ ] **Giovanny: `sql/g14_menu_volgorde.sql` draaien** (kolom volgorde +
-      rechten: iedereen lezen, alleen ingelogd schrijven).
-- [ ] Daarna testen met een ingelogde beheerder en pushen.
-- *Let op bij live gaan:* in de database staat Nieuws op verborgen en Doneren
+- [x] SQL gedraaid door Giovanny (16-10): kolom volgorde gevuld 1 t/m 12,
+      lezen openbaar, schrijven alleen ingelogd.
+- [x] Gepusht (commit b35436f, CMS-versie 1.0.183) en live gecontroleerd:
+      het menu op www.thuisindebuurt.nl volgt de database.
+- [ ] Scherm Navigatie zelf nog nalopen met een ingelogde beheerder
+      (naam wijzigen, pijltjes, schakelaar).
+- *Live gevolg (zoals verwacht):* Nieuws staat in de database op verborgen en
+  Doneren op zichtbaar, dus het menu toont nu geen Nieuws en wel Doneren.
+  In het CMS met één schakelaar terug te zetten.
+- *Document voor het gesprek met Margareth:* claude.ai-document
+  "Bevindingen Margareth — wat is opgelost" (16-10).
+- *Oud, ter info:* in de database staat Nieuws op verborgen en Doneren
   op zichtbaar. Zodra dit live staat, volgt het menu dat: Nieuws verdwijnt uit
   het menu en Doneren komt erbij. In het CMS is dat met één schakelaar terug
   te draaien.
