@@ -1032,7 +1032,23 @@ kolom "Eenmalige Activiteiten".**
 - **Bevinding:** dit scherm slaat alleen op in de browser (`localStorage`) en
   bereikt de website niet. Alleen de aan/uit-schakelaar bij **Pagina's** schrijft
   wel naar de database.
-- [ ] Navigatie-scherm laten opslaan in de database.
+- [x] **Gebouwd 16-10 (nog niet gepusht).** Het scherm Navigatie schrijft nu
+      naar de tabel `site_navigatie`: naam wijzigen, volgorde met pijltjes,
+      zichtbaar aan/uit, pagina uit het menu halen of toevoegen. Elke
+      wijziging gaat meteen naar de database, met melding als dat mislukt.
+      Pagina's komen uit een keuzelijst, zodat er geen dode links ontstaan.
+- [x] Website (`ui.jsx` + bootstrap in index.html): het hoofdmenu komt nu uit
+      die tabel (naam, volgorde, zichtbaarheid), met het vaste rijtje als
+      terugval. Lokaal getest: menu volgt de database.
+- [x] Nepdingen uit het scherm gehaald: "CTA-knoppen" (hardcoded) en de drie
+      schakelaars onder "Mobiel menu" (deden niets).
+- [ ] **Giovanny: `sql/g14_menu_volgorde.sql` draaien** (kolom volgorde +
+      rechten: iedereen lezen, alleen ingelogd schrijven).
+- [ ] Daarna testen met een ingelogde beheerder en pushen.
+- *Let op bij live gaan:* in de database staat Nieuws op verborgen en Doneren
+  op zichtbaar. Zodra dit live staat, volgt het menu dat: Nieuws verdwijnt uit
+  het menu en Doneren komt erbij. In het CMS is dat met één schakelaar terug
+  te draaien.
 
 ### G15. Scherm Formulieren — uitleg + bevinding
 - Drie tabbladen: ingekomen berichten, de onderwerpkeuzes van het
