@@ -1400,6 +1400,24 @@ uit haar mail.
 - **Voor Armando:** hoe deed de oude website dit, en welke rekening of account
   gebruikt TIB nu? Mollie vraagt een KVK-koppeling; Donorbox heeft TIB mogelijk
   al.
+- **Plan Giovanny (22-10), uitgesteld — bouwen wanneer hij het zegt.**
+  Eerst de eenvoudige versie zonder betaalkoppeling:
+  - CMS, bij een activiteit: schakelaar "Betaalde activiteit"; staat die aan,
+    dan verschijnen **Bedrag** en **Betaallink** (een link van bv. Mollie,
+    Tikkie of Donorbox).
+  - Website: bedrag bij de gegevens, en na het aanmelden de knop "Nu betalen"
+    met de tekst dat de plek vaststaat zodra de betaling binnen is. Zonder
+    link verandert er niets aan het huidige aanmelden.
+  - CMS, bij Aanmeldingen: kolom **Betaald** die de beheerder zelf aanvinkt
+    (met datum), filter "nog niet betaald", en bedrag + activiteit in de regel
+    zodat het met het bankoverzicht te vergelijken is.
+  - Database: 3 velden op `activiteiten` (betaald, bedrag, betaallink) en 2 op
+    `aanmeldingen` (betaald, betaald_op). Eén SQL-bestand, zoals bij de
+    contactkaarten.
+  - *Grens:* een betaallink meldt niet terug wie betaald heeft, dus het vinkje
+    gaat met de hand. Met een echte Mollie-koppeling gaat dat later vanzelf;
+    de server daarvoor kan een Supabase Edge Function zijn, dus daar is geen
+    nieuwe hosting voor nodig.
 - **Besluit 7:** doneerpagina snel oplossen met de bestaande Donorbox-link, en
   iDEAL pas bouwen als Armando's kant rond is? Dan heeft Margareth volgende
   week al een werkende doneerknop.
