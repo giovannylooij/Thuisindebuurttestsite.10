@@ -1205,8 +1205,16 @@ superadmin, en het komt in het bestaande scherm Pagina's.
       het scherm Navigatie — die botsing is daarmee opgelost.
 - [x] Lokaal getest: alle pagina's en de footer tonen onveranderd hun tekst,
       geen foutmelding terwijl de tabel nog niet bestaat, CMS compileert.
-- [ ] **Giovanny: `sql/blokA_pagina_teksten.sql` draaien.**
-- [ ] Daarna in het CMS één tekst aanpassen en op de site controleren.
+- [x] SQL gedraaid door Giovanny (22-10); lezen met de publieke sleutel werkt,
+      schrijven ermee wordt geweigerd.
+- [x] Samen getest in het echte CMS (22-10), daarna alles teruggedraaid:
+      scherm laadt, titel aangepast → stond op de site, "Terug naar standaard"
+      → oorspronkelijke tekst terug, veld leegmaken doet hetzelfde en haalt de
+      regel uit de database.
+- [x] **Blok A afgerond** (besluit Giovanny 22-10).
+- *Staat nog in de tabel:* `clubjes.intro1`, een eigen proef van Giovanny met
+  exact de standaardtekst. Onschuldig; alleen telt dat veld als "aangepast".
+  Weg te halen met "Terug naar standaard" bij de eerste alinea.
 
 ### Oorspronkelijk plan
 Raakt: "bovenste veld (Informatie) op Buurtinitiatieven", "contactblok onderaan
