@@ -1285,7 +1285,8 @@ alleen een kaart bij op Activiteiten.
       "10 ACTIVITEITEN" op het drukste adres, klikken opent de juiste
       detailpagina. Buurtinitiatieven ongewijzigd (popup "1 BUURTINITIATIEF",
       klikken opent het juiste initiatief). Geen consolefouten.
-- [ ] Pushen en live nalopen.
+- [x] Gepusht (commit 8a9758e) en live gecontroleerd: knop Kaart staat er,
+      kaart laadt met 3 stippen voor 13 activiteiten.
 
 ### Oorspronkelijk plan blok C
 Punt 3 uit haar mail.
