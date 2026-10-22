@@ -1287,7 +1287,13 @@ alleen een kaart bij op Activiteiten.
       klikken opent het juiste initiatief). Geen consolefouten.
 - [x] Gepusht (commit 8a9758e) en live gecontroleerd: knop Kaart staat er,
       kaart laadt met 3 stippen voor 13 activiteiten.
-- [ ] **Nieuw punt (Giovanny, 22-10): de stippen op de kaart lichter maken.**
+- [x] **Stippen op de kaart lichter (Giovanny, 22-10) — gedaan.** Elke stip
+      krijgt een lichtere tint van zijn eigen kleur (25% naar wit) en de stip
+      voor meerdere items is niet langer grijs maar de hoofdkleur van de
+      huisstijl, 35% lichter (#77aca9 bij de huidige huisstijl). De kleur
+      wordt uit de stylesheet gelezen, dus hij loopt mee als de huisstijl
+      verandert. Lokaal getest op beide kaarten, geen consolefouten.
+- *Oorspronkelijke notitie:* de stippen op de kaart lichter maken.
       Vooral de stip voor meerdere items valt nu uit de toon: die is grijs
       (`#4a5563`) terwijl één item de kleur van zijn categorie krijgt. Die
       grijze moet een andere, lichtere kleur worden. Geldt voor de kaart op
