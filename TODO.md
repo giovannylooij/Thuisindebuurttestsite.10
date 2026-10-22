@@ -1322,9 +1322,12 @@ Punt 3 uit haar mail.
 - Nu: de Buurtatlas heeft de goede kaart, met filters en live gegevens uit
   buurtinitiatieven, activiteiten en partners. Buurtinitiatieven heeft een
   eigen, simpelere kaart; Activiteiten heeft helemaal geen kaart.
-- [ ] De kaart van de Buurtatlas als los onderdeel bruikbaar maken.
-- [ ] Buurtinitiatieven: die kaart gebruiken, gefilterd op buurtinitiatieven.
-- [ ] Activiteiten: dezelfde kaart erbij, gefilterd op activiteiten.
+- ~~De kaart van de Buurtatlas als los onderdeel bruikbaar maken.~~
+- ~~Buurtinitiatieven: die kaart gebruiken, gefilterd op buurtinitiatieven.~~
+- ~~Activiteiten: dezelfde kaart erbij, gefilterd op activiteiten.~~
+- *Achterhaald (22-10):* we hebben niet de Buurtatlas-kaart hergebruikt maar
+  de kaart die Buurtinitiatieven al had. Buurtinitiatieven bleef daardoor
+  ongemoeid en Activiteiten kreeg dezelfde kaart en indeling. Blok C is klaar.
 - **Besluit 6:** vervangt de kaart de huidige kaartweergave op
   Buurtinitiatieven, of komt hij ernaast?
 - Technisch het makkelijkste blok; de bouwstenen bestaan al.
