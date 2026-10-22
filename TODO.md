@@ -1248,7 +1248,16 @@ haar mail (doorlopende agenda, alles automatisch erin).
   Activiteiten en Terugkerende Activiteiten). Buurtinitiatieven staan er
   helemaal niet in.
 - [ ] Weekkalender eraf.
-- [ ] Twee kolommen eraf; één doorlopende lijst op datum.
+- [x] **Stap 1 (22-10): de twee kolommen zijn eraf.** "Eenmalige
+      Activiteiten", "Terugkerende Activiteiten" en de knop "Toon afgelopen
+      evenementen" staan niet meer op de Agenda; de bijbehorende berekeningen
+      zijn uit de code. De weekkalender staat er nog, dus de pagina is nu kort.
+      De kaartjes (`EenmaligCard` en `TerugkerendCard`) heb ik laten staan,
+      die hergebruiken we in de doorlopende agenda.
+- [ ] Stap 2: één doorlopende lijst op datum, met onderscheid buurtinitiatief
+      / activiteit — wacht op besluit 3 en 4.
+- [ ] Stap 3: weekkalender eraf zodra de doorlopende lijst er staat (ook de
+      legenda "Eenmalig / Terugkerend" onderin die kalender verdwijnt dan).
 - [ ] Onderscheid wordt: buurtinitiatief of activiteit (label en kleur).
 - [ ] Buurtinitiatieven verschijnen automatisch in de agenda.
 - **Besluit 3 (het lastigste):** een doorlopende agenda heeft echte datums
