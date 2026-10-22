@@ -1254,10 +1254,22 @@ haar mail (doorlopende agenda, alles automatisch erin).
       zijn uit de code. De weekkalender staat er nog, dus de pagina is nu kort.
       De kaartjes (`EenmaligCard` en `TerugkerendCard`) heb ik laten staan,
       die hergebruiken we in de doorlopende agenda.
-- [ ] Stap 2: één doorlopende lijst op datum, met onderscheid buurtinitiatief
-      / activiteit — wacht op besluit 3 en 4.
-- [ ] Stap 3: weekkalender eraf zodra de doorlopende lijst er staat (ook de
-      legenda "Eenmalig / Terugkerend" onderin die kalender verdwijnt dan).
+- [x] **Stap 2 (22-10): buurtinitiatieven in de agenda, in eigen kleur.**
+      Toelichting Giovanny: de agenda (de kalender) loopt al door; wat nodig
+      was, is dat buurtinitiatieven er ook in staan, met een eigen kleur.
+      Activiteiten oranje, buurtinitiatieven paars (#8E44AD), losse
+      evenementen groen. De legenda heet nu Activiteit / Buurtinitiatief /
+      Evenement in plaats van Eenmalig / Terugkerend. Alleen gepubliceerde
+      buurtinitiatieven; klikken opent het juiste initiatief.
+- *Grens van de tekstherkenning (gemeten op de echte gegevens):* een
+  buurtinitiatief komt in de kalender als in "wanneer" een weekdag of een
+  echte datum staat. Van de acht gepubliceerde komen er vier in beeld.
+  "Elke 2 weken op vrijdagmiddag" verschijnt nu elke vrijdag, "Elke 2e en 4e
+  vrijdag" alleen op de tweede, en "4x per jaar" en "Af te spreken in de
+  WhatsApp groep" komen er niet in. Daarvoor zijn echte herhaalvelden in het
+  CMS nodig (besluit 3, optie a).
+- [ ] Besluit: weekkalender zo laten (hij loopt per week door) of alsnog
+      vervangen door een lijstweergave.
 - [ ] Onderscheid wordt: buurtinitiatief of activiteit (label en kleur).
 - [ ] Buurtinitiatieven verschijnen automatisch in de agenda.
 - **Besluit 3 (het lastigste):** een doorlopende agenda heeft echte datums
