@@ -1287,6 +1287,15 @@ alleen een kaart bij op Activiteiten.
       klikken opent het juiste initiatief). Geen consolefouten.
 - [x] Gepusht (commit 8a9758e) en live gecontroleerd: knop Kaart staat er,
       kaart laadt met 3 stippen voor 13 activiteiten.
+- [ ] **Nieuw punt (Giovanny, 22-10): de stippen op de kaart lichter maken.**
+      Vooral de stip voor meerdere items valt nu uit de toon: die is grijs
+      (`#4a5563`) terwijl één item de kleur van zijn categorie krijgt. Die
+      grijze moet een andere, lichtere kleur worden. Geldt voor de kaart op
+      Buurtinitiatieven én op Activiteiten (dezelfde kaart) — de Buurtatlas
+      heeft zijn eigen stippen, die apart bekijken.
+      Te beslissen: welke kleur wordt het (voorstel: de hoofdkleur van de
+      huisstijl in een lichtere tint), en worden de losse stippen ook lichter
+      of alleen die ene.
 
 ### Oorspronkelijk plan blok C
 Punt 3 uit haar mail.
