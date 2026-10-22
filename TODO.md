@@ -1282,8 +1282,8 @@ haar mail (doorlopende agenda, alles automatisch erin).
       CMS aanvullen (of het anker in ui.jsx een week verzetten).
 - [ ] Besluit: weekkalender zo laten (hij loopt per week door) of alsnog
       vervangen door een lijstweergave.
-- [ ] Onderscheid wordt: buurtinitiatief of activiteit (label en kleur).
-- [ ] Buurtinitiatieven verschijnen automatisch in de agenda.
+- [x] Onderscheid wordt: buurtinitiatief of activiteit (label en kleur).
+- [x] Buurtinitiatieven verschijnen automatisch in de agenda.
 - **Besluit 3 (het lastigste):** een doorlopende agenda heeft echte datums
   nodig, maar "wanneer" is nu een vrij tekstveld ("elke dinsdag van 13:30 tot
   17:00"). Drie opties:
@@ -1479,7 +1479,7 @@ mis, dan is er geen recente kopie om op terug te vallen.
 
 ---
 
-## 🔢 Versienummer in het CMS *(14-10, klaar, nog niet gepusht)*
+## 🔢 Versienummer in het CMS *(14-10, klaar en live)*
 
 - [x] Onder de zijbalk en op het inlogscherm staat "Versie 1.0.x · datum".
 - [x] `tools/tib-versie.mjs` zet het nummer op 1.0.<aantal commits> met de
@@ -1502,8 +1502,7 @@ mis, dan is er geen recente kopie om op terug te vallen.
 
 ## 💡 Ideeën (nog geen besluit)
 
-- [ ] Buurtinitiatieven ook in de Agenda tonen *(technisch goed mogelijk;
-      vraag is of het de agenda niet te druk maakt)*
+- [x] Buurtinitiatieven ook in de Agenda tonen — gedaan op 22-10, zie blok B.
 
 ---
 
