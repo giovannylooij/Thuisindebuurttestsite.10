@@ -1270,7 +1270,24 @@ haar mail (doorlopende agenda, alles automatisch erin).
 - **Let op:** veel buurtinitiatieven zijn doorlopend en hebben geen datum. Die
   vallen zonder besluit 3 buiten de agenda.
 
-### Blok C — Kaart op Buurtinitiatieven en Activiteiten
+### Blok C — Kaart op Activiteiten *(gebouwd 22-10)*
+
+**Besluit Giovanny (22-10):** Buurtinitiatieven houdt zijn eigen kaart; er komt
+alleen een kaart bij op Activiteiten.
+
+- [x] De kaart van Buurtinitiatieven (`ClubjesMap`) geschikt gemaakt voor
+      activiteiten: eigen kopje in het popup-venster en id's als tekst
+      ("a12") in plaats van getallen.
+- [x] Pagina Activiteiten: knop **Kaart** tussen "Per categorie" en
+      "Kalenderweergave", met daaronder een regel hoeveel activiteiten een
+      locatie hebben.
+- [x] Lokaal getest: 13 van de 13 activiteiten op de kaart, popup toont
+      "10 ACTIVITEITEN" op het drukste adres, klikken opent de juiste
+      detailpagina. Buurtinitiatieven ongewijzigd (popup "1 BUURTINITIATIEF",
+      klikken opent het juiste initiatief). Geen consolefouten.
+- [ ] Pushen en live nalopen.
+
+### Oorspronkelijk plan blok C
 Punt 3 uit haar mail.
 
 - Nu: de Buurtatlas heeft de goede kaart, met filters en live gegevens uit
