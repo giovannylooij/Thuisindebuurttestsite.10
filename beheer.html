@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.183', datum: '16-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.186', datum: '22-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -3123,160 +3123,294 @@ window.BuurtatlasScreen = BuurtatlasScreen;
 /* === screens/pages.jsx === */
 // Pages list, Partners, Netwerken, Doneren
 
+// Blok A: de teksten die in het CMS aan te passen zijn. Deze lijst loopt
+// gelijk met de website: pagina + sleutel komen overeen met tibTekst(...) in
+// de code, en "standaard" is exact de tekst die de site toont als hier niets
+// is ingevuld. Leeg laten = de standaardtekst blijft staan.
+const TIB_TEKST_PAGINAS = [
+  { id: 'home', label: 'Home', velden: [
+    { sleutel: 'hero_titel', label: 'Titel in de kop', lang: true, standaard: 'Ken je buurt,\nvoel je thuis.' },
+    { sleutel: 'hero_lead', label: 'Tekst onder de titel', lang: true, standaard: 'Thuis in de Buurt brengt buurtgenoten samen. Ontdek buurtinitiatieven om de hoek, sluit aan bij koffieochtenden, of start zelf iets nieuws. Allemaal vrijwilligers, allemaal buren.' },
+    { sleutel: 'intro_eyebrow', label: 'Blok "Wat is TIB" — klein kopje', standaard: 'Wat is Thuis in de Buurt?' },
+    { sleutel: 'intro_titel', label: 'Blok "Wat is TIB" — titel', standaard: 'Een buurtprikbord gemaakt door TIBbers.' },
+    { sleutel: 'clubjes_eyebrow', label: 'Blok Buurtinitiatieven — klein kopje', standaard: 'Buurtinitiatieven om de hoek' },
+    { sleutel: 'clubjes_titel', label: 'Blok Buurtinitiatieven — titel', standaard: 'Zoek jouw mensen, vind jouw ding.' },
+    { sleutel: 'activiteiten_eyebrow', label: 'Blok Activiteiten — klein kopje', standaard: 'Elke week iets te doen' },
+    { sleutel: 'activiteiten_titel', label: 'Blok Activiteiten — titel', standaard: 'Terugkerende activiteiten.' },
+    { sleutel: 'partners_eyebrow', label: 'Blok Partners — klein kopje', standaard: 'Samen met' },
+    { sleutel: 'partners_titel', label: 'Blok Partners — titel', standaard: 'Onze partners in de wijk.' },
+    { sleutel: 'doneren_eyebrow', label: 'Doneerblok — klein kopje', standaard: 'Steun de buurt' },
+    { sleutel: 'doneren_titel', label: 'Doneerblok — titel', standaard: 'De buurt draait op vrijwilligers — en op kleine bijdragen.' },
+    { sleutel: 'doneren_tekst', label: 'Doneerblok — tekst', lang: true, standaard: 'Met een donatie maak je koffieochtenden, drukwerk en de jaarlijkse Walking Dinner mogelijk. Geen verplichting — élke euro telt.' },
+  ]},
+  { id: 'clubjes', label: 'Buurtinitiatieven', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Buurtinitiatieven' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Vind jouw buurtinitiatief in de buurt.' },
+    { sleutel: 'intro1', label: 'Eerste alinea', lang: true, standaard: 'Buurtinitiatieven zijn activiteiten of evenementen die door buurtbewoners zelf zijn gestart. Woon jij in Noordelijk Scheveningen en wil je in je eigen wijk iets ondernemen met andere wijkbewoners? Kijk dan naar de mogelijkheden hieronder.' },
+    { sleutel: 'intro2', label: 'Tweede alinea', lang: true, standaard: 'Wil jij als wijkbewoner (meer) bekendheid geven aan jouw activiteit of evenement in de wijk via deze website of in onze nieuwsbrief? Meld jouw buurtinitiatief dan aan via de groene knop hieronder.' },
+  ]},
+  { id: 'activiteiten', label: 'Activiteiten', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Activiteiten' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Altijd iets te doen in de buurt.' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Activiteiten, georganiseerd door Thuis in de Buurt zelf en haar partners. Gesorteerd op categorie.' },
+  ]},
+  { id: 'agenda', label: 'Agenda', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Agenda' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Alle evenementen.' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Hier vind je alle bijzondere momenten en terugkerende activiteiten in Noordelijk Scheveningen.' },
+  ]},
+  { id: 'buurtatlas', label: 'Buurtatlas', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Buurtatlas' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Alles in de wijk, op één kaart.' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Van de bakker op de hoek tot het Geriatrisch Netwerk. Klik op een stip voor meer informatie en een directe link naar de website.' },
+  ]},
+  { id: 'partners', label: 'Partners', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Partners' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Vier partners, één wijk.' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Thuis in de Buurt werkt nauw samen met vier vaste partners. Samen vormen we de basis voor activiteiten en initiatieven in Noordelijk Scheveningen.' },
+  ]},
+  { id: 'netwerken', label: 'Netwerken', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Netwerken' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Actieve netwerken in de wijk.' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: "Naast onze vier vaste partners bestaan er meerdere netwerken die zich inzetten voor specifieke thema's. Allemaal verankerd in Noordelijk Scheveningen." },
+  ]},
+  { id: 'nieuws', label: 'Nieuws', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Nieuws uit de buurt' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Wat speelt er hier?' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, hint: 'Let op: in de standaardtekst staat een link naar BNS. Pas je deze tekst aan, dan verdwijnt die link.', standaard: 'Nieuws over winkeliers, bewonersinitiatieven en restaurants. Voor gemeente-nieuws verwijzen we naar onze partner BNS.' },
+  ]},
+  { id: 'doemee', label: 'Doe mee', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Doe mee' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Word onderdeel van de buurt.' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Wat past het beste bij je? Kies een optie en we helpen je verder.' },
+  ]},
+  { id: 'doneren', label: 'Doneren', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Doneren' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'De buurt mogelijk maken.' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'TIB draait op vrijwilligers en kleine bijdragen. Met een donatie maakt u alle sociale activiteiten zoals de jaarlijkse Walking Dinner mogelijk.' },
+  ]},
+  { id: 'contact', label: 'Contact', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Contact' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Neem contact op.' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Heb je een vraag, suggestie of zin om iets bij te dragen? Stuur ons een bericht — we reageren binnen drie werkdagen.' },
+  ]},
+  { id: 'boek', label: 'Boek', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Boek · Margreet Jonkers' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Bestel nu het boek "Leven is spelen".' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Het inspirerende en informatieve boek van Margreet Jonkers (77). Met jouw bestelling steun je ook Thuis in de Buurt.' },
+  ]},
+  { id: 'footer', label: 'Contactblok onderaan', velden: [
+    { sleutel: 'titel', label: 'Kopje', standaard: 'Thuis in de Buurt' },
+    { sleutel: 'tekst', label: 'Tekst', lang: true, standaard: 'Een vrijwilligersinitiatief in Noordelijk Scheveningen. Voor en door bewoners — van schaakclub tot Walking Dinner.' },
+    { sleutel: 'email', label: 'E-mailadres', standaard: 'info@thuisindebuurt.nl' },
+  ]},
+];
+
 function PagesScreen() {
-  const [pages, setPages] = React.useState(() => DATA.pages.map(p => ({ ...p })));
-  const [editingId, setEditingId] = React.useState(null);
-  const [editTitel, setEditTitel] = React.useState('');
-  const [editSlug, setEditSlug] = React.useState('');
+  const isSuperadmin = window._tibProfile?.role === 'superadmin';
+  const [paginaId, setPaginaId] = React.useState('home');
+  const [opgeslagen, setOpgeslagen] = React.useState({});   // "pagina.sleutel" -> tekst uit de database
+  const [waarden, setWaarden] = React.useState({});          // "pagina.sleutel" -> tekst in het scherm
+  const [laden, setLaden] = React.useState(true);
+  const [bezig, setBezig] = React.useState(false);
+  const [fout, setFout] = React.useState(null);
 
-  function startEdit(p) {
-    setEditingId(p.id);
-    setEditTitel(p.titel);
-    setEditSlug(p.slug);
-  }
+  const toast = (t) => window.__showToast && window.__showToast(t);
+  const pagina = TIB_TEKST_PAGINAS.find(p => p.id === paginaId) || TIB_TEKST_PAGINAS[0];
 
-  function saveEdit(id) {
-    const updated = pages.map(p => p.id === id ? { ...p, titel: editTitel.trim(), slug: editSlug.trim() } : p);
-    setPages(updated);
-    DATA.pages = updated;
-    window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast('Pagina opgeslagen: ' + editTitel.trim());
-    setEditingId(null);
-  }
-
-  function toggleMenu(id, v) {
-    const updated = pages.map(p => p.id === id ? { ...p, inMenu: v } : p);
-    setPages(updated);
-    DATA.pages = updated;
-    const page = pages.find(p => p.id === id);
-    const navIdx = DATA.nav.findIndex(n => n.target === page?.slug);
-    let navEntry;
-    if (navIdx >= 0) {
-      DATA.nav[navIdx].visible = v;
-      navEntry = DATA.nav[navIdx];
-    } else if (page) {
-      // Pagina had nog geen entry in het navigatiemenu (bv. nieuw toegevoegde
-      // pagina) — zonder dit blijft de toggle hier stil zonder effect op de site.
-      navEntry = { id: 'nav-' + page.id, label: page.titel, target: page.slug, visible: v, level: 0 };
-      DATA.nav.push(navEntry);
+  async function laad() {
+    setLaden(true);
+    const { data, error } = await window.supabase.from('pagina_teksten').select('*');
+    if (error) {
+      setFout(error.message);
+      setLaden(false);
+      return;
     }
-    // Naar Supabase — dit is de bron die de live site (www.thuisindebuurt.nl)
-    // rechtstreeks uitleest. DATA.nav/localStorage alleen bereikt de site niet,
-    // want die draait op een ander domein dan het CMS (app.thuisindebuurt.nl).
-    if (navEntry) window.__supabaseUpsert('site_navigatie', { ...navEntry, visible: v });
-    window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast((v ? '✓ Zichtbaar' : '○ Verborgen') + ': ' + pages.find(p => p.id === id)?.titel);
+    const kaart = {};
+    (data || []).forEach(r => { kaart[r.pagina + '.' + r.sleutel] = r.tekst || ''; });
+    setFout(null);
+    setOpgeslagen(kaart);
+    setWaarden(kaart);
+    setLaden(false);
+  }
+  React.useEffect(() => { if (isSuperadmin) laad(); }, []);
+
+  function waardeVan(veld) {
+    const k = pagina.id + '.' + veld.sleutel;
+    return waarden[k] !== undefined ? waarden[k] : '';
+  }
+  function zetWaarde(veld, v) {
+    setWaarden({ ...waarden, [pagina.id + '.' + veld.sleutel]: v });
+  }
+  const gewijzigd = pagina.velden.some(v => {
+    const k = pagina.id + '.' + v.sleutel;
+    return (waarden[k] || '') !== (opgeslagen[k] || '');
+  });
+
+  // Opslaan: een ingevuld veld wordt bewaard, een leeggemaakt veld wordt
+  // verwijderd zodat de website weer de standaardtekst toont.
+  async function opslaan() {
+    if (bezig) return;
+    setBezig(true);
+    const teBewaren = [];
+    const teVerwijderen = [];
+    pagina.velden.forEach(v => {
+      const k = pagina.id + '.' + v.sleutel;
+      const nieuw = (waarden[k] || '').trim();
+      const oud = (opgeslagen[k] || '').trim();
+      if (nieuw === oud) return;
+      if (nieuw === '') teVerwijderen.push(v.sleutel);
+      else teBewaren.push({ pagina: pagina.id, sleutel: v.sleutel, tekst: nieuw, bijgewerkt_op: new Date().toISOString() });
+    });
+    let foutmelding = null;
+    if (teBewaren.length > 0) {
+      const res = await window.supabase.from('pagina_teksten').upsert(teBewaren, { onConflict: 'pagina,sleutel' });
+      if (res.error) foutmelding = res.error.message;
+    }
+    for (const sleutel of teVerwijderen) {
+      const res = await window.supabase.from('pagina_teksten').delete()
+        .eq('pagina', pagina.id).eq('sleutel', sleutel);
+      if (res.error && !foutmelding) foutmelding = res.error.message;
+    }
+    setBezig(false);
+    if (foutmelding) {
+      toast('Niet opgeslagen: ' + foutmelding + ' (is sql/blokA_pagina_teksten.sql al uitgevoerd?)');
+    } else {
+      toast('Teksten opgeslagen voor ' + pagina.label);
+    }
+    await laad();
+  }
+
+  async function terugNaarStandaard(veld) {
+    if (bezig) return;
+    if (!window.confirm('Veld "' + veld.label + '" terugzetten naar de standaardtekst?')) return;
+    setBezig(true);
+    const { error } = await window.supabase.from('pagina_teksten').delete()
+      .eq('pagina', pagina.id).eq('sleutel', veld.sleutel);
+    setBezig(false);
+    if (error) toast('Niet gelukt: ' + error.message);
+    else toast('Terug naar de standaardtekst');
+    await laad();
+  }
+
+  if (!isSuperadmin) {
+    return (
+      <>
+        <PageHead title="Pagina's" sub="De teksten op de pagina's van de website." />
+        <HintCard icon="info">Alleen een superadmin kan de paginateksten aanpassen.</HintCard>
+      </>
+    );
   }
 
   return (
     <>
       <PageHead
         title="Pagina's"
-        sub="Vaste pagina's van de website. Hier beheert u de zichtbaarheid en volgorde."
+        sub="De teksten bovenaan elke pagina, plus het contactblok onderaan de site."
+        actions={
+          <button className="btn btn-primary" onClick={opslaan} disabled={bezig || laden || !gewijzigd}>
+            <Icon name="save" size={14} /> {bezig ? 'Bezig…' : 'Opslaan'}
+          </button>
+        }
       />
 
-      <div className="table-wrap" style={{ borderRadius: 'var(--radius)', border: '1px solid var(--line)' }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th style={{ width: 30 }}></th>
-              <th>Titel</th>
-              <th>URL</th>
-              <th>Secties</th>
-              <th>In menu</th>
-              <th>Status</th>
-              <th>Volgorde</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {pages.map(p => (
-              <React.Fragment key={p.id}>
-                <tr>
-                  <td><Icon name="drag" size={14} style={{ color: 'var(--ink-mute)', cursor: 'grab' }} /></td>
-                  <td>
-                    <div className="cell-flex">
-                      <div className="row-icon" style={{ background: p.slug === '/' ? 'var(--accent-soft)' : 'var(--cream-3)', color: p.slug === '/' ? 'var(--accent-2)' : 'var(--ink-soft)' }}>
-                        <Icon name={p.slug === '/' ? 'home' : 'pages'} size={14} />
-                      </div>
-                      <div className="strong">{p.titel}</div>
-                    </div>
-                  </td>
-                  <td><span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink-soft)' }}>{p.slug}</span></td>
-                  <td>{p.secties}</td>
-                  <td><Toggle on={p.inMenu} onChange={v => toggleMenu(p.id, v)} /></td>
-                  <td><Pill variant="published">{p.status}</Pill></td>
-                  <td><span style={{ fontFamily: 'var(--mono)' }}>{p.ord}</span></td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button className="icon-btn" title="Bewerken" onClick={() => startEdit(p)}><Icon name="edit" size={14} /></button>
-                      <button className="icon-btn" title="Voorvertoning" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="eye" size={14} /></button>
-                    </div>
-                  </td>
-                </tr>
-                {editingId === p.id && (
-                  <tr>
-                    <td colSpan={8} style={{ background: 'var(--cream-2)', padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                        <Field label="Paginatitel" style={{ flex: 2, minWidth: 180 }}>
-                          <input type="text" value={editTitel} onChange={e => setEditTitel(e.target.value)} autoFocus />
-                        </Field>
-                        <Field label="URL-slug" style={{ flex: 1, minWidth: 120 }}>
-                          <input type="text" value={editSlug} onChange={e => setEditSlug(e.target.value)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-                        </Field>
-                        <div style={{ display: 'flex', gap: 8, paddingBottom: 2 }}>
-                          <button className="btn btn-sm btn-primary" onClick={() => saveEdit(p.id)}><Icon name="check" size={12} /> Opslaan</button>
-                          <button className="btn btn-sm" onClick={() => setEditingId(null)}>Annuleren</button>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <HintCard icon="info">
+        Laat je een veld leeg, dan toont de website de standaardtekst die er nu
+        staat — die zie je grijs in het invoervak. Wijzigingen zijn meteen te
+        zien op de website na verversen (Cmd+Shift+R).
+      </HintCard>
 
-      <div className="grid grid-2" style={{ marginTop: 24 }}>
-        <div className="card">
-          <div className="card-head"><h3 className="card-title">Per pagina beheert de klant</h3></div>
-          <div className="card-pad">
-            {[
-              "Paginatitel & intro/hero-tekst",
-              "SEO-titel + meta description",
-              "URL-slug",
-              "Zichtbaarheid & publicatiestatus",
-              "Volgorde in navigatie",
-              "Call-to-action knoppen",
-              "Afbeeldingen",
-              "Herbruikbare secties (drag-and-drop)",
-            ].map((s, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 13 }}>
-                <Icon name="check" size={13} style={{ color: 'var(--accent-2)' }} /> {s}
-              </div>
-            ))}
+      {fout && (
+        <HintCard variant="warn" icon="warn" style={{ marginTop: 12 }}>
+          De teksten konden niet geladen worden: {fout} — is sql/blokA_pagina_teksten.sql al uitgevoerd in Supabase?
+        </HintCard>
+      )}
+
+      <div className="grid grid-12" style={{ marginTop: 18 }}>
+        <div>
+          <div className="card">
+            <div className="card-head"><h3 className="card-title">Pagina</h3></div>
+            <div style={{ padding: 10 }}>
+              {TIB_TEKST_PAGINAS.map(p => {
+                const aantal = p.velden.filter(v => (opgeslagen[p.id + '.' + v.sleutel] || '').trim() !== '').length;
+                const actief = p.id === paginaId;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setPaginaId(p.id)}
+                    style={{
+                      display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 8, padding: '9px 11px', marginBottom: 4, borderRadius: 8, textAlign: 'left',
+                      border: '1px solid ' + (actief ? 'var(--accent)' : 'var(--line)'),
+                      background: actief ? 'var(--accent-soft)' : 'var(--paper)',
+                      fontSize: 13.5, fontWeight: actief ? 600 : 400, cursor: 'pointer',
+                    }}>
+                    <span>{p.label}</span>
+                    {aantal > 0 && <span className="badge">{aantal}</span>}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-        <div className="card">
-          <div className="card-head"><h3 className="card-title">Herbruikbare secties</h3></div>
-          <div className="card-pad" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {[
-              { t: "Hero met foto", u: "Home, Boek" },
-              { t: "Uitgelichte buurtinitiatieven", u: "Home" },
-              { t: "Agenda preview", u: "Home, Buurtinitiatieven" },
-              { t: "Nieuws preview", u: "Home" },
-              { t: "Partner-strook", u: "Home, Partners" },
-              { t: "Doneerblok", u: "Home, Doneren" },
-              { t: "Contactblok", u: "Contact" },
-              { t: "Kaart-embed", u: "Buurtatlas" },
-            ].map((s, i) => (
-              <div key={i} style={{ background: 'var(--cream-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '10px 12px' }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{s.t}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--ink-mute)' }}>Gebruikt op: {s.u}</div>
+
+        <div>
+          <div className="card">
+            <div className="card-head">
+              <h3 className="card-title">{pagina.label}</h3>
+              <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{pagina.velden.length} teksten</span>
+            </div>
+            <div className="card-pad">
+              {laden && <div style={{ color: 'var(--ink-mute)', fontSize: 13 }}>Laden…</div>}
+              {!laden && pagina.velden.map(veld => {
+                const k = pagina.id + '.' + veld.sleutel;
+                const eigen = (opgeslagen[k] || '').trim() !== '';
+                return (
+                  <div key={veld.sleutel} style={{ marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                      <label style={{ fontSize: 12.5, fontWeight: 600 }}>{veld.label}</label>
+                      {eigen && (
+                        <button className="btn btn-sm" onClick={() => terugNaarStandaard(veld)} disabled={bezig}>
+                          <Icon name="refresh" size={12} /> Terug naar standaard
+                        </button>
+                      )}
+                    </div>
+                    {veld.lang ? (
+                      <textarea
+                        rows={3}
+                        value={waardeVan(veld)}
+                        placeholder={veld.standaard}
+                        onChange={e => zetWaarde(veld, e.target.value)}
+                        style={{ width: '100%' }}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={waardeVan(veld)}
+                        placeholder={veld.standaard}
+                        onChange={e => zetWaarde(veld, e.target.value)}
+                        style={{ width: '100%' }}
+                      />
+                    )}
+                    {veld.hint && (
+                      <div style={{ fontSize: 12, color: '#b45309', marginTop: 4 }}>{veld.hint}</div>
+                    )}
+                  </div>
+                );
+              })}
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button className="btn btn-primary" onClick={opslaan} disabled={bezig || laden || !gewijzigd}>
+                  <Icon name="save" size={14} /> {bezig ? 'Bezig…' : 'Opslaan'}
+                </button>
+                <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}>
+                  <Icon name="eye" size={14} /> Bekijk de website
+                </button>
               </div>
-            ))}
+            </div>
           </div>
+          <HintCard icon="info" style={{ marginTop: 14 }}>
+            Het menu van de website beheer je in het scherm Navigatie, niet hier.
+          </HintCard>
         </div>
       </div>
     </>

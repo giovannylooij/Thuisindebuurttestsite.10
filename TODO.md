@@ -1178,7 +1178,37 @@ Zeven punten uit het gesprek en haar mail, gebundeld in vier blokken. Per blok
 staat wat er nu is, wat eraan moet gebeuren en welke besluiten er eerst nodig
 zijn. Nog niets van dit alles is gebouwd.
 
-### Blok A — Teksten zelf kunnen aanpassen *(grootste blok)*
+### Blok A — Teksten zelf kunnen aanpassen *(gebouwd 22-10, wacht op SQL)*
+
+**Besluiten Giovanny (22-10):** alles beheerbaar (pagina's, homepagina en het
+contactblok), platte tekst zoals het nu is, haar tekst wordt letterlijk
+overgenomen (de je/u-schakelaar werkt daar dan niet meer op), alleen
+superadmin, en het komt in het bestaande scherm Pagina's.
+
+- [x] `sql/blokA_pagina_teksten.sql`: tabel `pagina_teksten` (pagina, sleutel,
+      tekst), lezen openbaar, schrijven alleen ingelogd.
+- [x] Website: `tibTekst(pagina, sleutel, standaard)` in `ui.jsx`; elke
+      paginakop, de zes blokken op de homepagina en het contactblok onderaan
+      halen hun tekst daaruit, met de huidige tekst als terugval. Geen rij of
+      een lege tekst = de standaardtekst blijft staan.
+- [x] De tabel wordt los opgehaald en foutbestendig: bestaat hij nog niet, dan
+      blijft de site gewoon werken zonder foutmelding.
+- [x] Twee uitzonderingen met een reden: de titel op de homepagina houdt zijn
+      regelovergang tot ze hem aanpast, en de link naar BNS in de nieuwsintro
+      blijft staan tot die alinea wordt aangepast (staat als waarschuwing in
+      het scherm).
+- [x] CMS: scherm Pagina's opnieuw gebouwd. Links de pagina's, rechts de
+      velden met de huidige tekst als grijze hulptekst, "Terug naar standaard"
+      per veld, opslaan per pagina. Alleen superadmin.
+- [x] Het oude scherm Pagina's is weg: dat toonde verzonnen gegevens
+      ("Herbruikbare secties") en maakte eigen menu-rijen met andere id's dan
+      het scherm Navigatie — die botsing is daarmee opgelost.
+- [x] Lokaal getest: alle pagina's en de footer tonen onveranderd hun tekst,
+      geen foutmelding terwijl de tabel nog niet bestaat, CMS compileert.
+- [ ] **Giovanny: `sql/blokA_pagina_teksten.sql` draaien.**
+- [ ] Daarna in het CMS één tekst aanpassen en op de site controleren.
+
+### Oorspronkelijk plan
 Raakt: "bovenste veld (Informatie) op Buurtinitiatieven", "contactblok onderaan
 de site", en punt 1 uit haar mail ("de teksten op de pagina's zelf aanpassen").
 Dit is hetzelfde als punt E uit deel 1, dat al sinds september open staat.
