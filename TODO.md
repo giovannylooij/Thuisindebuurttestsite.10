@@ -1265,8 +1265,11 @@ haar mail (doorlopende agenda, alles automatisch erin).
 - **Besluit 4:** wat gebeurt er met de losse agenda-items (Informatiebijeen-
   komst, Parklunch, Buurtfotografen-expositie)? Blijven die als derde soort
   bestaan, of worden ze voortaan als activiteit ingevoerd?
-- **Besluit 5:** blijft de knop "Kalenderweergave" op de pagina Activiteiten
-  wel bestaan? Het gesprek ging over de Agenda; dit is een ander scherm.
+- ~~**Besluit 5:** blijft de knop "Kalenderweergave" op de pagina
+  Activiteiten?~~ **Beslist 22-10: weg.** De knop en de weekweergave
+  (`KalenderView`) zijn uit de pagina Activiteiten gehaald; er blijven twee
+  knoppen over, Kaart en Lijst. De weekkalender op de Agenda-pagina staat er
+  nog (die valt onder blok B).
 - **Let op:** veel buurtinitiatieven zijn doorlopend en hebben geen datum. Die
   vallen zonder besluit 3 buiten de agenda.
 
