@@ -1301,7 +1301,8 @@ alleen een kaart bij op Activiteiten.
       daaronder "x activiteiten gevonden" met de kaartjes, nog steeds
       gegroepeerd per categorie (G6 blijft dus staan). Het filter werkt op de
       kaart én op de lijst tegelijk.
-- [ ] Pushen en live nalopen.
+- [x] Gepusht (commit 118ef38) en live gecontroleerd: kaart staat meteen open,
+      7 filterknoppen, "13 activiteiten gevonden", geen consolefouten.
       Vooral de stip voor meerdere items valt nu uit de toon: die is grijs
       (`#4a5563`) terwijl één item de kleur van zijn categorie krijgt. Die
       grijze moet een andere, lichtere kleur worden. Geldt voor de kaart op
