@@ -1294,6 +1294,14 @@ alleen een kaart bij op Activiteiten.
       wordt uit de stylesheet gelezen, dus hij loopt mee als de huisstijl
       verandert. Lokaal getest op beide kaarten, geen consolefouten.
 - *Oorspronkelijke notitie:* de stippen op de kaart lichter maken.
+- [x] **Activiteiten dezelfde indeling als Buurtinitiatieven (Giovanny,
+      22-10).** Je moest eerst op Kaart klikken; nu staat de kaart meteen
+      open. De pagina heeft dezelfde opbouw gekregen: tipregel, filterknoppen
+      per categorie met rechts Kaart / Lijst / Kalender, de kaart erboven en
+      daaronder "x activiteiten gevonden" met de kaartjes, nog steeds
+      gegroepeerd per categorie (G6 blijft dus staan). Het filter werkt op de
+      kaart én op de lijst tegelijk.
+- [ ] Pushen en live nalopen.
       Vooral de stip voor meerdere items valt nu uit de toon: die is grijs
       (`#4a5563`) terwijl één item de kleur van zijn categorie krijgt. Die
       grijze moet een andere, lichtere kleur worden. Geldt voor de kaart op
