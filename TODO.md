@@ -1172,6 +1172,115 @@ weekkalender die Walking Dinner elke zaterdag toont.
 
 ---
 
+## 🗓️ Gesprek met Margareth — 16 oktober 2026 *(nieuw werk, nog niets gebouwd)*
+
+Zeven punten uit het gesprek en haar mail, gebundeld in vier blokken. Per blok
+staat wat er nu is, wat eraan moet gebeuren en welke besluiten er eerst nodig
+zijn. Nog niets van dit alles is gebouwd.
+
+### Blok A — Teksten zelf kunnen aanpassen *(grootste blok)*
+Raakt: "bovenste veld (Informatie) op Buurtinitiatieven", "contactblok onderaan
+de site", en punt 1 uit haar mail ("de teksten op de pagina's zelf aanpassen").
+Dit is hetzelfde als punt E uit deel 1, dat al sinds september open staat.
+
+- Nu: alle paginateksten staan vast in de code. De twee alinea's bovenaan
+  Buurtinitiatieven staan in `clubjes.jsx`, het contactblok en de footerteksten
+  in `ui.jsx`. Margareth kan er niets aan veranderen.
+- [ ] Nieuwe tabel voor paginateksten (pagina, sleutel, tekst) + een
+      CMS-scherm waar ze per pagina de kop, de eyebrow en de alinea's bewerkt.
+- [ ] Site leest die teksten, met de huidige tekst als terugval.
+- [ ] Contactblok onderaan (footer): e-mailadres, de regel eronder, de
+      social-link, en de kolommen.
+- **Besluit 1:** welke teksten mag ze aanpassen? Voorstel: per pagina de
+  eyebrow, de h1 en de introalinea's, plus het footerblok. Niet de knoppen,
+  labels en formuliertekst — daar hangt logica aan.
+- **Besluit 2:** opmaak toestaan (vet, link, opsomming) of alleen platte
+  tekst? Vet en links kosten een kleine editor; platte tekst is zo klaar.
+- **Risico:** het bestaande scherm "Pagina's" schrijft nu nog naar de browser
+  én maakt eigen rijen in `site_navigatie` met andere id's dan het scherm
+  Navigatie. Dat moet gelijkgetrokken worden, anders krijgen we dubbele
+  menu-items.
+
+### Blok B — Agenda opnieuw opbouwen
+Raakt: "ActiviteitKalender weg", "lijst eronder weg", "onderscheid eenmalig en
+terugkerend weg", "agenda wordt buurtinitiatief en activiteit", en punt 4 uit
+haar mail (doorlopende agenda, alles automatisch erin).
+
+- Nu: de Agenda toont een weekkalender, daaronder twee kolommen (Eenmalige
+  Activiteiten en Terugkerende Activiteiten). Buurtinitiatieven staan er
+  helemaal niet in.
+- [ ] Weekkalender eraf.
+- [ ] Twee kolommen eraf; één doorlopende lijst op datum.
+- [ ] Onderscheid wordt: buurtinitiatief of activiteit (label en kleur).
+- [ ] Buurtinitiatieven verschijnen automatisch in de agenda.
+- **Besluit 3 (het lastigste):** een doorlopende agenda heeft echte datums
+  nodig, maar "wanneer" is nu een vrij tekstveld ("elke dinsdag van 13:30 tot
+  17:00"). Drie opties:
+  (a) in het CMS echte herhaalvelden toevoegen (dag, frequentie, begin- en
+      einddatum) en de agenda rekent de datums uit — netjes, maar Margareth
+      moet bij alle bestaande items eenmalig invullen;
+  (b) de tekst blijven uitlezen zoals nu — werkt bij "elke dinsdag", gaat mis
+      bij alles wat afwijkt;
+  (c) terugkerende items niet per datum herhalen, maar één keer tonen op hun
+      eerstvolgende datum met de tekst erbij.
+  Mijn advies: (a), met (c) als tussenstap zodat de agenda meteen klopt.
+- **Besluit 4:** wat gebeurt er met de losse agenda-items (Informatiebijeen-
+  komst, Parklunch, Buurtfotografen-expositie)? Blijven die als derde soort
+  bestaan, of worden ze voortaan als activiteit ingevoerd?
+- **Besluit 5:** blijft de knop "Kalenderweergave" op de pagina Activiteiten
+  wel bestaan? Het gesprek ging over de Agenda; dit is een ander scherm.
+- **Let op:** veel buurtinitiatieven zijn doorlopend en hebben geen datum. Die
+  vallen zonder besluit 3 buiten de agenda.
+
+### Blok C — Kaart op Buurtinitiatieven en Activiteiten
+Punt 3 uit haar mail.
+
+- Nu: de Buurtatlas heeft de goede kaart, met filters en live gegevens uit
+  buurtinitiatieven, activiteiten en partners. Buurtinitiatieven heeft een
+  eigen, simpelere kaart; Activiteiten heeft helemaal geen kaart.
+- [ ] De kaart van de Buurtatlas als los onderdeel bruikbaar maken.
+- [ ] Buurtinitiatieven: die kaart gebruiken, gefilterd op buurtinitiatieven.
+- [ ] Activiteiten: dezelfde kaart erbij, gefilterd op activiteiten.
+- **Besluit 6:** vervangt de kaart de huidige kaartweergave op
+  Buurtinitiatieven, of komt hij ernaast?
+- Technisch het makkelijkste blok; de bouwstenen bestaan al.
+
+### Blok D — Betalen: aanmelden, iDEAL en de doneerpagina
+Raakt: "iDEAL bespreken met Armando", "doneerpagina moet het doen" en punt 2
+uit haar mail.
+
+- Nu: de doneerpagina is een demo — je kiest een bedrag en krijgt een melding
+  "in een echte site ga je nu door naar Donorbox". Er gebeurt niets.
+  Aanmelden voor een activiteit kan wel, maar zonder betaling.
+- [ ] Doneerpagina echt laten werken.
+- [ ] Aanmelden voor een betaalde activiteit met doorverwijzing naar betalen.
+- [ ] Bedrag per activiteit in het CMS.
+- [ ] Bevestiging na betaling (vraagt de e-mailkoppeling).
+- **Voor Armando:** hoe deed de oude website dit, en welke rekening of account
+  gebruikt TIB nu? Mollie vraagt een KVK-koppeling; Donorbox heeft TIB mogelijk
+  al.
+- **Besluit 7:** doneerpagina snel oplossen met de bestaande Donorbox-link, en
+  iDEAL pas bouwen als Armando's kant rond is? Dan heeft Margareth volgende
+  week al een werkende doneerknop.
+- **Let op:** een betaalkoppeling kan niet alleen in de browser; daar hoort een
+  stukje server bij. Dat is nieuw voor dit project en vraagt een keuze over
+  waar dat draait.
+
+### Volgorde die ik voorstel
+1. Blok C (kaart) — klein, zichtbaar resultaat, geen besluiten nodig behalve 6.
+2. Blok B (agenda) — zodra besluit 3, 4 en 5 er zijn.
+3. Blok A (teksten) — grootste klus, maar wel wat Margareth het vaakst vraagt.
+4. Blok D (betalen) — start met de doneerpagina; iDEAL volgt op Armando.
+
+### Nog open van vóór het gesprek
+- [ ] Icoon-upload één keer echt uitproberen met een ingelogde beheerder.
+- [ ] Scherm Navigatie nalopen na inloggen (pijltjes, hernoemen, schakelaar).
+- [ ] Vier vragen over de wekelijkse back-up (zie het blok hieronder).
+- [ ] Meerdere categorieën per item (punt 14 van Margareth).
+- [ ] Rechten-audit van de database.
+
+---
+
 ## 💾 Wekelijkse back-up van de database *(plan, 5 oktober 2026)*
 
 **Waarom:** nu bestaat er alleen een handmatige knop in het CMS. Gaat er iets
