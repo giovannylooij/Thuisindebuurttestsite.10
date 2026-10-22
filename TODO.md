@@ -1303,6 +1303,10 @@ alleen een kaart bij op Activiteiten.
       kaart én op de lijst tegelijk.
 - [x] Gepusht (commit 118ef38) en live gecontroleerd: kaart staat meteen open,
       7 filterknoppen, "13 activiteiten gevonden", geen consolefouten.
+- [x] Regel "x van de x activiteiten staan op de kaart" eruit (Giovanny,
+      22-10). Gevolg: staat er bij een activiteit geen locatie, dan valt dat
+      niet meer op. Desgewenst terug te zetten als melding die alleen
+      verschijnt wanneer er iets ontbreekt.
       Vooral de stip voor meerdere items valt nu uit de toon: die is grijs
       (`#4a5563`) terwijl één item de kleur van zijn categorie krijgt. Die
       grijze moet een andere, lichtere kleur worden. Geldt voor de kaart op
