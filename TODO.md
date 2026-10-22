@@ -1306,6 +1306,14 @@ alleen een kaart bij op Activiteiten.
       kaart én op de lijst tegelijk.
 - [x] Gepusht (commit 118ef38) en live gecontroleerd: kaart staat meteen open,
       7 filterknoppen, "13 activiteiten gevonden", geen consolefouten.
+- [x] **Filterbalk netjes (Giovanny, 22-10).** Bij Activiteiten viel
+      Kaart/Lijst op een eigen regel linksonder de categorieknoppen. De balk
+      is nu één geheel: knoppen links, Kaart/Lijst rechts op dezelfde regel;
+      past het niet, dan schuift Kaart/Lijst naar de regel eronder maar blijft
+      rechts uitgelijnd. De knoppen in deze balk staan iets krapper, zodat de
+      zeven categorieën van Activiteiten op één regel passen. Zelfde opmaak op
+      Buurtinitiatieven, zodat de twee pagina's gelijk blijven. Getest op
+      breed scherm (beide één regel) en op telefoon (geen horizontale balk).
 - [x] Regel "x van de x activiteiten staan op de kaart" eruit (Giovanny,
       22-10). Gevolg: staat er bij een activiteit geen locatie, dan valt dat
       niet meer op. Desgewenst terug te zetten als melding die alleen
