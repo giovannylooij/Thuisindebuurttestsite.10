@@ -1263,11 +1263,23 @@ haar mail (doorlopende agenda, alles automatisch erin).
       buurtinitiatieven; klikken opent het juiste initiatief.
 - *Grens van de tekstherkenning (gemeten op de echte gegevens):* een
   buurtinitiatief komt in de kalender als in "wanneer" een weekdag of een
-  echte datum staat. Van de acht gepubliceerde komen er vier in beeld.
-  "Elke 2 weken op vrijdagmiddag" verschijnt nu elke vrijdag, "Elke 2e en 4e
-  vrijdag" alleen op de tweede, en "4x per jaar" en "Af te spreken in de
-  WhatsApp groep" komen er niet in. Daarvoor zijn echte herhaalvelden in het
-  CMS nodig (besluit 3, optie a).
+  echte datum staat. "4x per jaar" en "Af te spreken in de WhatsApp groep"
+  komen er niet in; daarvoor zijn echte herhaalvelden in het CMS nodig
+  (besluit 3, optie a).
+- [x] **Herhaling beter lezen (22-10-2026).** De agenda rekent nu ook met
+      "om de week", met meerdere weken in één tekst en met "per maand":
+      - "Elke 2 weken op vrijdagmiddag" / "om de week" → om de week in plaats
+        van elke week. Welke week dat is, kan niet uit de tekst blijken, dus
+        de agenda rekent vanaf een vaste ankerweek (maandag 19 oktober 2026).
+        Zet Margareth "(vanaf 30 oktober)" in Wanneer, dan telt die week.
+      - "Elke 2e en 4e vrijdag v.d. maand" → nu beide vrijdagen (was alleen
+        de tweede).
+      - "1x per maand op woensdagmiddag" → de eerste woensdag van de maand
+        (stond elke woensdag). Welke woensdag het echt is, weet Margareth;
+        met "elke 2e woensdag" klopt het meteen.
+- [ ] Aan Margareth vragen: valt de Wijkborrel in de week van 19 okt of die
+      van 26 okt, en welke woensdag is de Verhalenclub? Daarna de tekst in het
+      CMS aanvullen (of het anker in ui.jsx een week verzetten).
 - [ ] Besluit: weekkalender zo laten (hij loopt per week door) of alsnog
       vervangen door een lijstweergave.
 - [ ] Onderscheid wordt: buurtinitiatief of activiteit (label en kleur).
