@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.186', datum: '22-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.202', datum: '22-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -3914,69 +3914,182 @@ function DonerenScreen() {
   );
 }
 
+// Contact — de kaarten staan in de tabel contact_kaarten (sql/contact_kaarten.sql),
+// de titel en de introtekst in pagina_teksten, dezelfde rijen als het scherm
+// Pagina's gebruikt. Alles wat hier wordt opgeslagen, komt op de website.
+const TIB_CONTACT_STANDAARD = {
+  titel: 'Neem contact op.',
+  intro1: 'Heb je een vraag, suggestie of zin om iets bij te dragen? Stuur ons een bericht — we reageren binnen drie werkdagen.',
+};
+
 function ContactScreen() {
-  const [fd, setFd] = React.useState(() => ({
-    titel: (DATA.contact && DATA.contact.titel) || 'Neem contact op.',
-    intro: (DATA.contact && DATA.contact.intro) || '',
-    cards: ((DATA.contact && DATA.contact.cards) || []).map(c => ({ ...c })),
-  }));
+  const [kaarten, setKaarten] = React.useState([]);              // zoals ze nu in het scherm staan
+  const [bewaardeKaarten, setBewaardeKaarten] = React.useState([]); // zoals ze in de database staan
+  const [verwijderd, setVerwijderd] = React.useState([]);        // id's die bij Opslaan weg moeten
+  const [tekst, setTekst] = React.useState({ titel: '', intro1: '' });
+  const [bewaardeTekst, setBewaardeTekst] = React.useState({ titel: '', intro1: '' });
+  const [laden, setLaden] = React.useState(true);
+  const [fout, setFout] = React.useState(null);
+  const [bezig, setBezig] = React.useState(false);
   const [editIdx, setEditIdx] = React.useState(null);
   const [editCard, setEditCard] = React.useState({});
-  const [newCard, setNewCard] = React.useState({ role: '', desc: '', email: '', icon: '✉', visible: true });
+  const [newCard, setNewCard] = React.useState({ rol: '', omschrijving: '', email: '', icoon: '✉', zichtbaar: true });
   const [addingNew, setAddingNew] = React.useState(false);
 
-  function save(data) {
-    DATA.contact = { titel: data.titel, intro: data.intro, cards: data.cards.map(c => ({ ...c })) };
+  const toast = (t) => window.__showToast && window.__showToast(t);
+  const tekstVan = (k, v) => (k && k[v] !== undefined && k[v] !== null ? k[v] : '');
+
+  async function laad() {
+    setLaden(true);
+    const [kRes, tRes] = await Promise.all([
+      window.supabase.from('contact_kaarten').select('*').order('volgorde', { ascending: true }).order('id', { ascending: true }),
+      window.supabase.from('pagina_teksten').select('*').eq('pagina', 'contact'),
+    ]);
+    if (kRes.error) { setFout(kRes.error.message); setLaden(false); return; }
+    const rijen = (kRes.data || []).map(r => ({ ...r }));
+    setKaarten(rijen);
+    setBewaardeKaarten(rijen.map(r => ({ ...r })));
+    setVerwijderd([]);
+    const t = { titel: '', intro1: '' };
+    if (!tRes.error) (tRes.data || []).forEach(r => { if (t[r.sleutel] !== undefined) t[r.sleutel] = r.tekst || ''; });
+    setTekst(t);
+    setBewaardeTekst({ ...t });
+    setFout(null);
+    setLaden(false);
+  }
+  React.useEffect(() => { laad(); }, []);
+
+  const velden = ['rol', 'omschrijving', 'email', 'icoon', 'zichtbaar'];
+  const gewijzigd = verwijderd.length > 0
+    || tekst.titel !== bewaardeTekst.titel
+    || tekst.intro1 !== bewaardeTekst.intro1
+    || kaarten.length !== bewaardeKaarten.length
+    || kaarten.some((k, i) => {
+      const o = bewaardeKaarten[i];
+      if (!o || o.id !== k.id) return true;
+      return velden.some(v => tekstVan(k, v) !== tekstVan(o, v));
+    });
+
+  // Opslaan schrijft alles in één keer weg: eerst de verwijderde kaarten, dan
+  // de gewijzigde en nieuwe, dan de titel en de intro. Een leeggemaakte titel
+  // of intro betekent: terug naar de tekst uit de code.
+  async function opslaan() {
+    if (bezig) return;
+    setBezig(true);
+    let foutmelding = null;
+    for (const id of verwijderd) {
+      const res = await window.supabase.from('contact_kaarten').delete().eq('id', id);
+      if (res.error && !foutmelding) foutmelding = res.error.message;
+    }
+    for (let i = 0; i < kaarten.length; i++) {
+      const k = kaarten[i];
+      const rij = {
+        volgorde: i + 1,
+        rol: tekstVan(k, 'rol').trim(),
+        omschrijving: tekstVan(k, 'omschrijving').trim(),
+        email: tekstVan(k, 'email').trim(),
+        icoon: tekstVan(k, 'icoon').trim() || '✉',
+        zichtbaar: k.zichtbaar !== false,
+        bijgewerkt_op: new Date().toISOString(),
+      };
+      const res = k.id
+        ? await window.supabase.from('contact_kaarten').update(rij).eq('id', k.id)
+        : await window.supabase.from('contact_kaarten').insert(rij);
+      if (res.error && !foutmelding) foutmelding = res.error.message;
+    }
+    for (const sleutel of ['titel', 'intro1']) {
+      const nieuw = (tekst[sleutel] || '').trim();
+      const oud = (bewaardeTekst[sleutel] || '').trim();
+      if (nieuw === oud) continue;
+      const res = nieuw === ''
+        ? await window.supabase.from('pagina_teksten').delete().eq('pagina', 'contact').eq('sleutel', sleutel)
+        : await window.supabase.from('pagina_teksten').upsert(
+            [{ pagina: 'contact', sleutel: sleutel, tekst: nieuw, bijgewerkt_op: new Date().toISOString() }],
+            { onConflict: 'pagina,sleutel' });
+      if (res.error && !foutmelding) foutmelding = res.error.message;
+    }
+    setBezig(false);
+    if (foutmelding) {
+      toast('Niet opgeslagen: ' + foutmelding + ' (is sql/contact_kaarten.sql al uitgevoerd?)');
+      return;
+    }
+    // De voorbeeldweergave in het CMS laat hetzelfde zien als de website.
+    DATA.contact = {
+      titel: (tekst.titel || '').trim() || TIB_CONTACT_STANDAARD.titel,
+      intro: (tekst.intro1 || '').trim() || TIB_CONTACT_STANDAARD.intro1,
+      cards: kaarten.map(k => ({
+        role: tekstVan(k, 'rol'), desc: tekstVan(k, 'omschrijving'),
+        email: tekstVan(k, 'email'), icon: tekstVan(k, 'icoon') || '✉',
+        visible: k.zichtbaar !== false,
+      })),
+    };
     window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast('Contactpagina opgeslagen!');
+    toast('Contactpagina opgeslagen — staat nu op de website.');
+    await laad();
   }
 
   function startEditCard(idx) {
     setEditIdx(idx);
-    setEditCard({ ...fd.cards[idx] });
+    setEditCard({ ...kaarten[idx] });
   }
-
   function commitEditCard() {
     if (editIdx === null) return;
-    const next = fd.cards.map((c, i) => i === editIdx ? { ...editCard } : c);
-    setFd(f => ({ ...f, cards: next }));
+    setKaarten(kaarten.map((k, i) => i === editIdx ? { ...editCard } : k));
     setEditIdx(null);
   }
-
   function deleteCard(idx) {
-    const label = fd.cards[idx].role;
-    if (!window.confirm('Contactkaart "' + label + '" verwijderen?')) return;
-    const next = fd.cards.filter((_, i) => i !== idx);
-    setFd(f => ({ ...f, cards: next }));
-    window.__showToast && window.__showToast('Kaart verwijderd: ' + label);
+    const kaart = kaarten[idx];
+    if (!window.confirm('Contactkaart "' + tekstVan(kaart, 'rol') + '" verwijderen? Klik daarna op Opslaan.')) return;
+    if (kaart.id) setVerwijderd([...verwijderd, kaart.id]);
+    setKaarten(kaarten.filter((_, i) => i !== idx));
+    setEditIdx(null);
+    toast('Kaart verwijderd — nog niet opgeslagen');
   }
-
   function addCard() {
-    if (!newCard.role.trim() || !newCard.email.trim()) return;
-    const next = [...fd.cards, { ...newCard }];
-    setFd(f => ({ ...f, cards: next }));
-    setNewCard({ role: '', desc: '', email: '', icon: '✉', visible: true });
+    if (!newCard.rol.trim() || !newCard.email.trim()) return;
+    setKaarten([...kaarten, { ...newCard }]);
+    setNewCard({ rol: '', omschrijving: '', email: '', icoon: '✉', zichtbaar: true });
     setAddingNew(false);
-    window.__showToast && window.__showToast('Kaart toegevoegd');
+    toast('Kaart toegevoegd — nog niet opgeslagen');
+  }
+  function verplaats(idx, richting) {
+    const doel = idx + richting;
+    if (doel < 0 || doel >= kaarten.length) return;
+    const next = kaarten.slice();
+    const tmp = next[idx]; next[idx] = next[doel]; next[doel] = tmp;
+    setKaarten(next);
+    setEditIdx(null);
   }
 
   return (
     <>
       <PageHead
         title="Contact"
-        sub="Contactpagina — beheer de paginatitel, intro-tekst en contactkaarten."
-        actions={<button className="btn btn-primary" onClick={() => save(fd)}><Icon name="save" size={14} /> Opslaan</button>}
+        sub="Contactpagina — paginatitel, intro-tekst en contactkaarten. Wat u hier opslaat, staat op de website."
+        actions={
+          <button className="btn btn-primary" disabled={bezig || laden || !gewijzigd} onClick={opslaan}>
+            <Icon name="save" size={14} /> {bezig ? 'Bezig…' : (gewijzigd ? 'Opslaan' : 'Opgeslagen')}
+          </button>
+        }
       />
+
+      {fout && (
+        <HintCard variant="warn" icon="warn">
+          De contactkaarten konden niet geladen worden: {fout} — is <strong>sql/contact_kaarten.sql</strong> al uitgevoerd in Supabase?
+        </HintCard>
+      )}
 
       <div className="form-grid">
         <div>
           <div className="form-section">
             <h3>Paginatitel &amp; intro</h3>
-            <Field label="Paginatitel">
-              <input type="text" value={fd.titel} onChange={e => setFd(f => ({ ...f, titel: e.target.value }))} />
+            <Field label="Paginatitel" hint="Leeg laten = de standaardtekst van de website.">
+              <input type="text" value={tekst.titel} placeholder={TIB_CONTACT_STANDAARD.titel}
+                onChange={e => setTekst({ ...tekst, titel: e.target.value })} />
             </Field>
-            <Field label="Intro-tekst" hint="Zichtbaar direct onder de paginatitel.">
-              <textarea rows={3} value={fd.intro} onChange={e => setFd(f => ({ ...f, intro: e.target.value }))} />
+            <Field label="Intro-tekst" hint="Zichtbaar direct onder de paginatitel. Dit zijn dezelfde teksten als bij Pagina's → Contact.">
+              <textarea rows={3} value={tekst.intro1} placeholder={TIB_CONTACT_STANDAARD.intro1}
+                onChange={e => setTekst({ ...tekst, intro1: e.target.value })} />
             </Field>
           </div>
 
@@ -3985,35 +4098,38 @@ function ContactScreen() {
             <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginBottom: 12 }}>
               Elke kaart verschijnt als tegeltje op de contactpagina met icoon, naam, omschrijving en klikbaar e-mailadres.
             </p>
-            {fd.cards.map((card, idx) => (
-              <div key={idx} style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, padding: 14, marginBottom: 10 }}>
+            {laden ? (
+              <p style={{ fontSize: 13, color: 'var(--ink-mute)' }}>Bezig met laden…</p>
+            ) : kaarten.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--ink-mute)' }}>
+                Nog geen kaarten. Zolang er geen enkele kaart is, toont de website de twee standaardkaarten.
+              </p>
+            ) : kaarten.map((card, idx) => (
+              <div key={card.id || ('nieuw-' + idx)} style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, padding: 14, marginBottom: 10 }}>
                 {editIdx === idx ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <Field label="Rol / Onderwerp"><input value={editCard.role} onChange={e => setEditCard(c => ({ ...c, role: e.target.value }))} /></Field>
-                    <Field label="Omschrijving"><textarea rows={2} value={editCard.desc} onChange={e => setEditCard(c => ({ ...c, desc: e.target.value }))} /></Field>
-                    <Field label="E-mailadres"><input type="email" value={editCard.email} onChange={e => setEditCard(c => ({ ...c, email: e.target.value }))} /></Field>
-                    <Field label="Icoon (emoji)" hint="Bijv. ✉ ✎ ♥ ☎"><input value={editCard.icon} onChange={e => setEditCard(c => ({ ...c, icon: e.target.value }))} style={{ width: 80 }} /></Field>
+                    <Field label="Rol / Onderwerp"><input value={tekstVan(editCard, 'rol')} onChange={e => setEditCard({ ...editCard, rol: e.target.value })} /></Field>
+                    <Field label="Omschrijving"><textarea rows={2} value={tekstVan(editCard, 'omschrijving')} onChange={e => setEditCard({ ...editCard, omschrijving: e.target.value })} /></Field>
+                    <Field label="E-mailadres"><input type="email" value={tekstVan(editCard, 'email')} onChange={e => setEditCard({ ...editCard, email: e.target.value })} /></Field>
+                    <Field label="Icoon (emoji)" hint="Bijv. ✉ ✎ ♥ ☎"><input value={tekstVan(editCard, 'icoon')} onChange={e => setEditCard({ ...editCard, icoon: e.target.value })} style={{ width: 80 }} /></Field>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn-sm btn-primary" onClick={commitEditCard}><Icon name="check" size={12} /> Opslaan</button>
+                      <button className="btn btn-sm btn-primary" onClick={commitEditCard}><Icon name="check" size={12} /> Klaar</button>
                       <button className="btn btn-sm" onClick={() => setEditIdx(null)}>Annuleren</button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, opacity: card.visible === false ? 0.45 : 1 }}>
-                    <div style={{ fontSize: 24, lineHeight: 1, minWidth: 32, textAlign: 'center' }}>{card.icon}</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, opacity: card.zichtbaar === false ? 0.45 : 1 }}>
+                    <div style={{ fontSize: 24, lineHeight: 1, minWidth: 32, textAlign: 'center' }}>{tekstVan(card, 'icoon')}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{card.role}{card.visible === false && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--ink-mute)', fontWeight: 400 }}>verborgen</span>}</div>
-                      <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '3px 0' }}>{card.desc}</div>
-                      <div style={{ fontSize: 12, color: 'var(--ink-mute)' }}>{card.email}</div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{tekstVan(card, 'rol')}{card.zichtbaar === false && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--ink-mute)', fontWeight: 400 }}>verborgen</span>}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '3px 0' }}>{tekstVan(card, 'omschrijving')}</div>
+                      <div style={{ fontSize: 12, color: 'var(--ink-mute)' }}>{tekstVan(card, 'email')}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                      <Toggle on={card.visible !== false} label="" onChange={v => {
-                        const next = fd.cards.map((c, i) => i === idx ? { ...c, visible: v } : c);
-                        const nextFd = { ...fd, cards: next };
-                        setFd(nextFd);
-                        DATA.contact = { titel: nextFd.titel, intro: nextFd.intro, cards: next.map(c => ({ ...c })) };
-                        window.__syncToSite && window.__syncToSite();
-                        window.__showToast && window.__showToast((v ? '✓ Zichtbaar' : '○ Verborgen') + ': ' + card.role);
+                      <button className="icon-btn" title="Omhoog" disabled={idx === 0} onClick={() => verplaats(idx, -1)}><Icon name="chevron" size={12} style={{ transform: 'rotate(-90deg)' }} /></button>
+                      <button className="icon-btn" title="Omlaag" disabled={idx === kaarten.length - 1} onClick={() => verplaats(idx, 1)}><Icon name="chevron" size={12} style={{ transform: 'rotate(90deg)' }} /></button>
+                      <Toggle on={card.zichtbaar !== false} label="" onChange={v => {
+                        setKaarten(kaarten.map((k, i) => i === idx ? { ...k, zichtbaar: v } : k));
                       }} />
                       <button className="icon-btn" title="Bewerken" onClick={() => startEditCard(idx)}><Icon name="edit" size={13} /></button>
                       <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => deleteCard(idx)}><Icon name="trash" size={13} /></button>
@@ -4026,10 +4142,10 @@ function ContactScreen() {
             {addingNew ? (
               <div style={{ background: 'var(--cream-2)', border: '1px dashed var(--accent)', borderRadius: 8, padding: 14, marginTop: 8 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <Field label="Rol / Onderwerp"><input placeholder="bijv. Vrijwilligers" value={newCard.role} onChange={e => setNewCard(c => ({ ...c, role: e.target.value }))} /></Field>
-                  <Field label="Omschrijving"><textarea rows={2} value={newCard.desc} onChange={e => setNewCard(c => ({ ...c, desc: e.target.value }))} /></Field>
-                  <Field label="E-mailadres"><input type="email" placeholder="mailbox@thuisindebuurt.org" value={newCard.email} onChange={e => setNewCard(c => ({ ...c, email: e.target.value }))} /></Field>
-                  <Field label="Icoon (emoji)" hint="Bijv. ✉ ✎ ♥ ☎"><input value={newCard.icon} onChange={e => setNewCard(c => ({ ...c, icon: e.target.value }))} style={{ width: 80 }} /></Field>
+                  <Field label="Rol / Onderwerp"><input placeholder="bijv. Vrijwilligers" value={newCard.rol} onChange={e => setNewCard({ ...newCard, rol: e.target.value })} /></Field>
+                  <Field label="Omschrijving"><textarea rows={2} value={newCard.omschrijving} onChange={e => setNewCard({ ...newCard, omschrijving: e.target.value })} /></Field>
+                  <Field label="E-mailadres"><input type="email" placeholder="mailbox@thuisindebuurt.org" value={newCard.email} onChange={e => setNewCard({ ...newCard, email: e.target.value })} /></Field>
+                  <Field label="Icoon (emoji)" hint="Bijv. ✉ ✎ ♥ ☎"><input value={newCard.icoon} onChange={e => setNewCard({ ...newCard, icoon: e.target.value })} style={{ width: 80 }} /></Field>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-sm btn-primary" onClick={addCard}><Icon name="plus" size={12} /> Kaart toevoegen</button>
                     <button className="btn btn-sm" onClick={() => setAddingNew(false)}>Annuleren</button>
@@ -4037,7 +4153,7 @@ function ContactScreen() {
                 </div>
               </div>
             ) : (
-              <button className="btn" style={{ marginTop: 4 }} onClick={() => setAddingNew(true)}>
+              <button className="btn" style={{ marginTop: 4 }} disabled={laden} onClick={() => setAddingNew(true)}>
                 <Icon name="plus" size={13} /> Kaart toevoegen
               </button>
             )}
@@ -4046,7 +4162,7 @@ function ContactScreen() {
 
         <div>
           <HintCard variant="info" icon="info">
-            Klik <strong>Opslaan</strong> om wijzigingen door te sturen naar de live preview. De onderwerp-opties van het contactformulier beheert u via <strong>Formulieren → Contact opties</strong>.
+            Wijzigingen staan pas op de website nadat u op <strong>Opslaan</strong> klikt — dat geldt ook voor de schakelaar zichtbaar/verborgen en voor de pijltjes. De onderwerp-opties van het contactformulier staan nog in de code.
           </HintCard>
         </div>
       </div>
