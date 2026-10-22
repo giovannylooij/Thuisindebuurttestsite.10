@@ -822,8 +822,18 @@ www.thuisindebuurt.nl.
 - [ ] Nieuwsbrief-aanmelding in de footer slaat het e-mailadres nergens op.
       Hij toont alleen "Bedankt" (`bundle-src/ui.jsx`, `handleNewsletter`).
       *Gevonden bij F3.*
-- [ ] Contactgegevens in het CMS bereiken de website niet *(zelfde probleem als
-      het menu had — oplossing is bekend)*
+- [x] **Contactgegevens in het CMS bereiken de website (22-10).** Het scherm
+      Contact bewaarde de kaarten alleen in de browser; de site toonde een
+      vaste kopie uit de code. Nieuwe tabel `contact_kaarten`
+      (sql/contact_kaarten.sql, door Giovanny uitgevoerd), de site haalt hem
+      foutbestendig op, het CMS leest en schrijft hem. Toevoegen, bewerken,
+      verwijderen, verbergen en volgorde met pijltjes; alles gaat weg bij
+      Opslaan. Titel en intro schrijven naar dezelfde rijen in
+      `pagina_teksten` als het scherm Pagina's (die velden deden eerst niets).
+      Samen getest in het echte CMS: kaarttekst en titel aangepast → stonden
+      op de site → daarna alles teruggezet zoals het was.
+      *Let op:* de kaart "Doneren & boek" staat op verborgen (zo stond het al
+      in de ingebakken kopie). Eén schakelaar in het CMS zet hem aan.
 - [ ] "Doe mee"/"Doneren"/"Boek"-knoppen reageren niet op de aan/uit-schakelaar
 
 ---
