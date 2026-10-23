@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.202', datum: '22-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.205', datum: '23-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -3228,24 +3228,34 @@ function PagesScreen() {
     }
     const kaart = {};
     (data || []).forEach(r => { kaart[r.pagina + '.' + r.sleutel] = r.tekst || ''; });
+    // Elk veld begint met de tekst die nu op de website staat: een eigen tekst
+    // uit de database, of anders de standaardtekst uit de code. Zo hoeft
+    // niemand een tekst over te typen om er één woord in te veranderen.
+    const metStandaard = {};
+    TIB_TEKST_PAGINAS.forEach(pg => pg.velden.forEach(v => {
+      const sleutel = pg.id + '.' + v.sleutel;
+      metStandaard[sleutel] = (kaart[sleutel] || '').trim() !== '' ? kaart[sleutel] : (v.standaard || '');
+    }));
     setFout(null);
     setOpgeslagen(kaart);
-    setWaarden(kaart);
+    setWaarden(metStandaard);
     setLaden(false);
   }
   React.useEffect(() => { if (isSuperadmin) laad(); }, []);
 
   function waardeVan(veld) {
     const k = pagina.id + '.' + veld.sleutel;
-    return waarden[k] !== undefined ? waarden[k] : '';
+    return waarden[k] !== undefined ? waarden[k] : (veld.standaard || '');
   }
   function zetWaarde(veld, v) {
     setWaarden({ ...waarden, [pagina.id + '.' + veld.sleutel]: v });
   }
-  const gewijzigd = pagina.velden.some(v => {
-    const k = pagina.id + '.' + v.sleutel;
-    return (waarden[k] || '') !== (opgeslagen[k] || '');
-  });
+  // Wat staat er nu op de website: de eigen tekst, of anders de standaardtekst.
+  function tekstOpDeSite(veld) {
+    const eigen = (opgeslagen[pagina.id + '.' + veld.sleutel] || '').trim();
+    return eigen !== '' ? eigen : (veld.standaard || '').trim();
+  }
+  const gewijzigd = pagina.velden.some(v => waardeVan(v).trim() !== tekstOpDeSite(v));
 
   // Opslaan: een ingevuld veld wordt bewaard, een leeggemaakt veld wordt
   // verwijderd zodat de website weer de standaardtekst toont.
@@ -3255,12 +3265,17 @@ function PagesScreen() {
     const teBewaren = [];
     const teVerwijderen = [];
     pagina.velden.forEach(v => {
-      const k = pagina.id + '.' + v.sleutel;
-      const nieuw = (waarden[k] || '').trim();
-      const oud = (opgeslagen[k] || '').trim();
-      if (nieuw === oud) return;
-      if (nieuw === '') teVerwijderen.push(v.sleutel);
-      else teBewaren.push({ pagina: pagina.id, sleutel: v.sleutel, tekst: nieuw, bijgewerkt_op: new Date().toISOString() });
+      const nieuw = waardeVan(v).trim();
+      const eigen = (opgeslagen[pagina.id + '.' + v.sleutel] || '').trim();
+      const standaard = (v.standaard || '').trim();
+      if (nieuw === tekstOpDeSite(v)) return;
+      // Leeggemaakt of weer precies de standaardtekst: dan hoort er geen eigen
+      // rij meer te staan en gebruikt de website de tekst uit de code.
+      if (nieuw === '' || nieuw === standaard) {
+        if (eigen !== '') teVerwijderen.push(v.sleutel);
+        return;
+      }
+      teBewaren.push({ pagina: pagina.id, sleutel: v.sleutel, tekst: nieuw, bijgewerkt_op: new Date().toISOString() });
     });
     let foutmelding = null;
     if (teBewaren.length > 0) {
@@ -3315,9 +3330,10 @@ function PagesScreen() {
       />
 
       <HintCard icon="info">
-        Laat je een veld leeg, dan toont de website de standaardtekst die er nu
-        staat — die zie je grijs in het invoervak. Wijzigingen zijn meteen te
-        zien op de website na verversen (Cmd+Shift+R).
+        In elk veld staat de tekst die nu op de website staat — die kun je
+        gewoon aanpassen. Zet je de oorspronkelijke tekst terug of maak je het
+        veld leeg, dan gebruikt de website weer de standaardtekst. Wijzigingen
+        zijn na opslaan te zien op de website (verversen met Cmd+Shift+R).
       </HintCard>
 
       {fout && (
@@ -3928,6 +3944,7 @@ function ContactScreen() {
   const [verwijderd, setVerwijderd] = React.useState([]);        // id's die bij Opslaan weg moeten
   const [tekst, setTekst] = React.useState({ titel: '', intro1: '' });
   const [bewaardeTekst, setBewaardeTekst] = React.useState({ titel: '', intro1: '' });
+  const [eigenTekst, setEigenTekst] = React.useState({ titel: false, intro1: false }); // staat er een eigen rij in de database?
   const [laden, setLaden] = React.useState(true);
   const [fout, setFout] = React.useState(null);
   const [bezig, setBezig] = React.useState(false);
@@ -3950,8 +3967,19 @@ function ContactScreen() {
     setKaarten(rijen);
     setBewaardeKaarten(rijen.map(r => ({ ...r })));
     setVerwijderd([]);
+    // Net als bij Pagina's: de tekst die nu op de website staat, staat
+    // ingevuld. Is er geen eigen tekst, dan de standaardtekst uit de code.
     const t = { titel: '', intro1: '' };
-    if (!tRes.error) (tRes.data || []).forEach(r => { if (t[r.sleutel] !== undefined) t[r.sleutel] = r.tekst || ''; });
+    const eigenRijen = { titel: false, intro1: false };
+    if (!tRes.error) (tRes.data || []).forEach(r => {
+      if (t[r.sleutel] !== undefined && (r.tekst || '').trim() !== '') {
+        t[r.sleutel] = r.tekst;
+        eigenRijen[r.sleutel] = true;
+      }
+    });
+    if (!t.titel) t.titel = TIB_CONTACT_STANDAARD.titel;
+    if (!t.intro1) t.intro1 = TIB_CONTACT_STANDAARD.intro1;
+    setEigenTekst(eigenRijen);
     setTekst(t);
     setBewaardeTekst({ ...t });
     setFout(null);
@@ -4001,7 +4029,11 @@ function ContactScreen() {
       const nieuw = (tekst[sleutel] || '').trim();
       const oud = (bewaardeTekst[sleutel] || '').trim();
       if (nieuw === oud) continue;
-      const res = nieuw === ''
+      // Leeg of weer precies de standaardtekst: dan hoort er geen eigen rij
+      // meer te staan en gebruikt de website de tekst uit de code.
+      const terugNaarStandaard = nieuw === '' || nieuw === (TIB_CONTACT_STANDAARD[sleutel] || '').trim();
+      if (terugNaarStandaard && !eigenTekst[sleutel]) continue;
+      const res = terugNaarStandaard
         ? await window.supabase.from('pagina_teksten').delete().eq('pagina', 'contact').eq('sleutel', sleutel)
         : await window.supabase.from('pagina_teksten').upsert(
             [{ pagina: 'contact', sleutel: sleutel, tekst: nieuw, bijgewerkt_op: new Date().toISOString() }],
@@ -4083,7 +4115,7 @@ function ContactScreen() {
         <div>
           <div className="form-section">
             <h3>Paginatitel &amp; intro</h3>
-            <Field label="Paginatitel" hint="Leeg laten = de standaardtekst van de website.">
+            <Field label="Paginatitel" hint="De tekst die nu op de website staat; aanpassen mag. Leegmaken = terug naar de standaardtekst.">
               <input type="text" value={tekst.titel} placeholder={TIB_CONTACT_STANDAARD.titel}
                 onChange={e => setTekst({ ...tekst, titel: e.target.value })} />
             </Field>
