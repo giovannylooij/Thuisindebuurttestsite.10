@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.206', datum: '25-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.207', datum: '25-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -2627,7 +2627,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
     const isPublished = pubOverride !== undefined ? pubOverride : published;
     const toSave = { ...fd, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     // Zolang de kolommen niet bestaan, gaan de betaalvelden niet mee.
-    if (betaalKolommen === false) TIB_BETAAL_VELDEN.forEach(k => { delete toSave[k]; });
+    if (betaalKolommen !== true) TIB_BETAAL_VELDEN.forEach(k => { delete toSave[k]; });
     const lijst = DATA.activiteiten;
     setBezig(true);
     let gelukt = false;
@@ -7237,7 +7237,7 @@ function __mapClubjesToDb(item) {
 
 // Zelfde velden als buurtinitiatieven (F5), plus `herhalend`.
 function __mapActiviteitenToDb(item) {
-  return {
+  const rij = {
     id:            item.id,
     naam:          item.naam,
     // Kolom `type` wordt niet meer gebruikt maar blijft bestaan: bestaande
@@ -7265,6 +7265,13 @@ function __mapActiviteitenToDb(item) {
     icoon_url:     item.icoon_url || null,
     icoon_label:   item.icoon_label || null,
   };
+  // Betaalde activiteiten: alleen meesturen als het scherm ze meegeeft. Zijn
+  // de kolommen er nog niet (sql/betaalde_activiteiten.sql), dan laat het
+  // scherm ze weg en blijft opslaan gewoon werken.
+  ['betaald', 'prijs', 'servicekosten', 'max_personen', 'plekken', 'aanmelden_tot',
+   'vraag_dieet', 'vraag_adres', 'vraag_telefoon', 'vraag_opmerking', 'betaalmethodes'
+  ].forEach(function(k) { if (item[k] !== undefined) rij[k] = item[k]; });
+  return rij;
 }
 
 const __DB_VERTALING = { clubjes: __mapClubjesToDb, activiteiten: __mapActiviteitenToDb };

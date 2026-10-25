@@ -815,6 +815,15 @@ www.thuisindebuurt.nl.
 - [ ] **Rechten-audit database** — nooit gecontroleerd of bezoekers persoonlijke
       gegevens (aanmeldingen, bestellingen met adres/telefoon) kunnen uitlezen.
       *Dit zou ik het hoogst prioriteren van dit blok.*
+- [ ] **Aanmelden op de site werkt niet (gevonden 25-10).** Een bezoeker die
+      zich aanmeldt voor een activiteit of buurtinitiatief krijgt een
+      foutmelding: de database weigert de regel ("new row violates row-level
+      security policy for table aanmeldingen"). Getest met de publieke sleutel,
+      zowel met de velden die de site stuurt als met meer velden. De tabel
+      `aanmeldingen` is dan ook helemaal leeg. Ingelogd (CMS) werkt het wel.
+      Er mist dus een insert-regel voor bezoekers, met de juiste grenzen
+      (alleen toevoegen, niet lezen of wijzigen). Dit moet áf vóór de
+      betaalfunctie live gaat, want die schrijft in dezelfde tabel.
 - [ ] Rolscheiding CMS is nu alleen in de browser afgedwongen, niet op de server
 - [ ] "Wachtwoord vergeten" ontbreekt volledig in het CMS — beheerders die hun
       wachtwoord kwijt zijn hebben nu een superadmin nodig
@@ -1437,6 +1446,18 @@ uit haar mail.
     met voortgangsbalk. Niets gaat automatisch.
   - Het CMS blijft werken zolang de SQL niet gedraaid is: de schermen leggen
     uit wat er nog moet gebeuren en het opslaan laat de nieuwe velden weg.
+  - **Samen getest op 25-10 (lokaal, met de SQL uitgevoerd):** proefactiviteit
+    met prijs € 32,50 en € 0,50 servicekosten opgeslagen, drie proefaanmeldingen
+    erin gezet. Tellingen klopten (3 aanmeldingen, 4 personen van 40,
+    € 65,50 binnen, 2 nog niet betaald), status met de hand omgezet →
+    € 98,50 en de filters liepen mee, Excel gedownload en nagekeken: 4 regels
+    uit 3 aanmeldingen, "geen vis" alleen bij de juiste persoon. Checklist
+    afvinken en weer uitvinken werkt, teller loopt mee. Alle proefgegevens
+    daarna verwijderd (19 activiteiten, zoals ervoor).
+  - *Fout gevonden en hersteld tijdens die test:* het CMS schrijft activiteiten
+    weg via een vaste lijst kolommen (`__mapActiviteitenToDb`); de nieuwe
+    betaalvelden zaten daar niet in en werden stil weggegooid. De lijst is
+    aangevuld; de velden gaan alleen mee als zeker is dat de kolommen bestaan.
   - Nog te doen: het aanmeldformulier op de site, en daarna Mollie (sleutel
     via Armando, webhook als Supabase Edge Function).
 - **Besluit 7:** doneerpagina snel oplossen met de bestaande Donorbox-link, en
