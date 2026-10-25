@@ -1418,6 +1418,27 @@ uit haar mail.
     gaat met de hand. Met een echte Mollie-koppeling gaat dat later vanzelf;
     de server daarvoor kan een Supabase Edge Function zijn, dus daar is geen
     nieuwe hosting voor nodig.
+- **Concept gebouwd (25-10), lokaal, niet gepusht.** Eerste stap: het
+  CMS-gedeelte.
+  - `sql/betaalde_activiteiten.sql` — kolommen op `activiteiten` (betaald,
+    prijs, servicekosten, max_personen, plekken, aanmelden_tot, welke vragen,
+    betaalmethodes), kolommen op `aanmeldingen` (personen, deelnemers als
+    jsonb, adres, opmerking, bedrag, betaalstatus, betaald_op, kenmerk,
+    mollie_id) en de nieuwe tabel `activiteit_checklist`. Alleen toevoegen,
+    niets wijzigen of verwijderen; nog niet uitgevoerd.
+  - CMS, bij een activiteit: blok **Betalen** met schakelaar en alle velden,
+    plus tabbladen **Deelnemers** en **Checklist** zodra een activiteit
+    betaald is.
+  - **Deelnemers**: tellingen (aanmeldingen, personen, binnengekomen, nog niet
+    betaald), filters, tabel met wensen per persoon, de betaalstatus met de
+    hand te zetten, en **Download als Excel** — één regel per persoon, zodat
+    de kok de lijst kan aflezen (bibliotheek wordt pas geladen bij exporteren).
+  - **Checklist**: elf punten in drie groepen, per activiteit af te vinken,
+    met voortgangsbalk. Niets gaat automatisch.
+  - Het CMS blijft werken zolang de SQL niet gedraaid is: de schermen leggen
+    uit wat er nog moet gebeuren en het opslaan laat de nieuwe velden weg.
+  - Nog te doen: het aanmeldformulier op de site, en daarna Mollie (sleutel
+    via Armando, webhook als Supabase Edge Function).
 - **Besluit 7:** doneerpagina snel oplossen met de bestaande Donorbox-link, en
   iDEAL pas bouwen als Armando's kant rond is? Dan heeft Margareth volgende
   week al een werkende doneerknop.
