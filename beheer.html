@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.207', datum: '25-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.208', datum: '26-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -2192,6 +2192,7 @@ window.ClubjesScreen = ClubjesScreen;
 const TIB_BETAAL_VELDEN = [
   'betaald', 'prijs', 'servicekosten', 'max_personen', 'plekken', 'aanmelden_tot',
   'vraag_dieet', 'vraag_adres', 'vraag_telefoon', 'vraag_opmerking', 'betaalmethodes',
+  'extra_vragen',
 ];
 
 const TIB_BETAALSTATUS = {
@@ -2278,6 +2279,107 @@ function BetaalStatusBadge({ status }) {
   );
 }
 
+/* Eigen vragen per activiteit: de beheerder stelt ze zelf samen, zodat de
+   betaalfunctie bij elke activiteit past en niet alleen bij een etentje. */
+const TIB_VRAAG_SOORTEN = [
+  { id: 'meerkeuze', label: 'Meerdere antwoorden aan te vinken' },
+  { id: 'keuze', label: 'Eén antwoord uit een lijst' },
+  { id: 'janee', label: 'Ja of nee' },
+  { id: 'tekst', label: 'Kort tekstveld' },
+];
+
+function tibNieuwVraagId() {
+  return 'v' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36);
+}
+
+// Eén antwoord leesbaar maken, welk soort vraag het ook is.
+function tibAntwoordTekst(waarde) {
+  if (waarde === null || waarde === undefined || waarde === '') return '';
+  if (Array.isArray(waarde)) return waarde.join(', ');
+  if (waarde === true) return 'ja';
+  if (waarde === false) return 'nee';
+  return String(waarde);
+}
+
+function ExtraVragenEditor({ vragen, onChange }) {
+  const lijst = Array.isArray(vragen) ? vragen : [];
+  const wijzig = (i, sleutel, waarde) => onChange(lijst.map((v, idx) => idx === i ? { ...v, [sleutel]: waarde } : v));
+  const verplaats = (i, richting) => {
+    const doel = i + richting;
+    if (doel < 0 || doel >= lijst.length) return;
+    const next = lijst.slice();
+    const tmp = next[i]; next[i] = next[doel]; next[doel] = tmp;
+    onChange(next);
+  };
+  const verwijder = (i) => {
+    if (!window.confirm('Vraag "' + (lijst[i].label || 'zonder naam') + '" verwijderen?')) return;
+    onChange(lijst.filter((_, idx) => idx !== i));
+  };
+  const voegToe = (vraag) => onChange(lijst.concat([vraag]));
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      {lijst.length === 0 && (
+        <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>
+          Nog geen eigen vragen. Bij een etentje maak je bijvoorbeeld de vraag “Eet je iets niet?” met de antwoorden “geen vis” en “geen vlees”; bij een uitje misschien “Hoe kom je?”.
+        </p>
+      )}
+
+      {lijst.map((vraag, i) => (
+        <div key={vraag.id || i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 14, marginBottom: 10, background: 'var(--paper)' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+              <Field label="Vraag">
+                <input type="text" value={vraag.label || ''} placeholder="bijv. Eet je iets niet?"
+                  onChange={e => wijzig(i, 'label', e.target.value)} />
+              </Field>
+              <div className="row-2">
+                <Field label="Soort antwoord">
+                  <select value={vraag.soort || 'meerkeuze'} onChange={e => wijzig(i, 'soort', e.target.value)}>
+                    {TIB_VRAAG_SOORTEN.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                </Field>
+                {(vraag.soort === 'keuze' || vraag.soort === 'meerkeuze' || !vraag.soort) && (
+                  <Field label="Antwoorden" hint="Scheid ze met een komma.">
+                    <input type="text" value={(vraag.opties || []).join(', ')} placeholder="geen vis, geen vlees"
+                      onChange={e => wijzig(i, 'opties', e.target.value.split(',').map(x => x.trim()).filter(Boolean))} />
+                  </Field>
+                )}
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginTop: 2 }}>
+                <input type="checkbox" checked={vraag.per_persoon !== false}
+                  onChange={e => wijzig(i, 'per_persoon', e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: 'var(--accent)', cursor: 'pointer' }} />
+                <span style={{ fontSize: 14 }}>Aan iedere deelnemer apart vragen</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+              <button className="icon-btn" title="Omhoog" disabled={i === 0} onClick={() => verplaats(i, -1)}>
+                <Icon name="chevron" size={12} style={{ transform: 'rotate(-90deg)' }} />
+              </button>
+              <button className="icon-btn" title="Omlaag" disabled={i === lijst.length - 1} onClick={() => verplaats(i, 1)}>
+                <Icon name="chevron" size={12} style={{ transform: 'rotate(90deg)' }} />
+              </button>
+              <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => verwijder(i)}>
+                <Icon name="trash" size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <button className="btn btn-sm" onClick={() => voegToe({ id: tibNieuwVraagId(), label: '', soort: 'meerkeuze', opties: [], per_persoon: true })}>
+          <Icon name="plus" size={12} /> Vraag toevoegen
+        </button>
+        <button className="btn btn-sm" onClick={() => voegToe({ id: tibNieuwVraagId(), label: 'Eet je iets niet?', soort: 'meerkeuze', opties: ['geen vis', 'geen vlees'], per_persoon: true })}>
+          <Icon name="plus" size={12} /> Voorbeeld: de dieetvraag
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* Wie komt er, en wie heeft betaald — per activiteit. */
 function BetaalDeelnemers({ activiteit }) {
   const [rijen, setRijen] = React.useState([]);
@@ -2303,15 +2405,23 @@ function BetaalDeelnemers({ activiteit }) {
   function personenVan(rij) { return Number(rij.personen) > 0 ? Number(rij.personen) : 1; }
   function deelnemersVan(rij) {
     if (Array.isArray(rij.deelnemers) && rij.deelnemers.length > 0) return rij.deelnemers;
-    return [{ naam: rij.naam || '', geen_vis: false, geen_vlees: false }];
+    return [{ naam: rij.naam || '', antwoorden: {} }];
   }
-  function wensenVan(rij) {
-    const stukjes = deelnemersVan(rij).map(d => {
-      const w = [];
-      if (d.geen_vis) w.push('geen vis');
-      if (d.geen_vlees) w.push('geen vlees');
-      return w.length ? ((d.naam || 'onbekend') + ': ' + w.join(' en ')) : null;
-    }).filter(Boolean);
+  const vragen = Array.isArray(activiteit.extra_vragen) ? activiteit.extra_vragen : [];
+  const vragenPerPersoon = vragen.filter(v => v.per_persoon !== false);
+  const vragenPerAanmelding = vragen.filter(v => v.per_persoon === false);
+  // De antwoorden op de eigen vragen van deze activiteit, leesbaar op één regel.
+  function antwoordenVan(rij) {
+    const stukjes = [];
+    deelnemersVan(rij).forEach(d => {
+      const gegeven = (d && d.antwoorden) || {};
+      const tekst = vragenPerPersoon.map(v => tibAntwoordTekst(gegeven[v.id])).filter(Boolean).join(', ');
+      if (tekst) stukjes.push((d.naam || 'onbekend') + ': ' + tekst);
+    });
+    vragenPerAanmelding.forEach(v => {
+      const tekst = tibAntwoordTekst((rij.antwoorden || {})[v.id]);
+      if (tekst) stukjes.push((v.label || 'vraag') + ': ' + tekst);
+    });
     return stukjes.length ? stukjes.join(' · ') : '—';
   }
   function isBetaald(rij) { return rij.betaalstatus === 'betaald' || rij.betaalstatus === 'contant'; }
@@ -2348,22 +2458,29 @@ function BetaalDeelnemers({ activiteit }) {
       rijen.forEach(rij => {
         const mensen = deelnemersVan(rij);
         mensen.forEach((d, i) => {
-          regels.push({
+          const regel = {
             'Activiteit': activiteit.naam || '',
             'Kenmerk': rij.kenmerk || '',
             'Naam': d.naam || rij.naam || '',
             'Persoon': (i + 1) + ' van ' + mensen.length,
-            'Geen vis': d.geen_vis ? 'ja' : '',
-            'Geen vlees': d.geen_vlees ? 'ja' : '',
-            'E-mail': i === 0 ? (rij.email || '') : '',
-            'Telefoon': i === 0 ? (rij.telefoon || '') : '',
-            'Adres': i === 0 ? (rij.adres || '') : '',
-            'Opmerking': i === 0 ? (rij.opmerking || '') : '',
-            'Bedrag': i === 0 ? (rij.bedrag != null ? Number(rij.bedrag) : '') : '',
-            'Betaalstatus': i === 0 ? ((TIB_BETAALSTATUS[rij.betaalstatus] || {}).label || rij.betaalstatus || '') : '',
-            'Betaald op': i === 0 ? tibDatumKort(rij.betaald_op) : '',
-            'Aangemeld op': i === 0 ? tibDatumKort(rij.aangemeld_op) : '',
+          };
+          // Een kolom per eigen vraag: per persoon op elke regel, per
+          // aanmelding alleen op de eerste.
+          vragenPerPersoon.forEach(v => {
+            regel[v.label || v.id] = tibAntwoordTekst(((d && d.antwoorden) || {})[v.id]);
           });
+          regel['E-mail'] = i === 0 ? (rij.email || '') : '';
+          regel['Telefoon'] = i === 0 ? (rij.telefoon || '') : '';
+          regel['Adres'] = i === 0 ? (rij.adres || '') : '';
+          regel['Opmerking'] = i === 0 ? (rij.opmerking || '') : '';
+          vragenPerAanmelding.forEach(v => {
+            regel[v.label || v.id] = i === 0 ? tibAntwoordTekst((rij.antwoorden || {})[v.id]) : '';
+          });
+          regel['Bedrag'] = i === 0 ? (rij.bedrag != null ? Number(rij.bedrag) : '') : '';
+          regel['Betaalstatus'] = i === 0 ? ((TIB_BETAALSTATUS[rij.betaalstatus] || {}).label || rij.betaalstatus || '') : '';
+          regel['Betaald op'] = i === 0 ? tibDatumKort(rij.betaald_op) : '';
+          regel['Aangemeld op'] = i === 0 ? tibDatumKort(rij.aangemeld_op) : '';
+          regels.push(regel);
         });
       });
       if (regels.length === 0) { toast('Er zijn nog geen deelnemers om te exporteren'); return; }
@@ -2440,7 +2557,7 @@ function BetaalDeelnemers({ activiteit }) {
                 <tr style={{ textAlign: 'left', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ink-soft)' }}>
                   <th style={{ padding: '0 12px 10px 0' }}>Naam</th>
                   <th style={{ padding: '0 12px 10px 0' }}>Pers.</th>
-                  <th style={{ padding: '0 12px 10px 0' }}>Wensen</th>
+                  <th style={{ padding: '0 12px 10px 0' }}>Antwoorden</th>
                   <th style={{ padding: '0 12px 10px 0' }}>Bedrag</th>
                   <th style={{ padding: '0 12px 10px 0' }}>Status</th>
                   <th style={{ padding: '0 12px 10px 0' }}>Aangemeld</th>
@@ -2456,7 +2573,7 @@ function BetaalDeelnemers({ activiteit }) {
                       {rij.kenmerk && <div style={{ fontSize: 12, color: 'var(--ink-mute)' }}>{rij.kenmerk}</div>}
                     </td>
                     <td style={{ padding: '12px 12px 12px 0', fontSize: 14 }}>{personenVan(rij)}</td>
-                    <td style={{ padding: '12px 12px 12px 0', fontSize: 13.5, color: 'var(--ink-soft)' }}>{wensenVan(rij)}</td>
+                    <td style={{ padding: '12px 12px 12px 0', fontSize: 13.5, color: 'var(--ink-soft)' }}>{antwoordenVan(rij)}</td>
                     <td style={{ padding: '12px 12px 12px 0', fontSize: 14, whiteSpace: 'nowrap' }}>{tibEuro(rij.bedrag)}</td>
                     <td style={{ padding: '12px 12px 12px 0' }}><BetaalStatusBadge status={rij.betaalstatus} /></td>
                     <td style={{ padding: '12px 12px 12px 0', fontSize: 13.5, color: 'var(--ink-soft)', whiteSpace: 'nowrap' }}>{tibDatumKort(rij.aangemeld_op)}</td>
@@ -2484,7 +2601,7 @@ function BetaalDeelnemers({ activiteit }) {
       </div>
 
       <HintCard icon="info" style={{ marginTop: 14 }}>
-        De Excel heeft <strong>één regel per persoon</strong>, niet per aanmelding — zo is in één oogopslag te zien hoe vaak "geen vis" aan tafel zit.
+        De Excel heeft <strong>één regel per persoon</strong>, niet per aanmelding, met een kolom per eigen vraag — zo is in één oogopslag te tellen wie wat heeft geantwoord.
         Zolang Mollie nog niet gekoppeld is, zet je de status hier met de hand; daarna gaat dat vanzelf.
       </HintCard>
     </>
@@ -2602,7 +2719,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
     // Betaalde activiteiten (concept) — zie sql/betaalde_activiteiten.sql
     betaald: false, prijs: null, servicekosten: 0, max_personen: 1,
     plekken: null, aanmelden_tot: null,
-    vraag_dieet: true, vraag_adres: false, vraag_telefoon: false, vraag_opmerking: true,
+    vraag_adres: false, vraag_telefoon: false, vraag_opmerking: true, extra_vragen: [],
     betaalmethodes: 'ideal,creditcard,banktransfer',
   };
 
@@ -2614,7 +2731,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
   // null = nog niet gekeken, false = sql/betaalde_activiteiten.sql is nog niet gedraaid
   const [betaalKolommen, setBetaalKolommen] = React.useState(null);
   React.useEffect(() => {
-    window.supabase.from('activiteiten').select('betaald').limit(1)
+    window.supabase.from('activiteiten').select('betaald, extra_vragen').limit(1)
       .then(({ error }) => setBetaalKolommen(!error));
   }, []);
   const bestaat = fd.id != null;
@@ -2739,7 +2856,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
             <div className="sec-sub">Staat dit uit, dan werkt aanmelden zoals altijd: zonder bedrag en zonder betaalstap.</div>
             {betaalKolommen === false && (
               <HintCard variant="warn" icon="warn" style={{ marginBottom: 12 }}>
-                Dit werkt pas nadat <strong>sql/betaalde_activiteiten.sql</strong> in Supabase is uitgevoerd. Je kunt het hieronder bekijken, maar opslaan doet voorlopig niets met deze velden.
+                Dit werkt pas nadat <strong>sql/betaalde_activiteiten.sql</strong> en <strong>sql/betaalde_activiteiten_vragen.sql</strong> in Supabase zijn uitgevoerd. Je kunt het hieronder bekijken, maar opslaan doet voorlopig niets met deze velden.
               </HintCard>
             )}
             <Toggle on={!!fd.betaald} label="Deelnemers moeten betalen" sub="Zet het bedrag en de betaalstap aan op de website" onChange={v => up('betaald', v)} />
@@ -2771,9 +2888,9 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
                 </Field>
 
                 <div style={{ marginTop: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Wat vragen we erbij?</div>
-                  <div className="sec-sub" style={{ marginTop: 0 }}>Komt iemand met meer personen, dan stelt het formulier deze vragen voor iedereen.</div>
-                  {[['vraag_dieet', 'Eet je iets niet? — GEEN vis / GEEN vlees'], ['vraag_adres', 'Straatnaam en huisnummer (wordt ná het betalen gevraagd)'], ['vraag_telefoon', 'Telefoonnummer'], ['vraag_opmerking', 'Opmerkingenveld']].map(([sleutel, label]) => (
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Standaardvragen</div>
+                  <div className="sec-sub" style={{ marginTop: 0 }}>Deze kent het formulier zelf. Naam en e-mailadres vraagt hij altijd.</div>
+                  {[['vraag_adres', 'Straatnaam en huisnummer (wordt ná het betalen gevraagd)'], ['vraag_telefoon', 'Telefoonnummer'], ['vraag_opmerking', 'Opmerkingenveld']].map(([sleutel, label]) => (
                     <label key={sleutel} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', cursor: 'pointer', userSelect: 'none' }}>
                       <input type="checkbox" checked={!!fd[sleutel]} onChange={e => up(sleutel, e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--accent)', cursor: 'pointer' }} />
                       <span style={{ fontSize: 14 }}>{label}</span>
@@ -2781,7 +2898,13 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
                   ))}
                 </div>
 
-                <div style={{ marginTop: 12 }}>
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Eigen vragen</div>
+                  <div className="sec-sub" style={{ marginTop: 0 }}>Vragen die bij déze activiteit horen — bij een etentje iets anders dan bij een uitje. Per vraag kies je of hij aan iedere deelnemer apart gesteld wordt.</div>
+                  <ExtraVragenEditor vragen={fd.extra_vragen} onChange={v => up('extra_vragen', v)} />
+                </div>
+
+                <div style={{ marginTop: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Betaalmethodes</div>
                   {[['ideal', 'iDEAL'], ['creditcard', 'Creditcard / debitcard'], ['banktransfer', 'Overboeking']].map(([id, label]) => {
                     const gekozen = String(fd.betaalmethodes || '').split(',').map(x => x.trim()).filter(Boolean);
@@ -7269,7 +7392,8 @@ function __mapActiviteitenToDb(item) {
   // de kolommen er nog niet (sql/betaalde_activiteiten.sql), dan laat het
   // scherm ze weg en blijft opslaan gewoon werken.
   ['betaald', 'prijs', 'servicekosten', 'max_personen', 'plekken', 'aanmelden_tot',
-   'vraag_dieet', 'vraag_adres', 'vraag_telefoon', 'vraag_opmerking', 'betaalmethodes'
+   'vraag_dieet', 'vraag_adres', 'vraag_telefoon', 'vraag_opmerking', 'betaalmethodes',
+   'extra_vragen'
   ].forEach(function(k) { if (item[k] !== undefined) rij[k] = item[k]; });
   return rij;
 }
