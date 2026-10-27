@@ -1458,6 +1458,17 @@ uit haar mail.
     weg via een vaste lijst kolommen (`__mapActiviteitenToDb`); de nieuwe
     betaalvelden zaten daar niet in en werden stil weggegooid. De lijst is
     aangevuld; de velden gaan alleen mee als zeker is dat de kolommen bestaan.
+  - **Algemeen gemaakt (26-10):** de vaste dieetvraag is eruit. De beheerder
+    stelt per activiteit zelf vragen samen (tekst, soort antwoord, opties, en
+    of de vraag aan iedere deelnemer apart gesteld wordt), met een knop die de
+    dieetvraag als voorbeeld invult. Extra SQL:
+    `sql/betaalde_activiteiten_vragen.sql` (uitgevoerd 27-10).
+  - **Getest op 27-10:** proefactiviteit met twee eigen vragen — "Eet je iets
+    niet?" (meerkeuze, per persoon) en "Hoe kom je?" (één keuze, per
+    aanmelding). Beide goed opgeslagen, de deelnemerslijst toont de antwoorden
+    per persoon én per aanmelding, en de Excel krijgt een kolom per vraag:
+    de persoonsvraag op elke regel, de aanmeldingsvraag alleen op de eerste.
+    Proefgegevens daarna verwijderd.
   - Nog te doen: het aanmeldformulier op de site, en daarna Mollie (sleutel
     via Armando, webhook als Supabase Edge Function).
 - **Besluit 7:** doneerpagina snel oplossen met de bestaande Donorbox-link, en
