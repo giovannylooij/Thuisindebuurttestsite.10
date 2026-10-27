@@ -815,15 +815,17 @@ www.thuisindebuurt.nl.
 - [ ] **Rechten-audit database** — nooit gecontroleerd of bezoekers persoonlijke
       gegevens (aanmeldingen, bestellingen met adres/telefoon) kunnen uitlezen.
       *Dit zou ik het hoogst prioriteren van dit blok.*
-- [ ] **Aanmelden op de site werkt niet (gevonden 25-10).** Een bezoeker die
-      zich aanmeldt voor een activiteit of buurtinitiatief krijgt een
-      foutmelding: de database weigert de regel ("new row violates row-level
-      security policy for table aanmeldingen"). Getest met de publieke sleutel,
-      zowel met de velden die de site stuurt als met meer velden. De tabel
-      `aanmeldingen` is dan ook helemaal leeg. Ingelogd (CMS) werkt het wel.
-      Er mist dus een insert-regel voor bezoekers, met de juiste grenzen
-      (alleen toevoegen, niet lezen of wijzigen). Dit moet áf vóór de
-      betaalfunctie live gaat, want die schrijft in dezelfde tabel.
+- [x] ~~Aanmelden op de site werkt niet~~ — **onjuist alarm (25-10),
+      rechtgezet op 27-10.** Aanmelden werkt gewoon. Mijn test vroeg de
+      zojuist toegevoegde regel ook terug (`Prefer: return=representation`),
+      en dát mag een bezoeker niet: lezen is alleen voor de beheerder. De
+      insert zelf gaf gewoon http 201. De rechten staan dus goed: bezoekers
+      mogen toevoegen, alleen de superadmin mag lezen, wijzigen en
+      verwijderen. Dat `aanmeldingen` leeg was, betekent alleen dat er nog
+      niemand is aangemeld.
+      *Gevolg voor de betaalfunctie:* de site kan ná het opslaan de regel niet
+      terugvragen, dus het kenmerk en het betaalverzoek moeten van de server
+      komen (de Edge Function met de Mollie-sleutel), niet uit de browser.
 - [ ] Rolscheiding CMS is nu alleen in de browser afgedwongen, niet op de server
 - [ ] "Wachtwoord vergeten" ontbreekt volledig in het CMS — beheerders die hun
       wachtwoord kwijt zijn hebben nu een superadmin nodig
