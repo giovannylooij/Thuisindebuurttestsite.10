@@ -1500,16 +1500,33 @@ uit haar mail.
 Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
 
 ### Blok 1 — Kleine zichtbare dingen
-- [ ] **Voorzieningen uit de Buurtatlas.** Let op: die voorzieningen zijn
+- [x] **Voorzieningen uit de Buurtatlas (29-10).** Categorie en de tien
+      verzonnen plekken verwijderd; de filterbalk toont nu Bewonersinitiatief,
+      Partners en Activiteiten (26 plekken). De introtekst noemde die
+      nepvoorzieningen ("van de bakker op de hoek tot het Geriatrisch
+      Netwerk") en is vervangen; die tekst is ook in het CMS aan te passen.
+      *Oorspronkelijk:* **Voorzieningen uit de Buurtatlas.** Let op: die voorzieningen zijn
       *verzonnen demodata* die in de code staat (`buurtatlas.jsx`, o.a.
       "Boekhandel De Vries", "Restaurant De Pier"). Ze komen nergens uit de
       database. Weghalen is dus eenvoudig én het haalt nepinformatie van de
       site af.
-- [ ] **Evenement-bolletje eruit** (agenda). Nu zijn er drie kleuren:
+- [x] **Evenement-bolletje eruit (29-10).** Losse agenda-items hebben geen
+      eigen groene kleur meer; ze staan er gewoon bij in dezelfde kleur als
+      een activiteit, en de legenda heeft nog twee stippen: Activiteit en
+      Buurtinitiatief. Er is niets verwijderd — de evenementen staan er nog.
+      *Te bevestigen bij Margareth:* moeten ze helemaal uit de agenda?
+      *Oorspronkelijk:* **Evenement-bolletje eruit** (agenda). Nu zijn er drie kleuren:
       activiteit oranje, buurtinitiatief paars, evenement groen. Vraag: gaan
       de losse agenda-items (evenementen) helemaal weg, of blijven ze staan
       met dezelfde kleur als een activiteit?
-- [ ] **Kaart verspringt bij veel activiteiten op één punt.** Te onderzoeken:
+- [x] **Kaart verspringt bij veel activiteiten op één punt (29-10).**
+      Nagemaakt: op één adres staan dertien activiteiten, het venster werd
+      daardoor zo hoog dat de kaart er flink onder wegsprong. Het venster
+      heeft nu een maximumhoogte (de lijst scrolt er zelf in), waardoor de
+      kaart nog maar een klein stukje meebeweegt. Helemaal stilzetten kan ook,
+      maar dan valt het venster bij een stip bovenaan buiten beeld — zeg het
+      als je dat liever hebt. Geldt voor Activiteiten én Buurtinitiatieven.
+      *Oorspronkelijk:* **Kaart verspringt bij veel activiteiten op één punt.** Te onderzoeken:
       waarschijnlijk springt de kaart naar het midden van de verzamelstip bij
       het openklappen. Eerst namaken, dan pas repareren.
 
