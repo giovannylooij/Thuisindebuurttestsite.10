@@ -1546,13 +1546,26 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       het openklappen. Eerst namaken, dan pas repareren.
 
 ### Blok 2 — Teksten en links
-- [ ] **Links klikbaar maken in de teksten.** Alle teksten uit het CMS zijn nu
+- [x] **Links klikbaar maken in de teksten (29-10).** Webadressen
+      (https://… en www.…) en e-mailadressen worden nu automatisch een link,
+      waar ze ook staan: alle introteksten uit het CMS, de korte en
+      uitgebreide omschrijving van een activiteit of buurtinitiatief, het
+      nieuwsbericht en het blok onderaan de site. Leestekens aan het eind
+      blijven buiten de link, en een tekst zonder adres verandert niet.
+      Webadressen openen in een nieuw tabblad. *Niet herkend:* een adres
+      zonder `www.` of `https://` (bijvoorbeeld "thuisindebuurt.nl" los in een
+      zin) — dat levert te veel valse treffers op.
+      *Oorspronkelijk:* **Links klikbaar maken in de teksten.** Alle teksten uit het CMS zijn nu
       platte tekst; typt Margareth er een adres in, dan is het niet aan te
       klikken. Oplossing: webadressen en e-mailadressen automatisch herkennen
       en als link tonen — in de paginateksten, de omschrijvingen van
       activiteiten en buurtinitiatieven, en het nieuws. Geen opmaakknoppen
       nodig, dus klein werk.
-- [ ] **Doe mee: het groene blok "Wat gebeurt er daarna?" beheerbaar maken.**
+- [x] **Doe mee: het groene blok beheerbaar (29-10).** Kopje, de vier stappen
+      en de regel onderaan staan nu bij Pagina's → Doe mee, zes velden erbij.
+      De mailregel is gewone tekst geworden; dankzij het punt hierboven blijft
+      het adres klikbaar.
+      *Oorspronkelijk:* **Doe mee: het groene blok "Wat gebeurt er daarna?" beheerbaar maken.**
       Staat nu vast in `other.jsx` (kop, vier stappen, de mailregel). Gaat via
       dezelfde weg als blok A: rijen in `pagina_teksten`, een veld per stap.
 
