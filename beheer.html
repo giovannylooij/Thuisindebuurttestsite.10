@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.216', datum: '29-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.217', datum: '29-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1931,7 +1931,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
                 </td>
                 <td>{c.categorie}</td>
                 <td>{c.wijk}</td>
-                <td>{c.wanneer}</td>
+                <td>{c.wanneer || tibWanneerTekst(c)}</td>
                 <td><div>{c.contact}</div><div className="sub">{c.email}</div></td>
                 <td>{c.leden}</td>
                 <td><Pill variant={c.status === 'Gepubliceerd' ? 'published' : 'draft'}>{c.status}</Pill></td>
@@ -1948,6 +1948,221 @@ function ClubjesList({ onNav, onEdit, profile }) {
   );
 }
 
+/* ===== Blok 4 — Startdatum en frequentie (gesprek Margareth 23-10) =====
+   Zelfde rekenwerk als op de site (bundle-src/ui.jsx); wijzig je het hier,
+   doe dat daar ook. De weekdag komt uit de startdatum, dus die kan nooit
+   tegenspreken met wat er is ingevuld. Zie sql/blok4_startdatum_frequentie.sql */
+const TIB_PLAN_VELDEN = ['startdatum', 'frequentie', 'maand_weken', 'tot_datum', 'begintijd', 'eindtijd'];
+
+const TIB_FREQUENTIES = [
+  { id: '',              label: 'Nog niet ingevuld' },
+  { id: 'eenmalig',      label: 'Eén keer' },
+  { id: 'wekelijks',     label: 'Elke week' },
+  { id: 'tweewekelijks', label: 'Om de week' },
+  { id: 'maandelijks',   label: 'Elke maand' },
+  { id: 'onregelmatig',  label: 'Wisselend — niet in de agenda' },
+];
+const TIB_MAAND_KEUZES = [
+  { n: 1, label: '1e' }, { n: 2, label: '2e' }, { n: 3, label: '3e' },
+  { n: 4, label: '4e' }, { n: 5, label: 'laatste' },
+];
+const TIB_DAG_LANG = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+const TIB_MAAND_LANG = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+const TIB_HOEVEELSTE = { 1: 'eerste', 2: 'tweede', 3: 'derde', 4: 'vierde', 5: 'laatste' };
+const TIB_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+// "2026-10-30" wordt een datum in onze eigen tijdzone; new Date() op die tekst
+// leest hem als UTC en kan er een dag naast zitten.
+function tibDatumUitVeld(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  const m = String(v).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+function tibMaandagVan(d) {
+  const dow = d.getDay(), ma0 = dow === 0 ? 6 : dow - 1;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - ma0);
+}
+function tibHoeveelsteWeekdag(datum) {
+  let teller = 0;
+  for (let d = 1; d <= datum.getDate(); d++) {
+    if (new Date(datum.getFullYear(), datum.getMonth(), d).getDay() === datum.getDay()) teller++;
+  }
+  return teller;
+}
+function tibMaandWeken(item, start) {
+  const lijst = Array.isArray(item.maand_weken) ? item.maand_weken.map(Number).filter(n => n >= 1 && n <= 5) : [];
+  return lijst.length ? lijst : [tibHoeveelsteWeekdag(start)];
+}
+function tibPlanOpDag(item, datum) {
+  if (!item || !datum) return null;
+  const freq = item.frequentie;
+  if (!freq || freq === 'onregelmatig') return null;
+  const start = tibDatumUitVeld(item.startdatum);
+  if (!start) return null;
+  const dag = new Date(datum.getFullYear(), datum.getMonth(), datum.getDate());
+  if (dag < start) return false;
+  const tot = tibDatumUitVeld(item.tot_datum);
+  if (tot && dag > tot) return false;
+  const zelfdeDag = dag.getDate() === start.getDate() && dag.getMonth() === start.getMonth() && dag.getFullYear() === start.getFullYear();
+  if (freq === 'eenmalig') return zelfdeDag;
+  if (dag.getDay() !== start.getDay()) return false;
+  if (freq === 'wekelijks') return true;
+  if (freq === 'tweewekelijks') return Math.round((tibMaandagVan(dag) - tibMaandagVan(start)) / TIB_WEEK_MS) % 2 === 0;
+  const welke = tibMaandWeken(item, start);
+  if (welke.indexOf(tibHoeveelsteWeekdag(dag)) !== -1) return true;
+  if (welke.indexOf(5) !== -1) {
+    const over = new Date(dag.getFullYear(), dag.getMonth(), dag.getDate() + 7);
+    if (over.getMonth() !== dag.getMonth()) return true;
+  }
+  return false;
+}
+function tibTijdKort(v) {
+  const m = String(v || '').match(/^(\d{1,2}):(\d{2})/);
+  return m ? (m[1].length === 1 ? '0' + m[1] : m[1]) + ':' + m[2] : '';
+}
+// Leesbare tekst uit de velden — dit is wat op de site komt te staan als het
+// tekstveld "Wanneer" leeg is.
+function tibWanneerTekst(item) {
+  const start = tibDatumUitVeld(item && item.startdatum);
+  const freq = item && item.frequentie;
+  if (!start || !freq || freq === 'onregelmatig') return '';
+  const dag = TIB_DAG_LANG[start.getDay()];
+  let tekst = '';
+  if (freq === 'eenmalig') tekst = dag + ' ' + start.getDate() + ' ' + TIB_MAAND_LANG[start.getMonth()] + ' ' + start.getFullYear();
+  else if (freq === 'wekelijks') tekst = 'elke ' + dag;
+  else if (freq === 'tweewekelijks') tekst = 'om de week op ' + dag;
+  else if (freq === 'maandelijks') {
+    const namen = tibMaandWeken(item, start).sort((a, b) => a - b).map(n => TIB_HOEVEELSTE[n] || n + 'e');
+    tekst = 'elke ' + namen.join(' en ') + ' ' + dag + ' van de maand';
+  } else return '';
+  const van = tibTijdKort(item.begintijd), tot = tibTijdKort(item.eindtijd);
+  if (van && tot) tekst += ', van ' + van + ' tot ' + tot + ' uur';
+  else if (van) tekst += ', vanaf ' + van + ' uur';
+  return tekst.charAt(0).toUpperCase() + tekst.slice(1);
+}
+// De eerstvolgende keren vanaf vandaag, om in het CMS te laten zien.
+function tibEerstvolgende(item, hoeveel) {
+  const uit = [];
+  const nu = new Date(); nu.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 400 && uit.length < (hoeveel || 3); i++) {
+    const d = new Date(nu.getFullYear(), nu.getMonth(), nu.getDate() + i);
+    if (tibPlanOpDag(item, d)) uit.push(d);
+  }
+  return uit;
+}
+function tibDatumLang(d) {
+  return TIB_DAG_LANG[d.getDay()] + ' ' + d.getDate() + ' ' + TIB_MAAND_LANG[d.getMonth()];
+}
+
+// Het blok "Wanneer" in de bewerkschermen van activiteiten én
+// buurtinitiatieven. `fd` is het formulier, `up(veld, waarde)` slaat op.
+function WanneerBlok({ fd, up, kolommen, soort }) {
+  const start = tibDatumUitVeld(fd.startdatum);
+  const freq = fd.frequentie || '';
+  const maandelijks = freq === 'maandelijks';
+  const welke = Array.isArray(fd.maand_weken) ? fd.maand_weken.map(Number) : [];
+  const voorbeeld = tibWanneerTekst(fd);
+  const keren = tibEerstvolgende(fd, 3);
+
+  function kiesFrequentie(v) {
+    up('frequentie', v);
+    // "Terugkerend" op de activiteitenpagina volgt de frequentie, zodat de
+    // twee elkaar niet kunnen tegenspreken.
+    if (v) up('herhalend', v !== 'eenmalig');
+    if (v !== 'maandelijks') up('maand_weken', null);
+  }
+  function wissel(n) {
+    const next = welke.indexOf(n) === -1 ? welke.concat([n]) : welke.filter(x => x !== n);
+    up('maand_weken', next.length ? next.sort((a, b) => a - b) : null);
+  }
+
+  return (
+    <div className="form-section">
+      <h3>Wanneer</h3>
+      <div className="sec-sub">
+        Vul hier de startdatum en hoe vaak het terugkomt. Daarmee weet de agenda precies
+        op welke dagen {soort === 'activiteit' ? 'de activiteit' : 'het buurtinitiatief'} staat —
+        eerder moest de website dat uit de tekst raden.
+      </div>
+
+      {kolommen === false && (
+        <HintCard variant="warn" icon="warn" style={{ marginBottom: 12 }}>
+          Dit werkt pas nadat <strong>sql/blok4_startdatum_frequentie.sql</strong> in Supabase is
+          uitgevoerd. Je kunt het hieronder bekijken, maar opslaan doet voorlopig niets met deze velden.
+        </HintCard>
+      )}
+
+      <div className="row-2">
+        <Field label="Startdatum" hint={start ? 'Dit is een ' + TIB_DAG_LANG[start.getDay()] + '.' : 'De eerste keer dat het doorgaat.'}>
+          <input type="date" value={fd.startdatum || ''} onChange={e => up('startdatum', e.target.value || null)} />
+        </Field>
+        <Field label="Hoe vaak">
+          <select value={freq} onChange={e => kiesFrequentie(e.target.value)}>
+            {TIB_FREQUENTIES.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+          </select>
+        </Field>
+      </div>
+
+      {maandelijks && (
+        <Field label="Welke keer in de maand" hint="Niets aangevinkt? Dan dezelfde keer als de startdatum. Meerdere mag: 2e én 4e.">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {TIB_MAAND_KEUZES.map(k => {
+              const aan = welke.indexOf(k.n) !== -1;
+              return (
+                <button key={k.n} type="button" onClick={() => wissel(k.n)}
+                  className={'btn btn-sm' + (aan ? ' btn-primary' : '')}>
+                  {k.label} {start ? TIB_DAG_LANG[start.getDay()] : 'keer'}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+      )}
+
+      <div className="row-2">
+        <Field label="Begintijd"><input type="time" value={tibTijdKort(fd.begintijd)} onChange={e => up('begintijd', e.target.value || null)} /></Field>
+        <Field label="Eindtijd"><input type="time" value={tibTijdKort(fd.eindtijd)} onChange={e => up('eindtijd', e.target.value || null)} /></Field>
+      </div>
+
+      {freq && freq !== 'eenmalig' && freq !== 'onregelmatig' && (
+        <Field label="Tot en met (optioneel)" hint="Leeg laten als het blijft doorgaan.">
+          <input type="date" value={fd.tot_datum || ''} onChange={e => up('tot_datum', e.target.value || null)} />
+        </Field>
+      )}
+
+      <Field label="Wanneer — tekst op de website"
+             hint={voorbeeld ? 'Laat je dit leeg, dan komt er automatisch: "' + voorbeeld + '"' : 'Bijvoorbeeld: Elke vrijdag van 16.00 tot 18.00 uur.'}>
+        <input type="text" value={fd.wanneer || ''} placeholder={voorbeeld || ''} onChange={e => up('wanneer', e.target.value)} />
+      </Field>
+      {voorbeeld && !fd.wanneer && (
+        <button className="btn btn-sm" style={{ marginTop: -4, marginBottom: 10 }} onClick={() => up('wanneer', voorbeeld)}>
+          Neem deze tekst over en pas hem aan
+        </button>
+      )}
+
+      <div style={{ marginTop: 6, padding: '12px 14px', borderRadius: 10, background: 'var(--paper)', border: '1px solid var(--line)' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Zo komt het in de agenda</div>
+        {!freq || freq === 'onregelmatig' ? (
+          <div style={{ fontSize: 13.5, color: 'var(--ink-soft)' }}>
+            {freq === 'onregelmatig'
+              ? 'Wisselend — dit komt niet in de agenda te staan. De tekst hierboven blijft wel op de pagina staan.'
+              : 'Nog niets ingevuld. De website probeert de dag dan uit de tekst hierboven te halen, en dat gaat niet altijd goed.'}
+          </div>
+        ) : !fd.startdatum ? (
+          <div style={{ fontSize: 13.5, color: 'var(--ink-soft)' }}>Vul een startdatum in, dan zie je hier de eerstvolgende keren.</div>
+        ) : keren.length === 0 ? (
+          <div style={{ fontSize: 13.5, color: 'var(--ink-soft)' }}>Geen keren meer in het komende jaar.</div>
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, lineHeight: 1.6 }}>
+            {keren.map((d, i) => <li key={i}>{tibDatumLang(d)}{i === 0 ? ' — de eerstvolgende keer' : ''}</li>)}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Bewerkscherm buurtinitiatief. ActiviteitEdit heeft exact dezelfde opbouw (F5);
 // wijzig je hier iets, doe dat daar ook.
 function ClubjeEdit({ id, onBack }) {
@@ -1957,6 +2172,9 @@ function ClubjeEdit({ id, onBack }) {
     naam: 'Nieuw buurtinitiatief', categorie: 'Ontmoeting/Sociaal', wijk: '',
     omschrijving: '', uitgebreide_omschrijving: '',
     voor_wie: '', wat: '', waar: '', wanneer: '', kosten: '',
+    // Blok 4 — zie sql/blok4_startdatum_frequentie.sql
+    startdatum: null, frequentie: '', maand_weken: null, tot_datum: null,
+    begintijd: null, eindtijd: null,
     contact: '', email: '', telefoon: '', contact_zichtbaar: false,
     adres: '', lat: null, lng: null, icoon_url: null, icoon_label: null,
     status: 'Concept',
@@ -1966,6 +2184,12 @@ function ClubjeEdit({ id, onBack }) {
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [published, setPublished] = React.useState(!!item && item.status === 'Gepubliceerd');
   const [bezig, setBezig] = React.useState(false);
+  // null = nog niet gekeken, false = sql/blok4_startdatum_frequentie.sql is nog niet gedraaid
+  const [planKolommen, setPlanKolommen] = React.useState(null);
+  React.useEffect(() => {
+    window.supabase.from('clubjes').select('startdatum, frequentie').limit(1)
+      .then(({ error }) => setPlanKolommen(!error));
+  }, []);
   const bestaat = fd.id != null;
   const toast = (tekst) => window.__showToast && window.__showToast(tekst);
   const getal = (tekst) => { const n = parseFloat(tekst); return isNaN(n) ? null : n; };
@@ -1975,6 +2199,8 @@ function ClubjeEdit({ id, onBack }) {
     if (bezig) return false;
     const isPublished = pubOverride !== undefined ? pubOverride : published;
     const toSave = { ...fd, status: isPublished ? 'Gepubliceerd' : 'Concept' };
+    // Zolang de kolommen niet bestaan, gaan startdatum en frequentie niet mee.
+    if (planKolommen !== true) TIB_PLAN_VELDEN.forEach(k => { delete toSave[k]; });
     const lijst = DATA.clubjes;
     setBezig(true);
     let gelukt = false;
@@ -2053,17 +2279,18 @@ function ClubjeEdit({ id, onBack }) {
 
           <div className="form-section">
             <h3>Praktische informatie</h3>
-            <div className="sec-sub">Deze velden vullen automatisch de "Voor wie / Wat / Waar / Wanneer / Kosten"-blokjes op de pagina.</div>
+            <div className="sec-sub">Deze velden vullen automatisch de "Voor wie / Wat / Waar / Kosten"-blokjes op de pagina. "Wanneer" staat in het blok hieronder.</div>
             <div className="row-2">
               <Field label="Voor wie"><input type="text" value={fd.voor_wie || ''} onChange={e => up('voor_wie', e.target.value)} /></Field>
               <Field label="Wat"><input type="text" value={fd.wat || ''} onChange={e => up('wat', e.target.value)} placeholder="bijv. Samen koken en eten" /></Field>
             </div>
-            <div className="row-2">
-              <Field label="Waar"><input type="text" value={fd.waar || ''} onChange={e => up('waar', e.target.value)} /></Field>
-              <Field label="Wanneer"><input type="text" value={fd.wanneer || ''} onChange={e => up('wanneer', e.target.value)} /></Field>
-            </div>
+            {/* Blok 4: "Wanneer" staat nu in zijn eigen blok hieronder, met
+                startdatum en frequentie erbij. */}
+            <Field label="Waar"><input type="text" value={fd.waar || ''} onChange={e => up('waar', e.target.value)} /></Field>
             <Field label="Kosten"><input type="text" value={fd.kosten || ''} onChange={e => up('kosten', e.target.value)} /></Field>
           </div>
+
+          <WanneerBlok fd={fd} up={up} kolommen={planKolommen} soort="buurtinitiatief" />
 
           <div className="form-section">
             <h3>Contact</h3>
@@ -2720,6 +2947,9 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
     naam: 'Nieuwe activiteit', categorie: 'Ontmoeting/Sociaal', wijk: '',
     omschrijving: '', uitgebreide_omschrijving: '',
     voor_wie: '', wat: '', waar: '', wanneer: '', kosten: '',
+    // Blok 4 — zie sql/blok4_startdatum_frequentie.sql
+    startdatum: null, frequentie: '', maand_weken: null, tot_datum: null,
+    begintijd: null, eindtijd: null,
     contact: '', email: '', telefoon: '', contact_zichtbaar: false,
     adres: '', lat: null, lng: null, icoon_url: null, icoon_label: null,
     status: 'Concept', herhalend: true,
@@ -2741,6 +2971,12 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
     window.supabase.from('activiteiten').select('betaald, extra_vragen').limit(1)
       .then(({ error }) => setBetaalKolommen(!error));
   }, []);
+  // Idem voor blok 4: sql/blok4_startdatum_frequentie.sql
+  const [planKolommen, setPlanKolommen] = React.useState(null);
+  React.useEffect(() => {
+    window.supabase.from('activiteiten').select('startdatum, frequentie').limit(1)
+      .then(({ error }) => setPlanKolommen(!error));
+  }, []);
   const bestaat = fd.id != null;
   const toast = (tekst) => window.__showToast && window.__showToast(tekst);
   const getal = (tekst) => { const n = parseFloat(tekst); return isNaN(n) ? null : n; };
@@ -2752,6 +2988,8 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
     const toSave = { ...fd, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     // Zolang de kolommen niet bestaan, gaan de betaalvelden niet mee.
     if (betaalKolommen !== true) TIB_BETAAL_VELDEN.forEach(k => { delete toSave[k]; });
+    // Idem voor startdatum en frequentie (blok 4).
+    if (planKolommen !== true) TIB_PLAN_VELDEN.forEach(k => { delete toSave[k]; });
     const lijst = DATA.activiteiten;
     setBezig(true);
     let gelukt = false;
@@ -2845,18 +3083,23 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
 
           <div className="form-section">
             <h3>Praktische informatie</h3>
-            <div className="sec-sub">Deze velden vullen automatisch de "Voor wie / Wat / Waar / Wanneer / Kosten"-blokjes op de pagina.</div>
+            <div className="sec-sub">Deze velden vullen automatisch de "Voor wie / Wat / Waar / Kosten"-blokjes op de pagina. "Wanneer" staat in het blok hieronder.</div>
             <div className="row-2">
               <Field label="Voor wie"><input type="text" value={fd.voor_wie || ''} onChange={e => up('voor_wie', e.target.value)} /></Field>
               <Field label="Wat"><input type="text" value={fd.wat || ''} onChange={e => up('wat', e.target.value)} placeholder="bijv. Samen koken en eten" /></Field>
             </div>
-            <div className="row-2">
-              <Field label="Waar"><input type="text" value={fd.waar || ''} onChange={e => up('waar', e.target.value)} /></Field>
-              <Field label="Wanneer"><input type="text" value={fd.wanneer || ''} onChange={e => up('wanneer', e.target.value)} /></Field>
-            </div>
+            {/* Blok 4: "Wanneer" staat nu in zijn eigen blok hieronder, met
+                startdatum en frequentie erbij. */}
+            <Field label="Waar"><input type="text" value={fd.waar || ''} onChange={e => up('waar', e.target.value)} /></Field>
             <Field label="Kosten"><input type="text" value={fd.kosten || ''} onChange={e => up('kosten', e.target.value)} /></Field>
-            <Toggle on={fd.herhalend !== false} label="Terugkerend" sub="Activiteit herhaalt wekelijks of maandelijks" onChange={v => up('herhalend', v)} />
+            {/* Blok 4: zodra er een frequentie is gekozen, volgt "Terugkerend"
+                die keuze automatisch; dan hoeft deze schakelaar niet in beeld. */}
+            {!fd.frequentie && (
+              <Toggle on={fd.herhalend !== false} label="Terugkerend" sub="Activiteit herhaalt wekelijks of maandelijks" onChange={v => up('herhalend', v)} />
+            )}
           </div>
+
+          <WanneerBlok fd={fd} up={up} kolommen={planKolommen} soort="activiteit" />
 
           {TIB_BETALEN_AAN && (
           <div className="form-section">
@@ -3124,7 +3367,7 @@ function ActiviteitenScreen() {
                   <div className="strong">{a.naam}</div>
                 </div></td>
                 <td>{a.categorie}</td>
-                <td>{a.wanneer}</td>
+                <td>{a.wanneer || tibWanneerTekst(a)}</td>
                 <td>{a.waar}</td>
                 <td>{a.herhalend ? <Icon name="check" size={14} style={{ color: 'var(--accent-2)' }} /> : '—'}</td>
                 <td><Pill variant={a.status === 'Gepubliceerd' ? 'published' : 'draft'}>{a.status}</Pill></td>
@@ -7370,6 +7613,10 @@ function __mapClubjesToDb(item) {
     icoon_url:         item.icoon_url || null,
     icoon_label:       item.icoon_label || null,
   };
+  // Blok 4: startdatum en frequentie. Zijn de kolommen er nog niet
+  // (sql/blok4_startdatum_frequentie.sql), dan laat het scherm ze weg en
+  // blijft opslaan gewoon werken.
+  TIB_PLAN_VELDEN.forEach(function(k) { if (item[k] !== undefined) mapped[k] = item[k] === '' ? null : item[k]; });
   return mapped;
 }
 
@@ -7410,6 +7657,8 @@ function __mapActiviteitenToDb(item) {
    'vraag_dieet', 'vraag_adres', 'vraag_telefoon', 'vraag_opmerking', 'betaalmethodes',
    'extra_vragen'
   ].forEach(function(k) { if (item[k] !== undefined) rij[k] = item[k]; });
+  // Hetzelfde voor startdatum en frequentie (blok 4).
+  TIB_PLAN_VELDEN.forEach(function(k) { if (item[k] !== undefined) rij[k] = item[k] === '' ? null : item[k]; });
   return rij;
 }
 

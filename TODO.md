@@ -1584,14 +1584,47 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       bovenaan zetten?
 
 ### Blok 4 — Startdatum en frequentie *(de belangrijkste)*
-- [ ] Per activiteit en buurtinitiatief een **startdatum** en een **frequentie**
-      (wekelijks, om de week, maandelijks, hoeveelste dag van de maand), in
-      plaats van de vrije tekst "wanneer".
-- Dit is precies wat de agenda mist: nu wordt de tekst geraden, en daarom
-  staat de Wijkborrel mogelijk op de verkeerde week en missen de Soepgroep en
-  Happy Feet helemaal. Met echte velden klopt de agenda altijd.
-- Raakt: database, CMS (beide schermen), de agenda, de homepagina en de
-  weekkalender. Margareth moet bij de bestaande items eenmalig invullen.
+
+**Status: gebouwd en lokaal getest (29-10). Wacht op de SQL en daarna op
+Margareth. Nog niet gepusht.**
+
+- [x] **Nieuwe velden** per activiteit én buurtinitiatief: startdatum,
+      hoe vaak (één keer / elke week / om de week / elke maand / wisselend),
+      bij "elke maand" welke keer (1e, 2e, 3e, 4e, laatste — meerdere mag),
+      begintijd, eindtijd en een optionele einddatum.
+      **De weekdag wordt niet apart opgeslagen**: die volgt uit de startdatum,
+      zodat die twee elkaar nooit kunnen tegenspreken.
+- [x] **CMS:** "Wanneer" is uit het rijtje *Praktische informatie* gehaald en
+      heeft een eigen blok gekregen, in beide bewerkschermen. Daaronder staat
+      **"Zo komt het in de agenda"** met de eerstvolgende drie keren — zo ziet
+      Margareth meteen of het klopt. De schakelaar "Terugkerend" verdwijnt
+      zodra er een frequentie is gekozen; die volgt dan de keuze.
+- [x] **Tekst op de website** blijft bestaan: wat Margareth zelf typt gaat
+      voor. Laat ze het leeg, dan maakt de site de tekst zelf ("Om de week op
+      vrijdag, van 16:00 tot 18:00 uur"), met een knopje om die over te nemen
+      en aan te passen.
+- [x] **Terugval:** zolang de velden leeg zijn, raadt de site de dag uit de
+      tekst, precies zoals nu. Er valt dus niets om tijdens het invullen.
+      "Wisselend" houdt een item bewust uit de agenda (Soepgroep "4x per jaar",
+      Happy Feet "af te spreken in de WhatsApp-groep").
+- [x] Raakt: `sql/blok4_startdatum_frequentie.sql`, `beheer.html` (beide
+      bewerkschermen + opslaan), `bundle-src/ui.jsx` (het rekenwerk),
+      `bundle-src/other.jsx` (agenda en weekkalender) en
+      `bundle-src/clubjes.jsx`. De homepagina gaat automatisch mee.
+- [x] Getest met proefgegevens, zonder de database aan te raken: Wijkborrel om
+      de week (30 okt, 13 nov, 27 nov, 11 dec — niet 6 en 20 nov), Parklunch 2e
+      en 4e vrijdag (13 en 27 nov, 11 dec), Verhalenclub 2e woensdag (11 nov,
+      9 dec), Warme lunch 1e zondag (1 nov, 6 dec), koffieclub om de week vanaf
+      5 nov (5 en 19 nov, 3 dec, niet daarvoor), laatste vrijdag (27 nov,
+      25 dec, 29 jan) en eenmalig (Walking Dinner 3 april 2027). Geen
+      consolefouten, alle pagina's nagelopen.
+- [ ] **Giovanny:** `sql/blok4_startdatum_frequentie.sql` in Supabase draaien.
+      Tot dat moment toont het CMS een waarschuwing bij het blok en gaan de
+      velden niet mee bij opslaan — de rest blijft gewoon werken.
+- [ ] **Margareth:** eenmalig invullen bij de bestaande items (19 activiteiten,
+      8 buurtinitiatieven). Daarna is het raden uit de tekst nergens meer nodig.
+- [ ] Vraag die hiermee ook te beantwoorden is: de Wijkborrel-week en de
+      Verhalenclub-woensdag stonden nog open — met een startdatum is dat klaar.
 
 ### Blok 5 — Voorzieningen-pagina
 - [ ] Een eigen pagina zoals Buurtinitiatieven en Activiteiten: eigen tabel,
