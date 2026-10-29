@@ -1523,9 +1523,12 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       Nagemaakt: op één adres staan dertien activiteiten, het venster werd
       daardoor zo hoog dat de kaart er flink onder wegsprong. Het venster
       heeft nu een maximumhoogte (de lijst scrolt er zelf in), waardoor de
-      kaart nog maar een klein stukje meebeweegt. Helemaal stilzetten kan ook,
-      maar dan valt het venster bij een stip bovenaan buiten beeld — zeg het
-      als je dat liever hebt. Geldt voor Activiteiten én Buurtinitiatieven.
+      kaart nog maar een klein stukje meebeweegt. **Daarbovenop (Giovanny):
+      per vijf items een kolom erbij** — dertien activiteiten worden 5, 5 en 3
+      naast elkaar, dus alles staat in beeld zonder scrollen en het venster
+      blijft laag. Past het niet naast elkaar (telefoon, kaart 335 px breed),
+      dan wordt het automatisch één kolom. Geldt voor Activiteiten én
+      Buurtinitiatieven.
       *Oorspronkelijk:* **Kaart verspringt bij veel activiteiten op één punt.** Te onderzoeken:
       waarschijnlijk springt de kaart naar het midden van de verzamelstip bij
       het openklappen. Eerst namaken, dan pas repareren.
