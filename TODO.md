@@ -1471,8 +1471,20 @@ uit haar mail.
     per persoon én per aanmelding, en de Excel krijgt een kolom per vraag:
     de persoonsvraag op elke regel, de aanmeldingsvraag alleen op de eerste.
     Proefgegevens daarna verwijderd.
-  - Nog te doen: het aanmeldformulier op de site, en daarna Mollie (sleutel
-    via Armando, webhook als Supabase Edge Function).
+  - **Site (27-10):** een apart aanmeldformulier voor betaalde activiteiten —
+    aantal personen, per persoon de eigen vragen, bedrag met servicekosten,
+    en de prijs plus deadline bij de gegevens. Gratis activiteiten en
+    buurtinitiatieven houden het gewone formulier.
+  - **Verborgen achter een schakelaar (29-10).** `TIB_BETALEN_AAN` staat op
+    `false` in `beheer.html` én in `bundle-src/detail.jsx`. Daardoor ziet
+    Margareth in het CMS geen blok Betalen en geen tabbladen Deelnemers en
+    Checklist, en krijgt elke activiteit op de site het gewone
+    aanmeldformulier — ook als er in de database `betaald = true` staat.
+    Zo kon blok 1 wél live zonder dat deze halve functie zichtbaar werd.
+    **Aanzetten:** beide regels op `true`, `node tools/tib-bundle.mjs encode`,
+    pushen.
+  - Nog te doen: Mollie (sleutel via Armando, webhook als Supabase Edge
+    Function), bevestigingsmail, en de schakelaar aanzetten.
 - **Besluit 7:** doneerpagina snel oplossen met de bestaande Donorbox-link, en
   iDEAL pas bouwen als Armando's kant rond is? Dan heeft Margareth volgende
   week al een werkende doneerknop.

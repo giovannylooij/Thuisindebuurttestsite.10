@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.213', datum: '29-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.215', datum: '29-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -2189,6 +2189,13 @@ window.ClubjesScreen = ClubjesScreen;
    De koppeling met Mollie zit hier nog niet in; de beheerder zet de
    betaalstatus voorlopig met de hand. */
 
+// Eén schakelaar voor de hele betaalfunctie. Staat hij uit, dan ziet de
+// beheerder er niets van: geen blok Betalen, geen tabbladen Deelnemers en
+// Checklist. De code blijft wel staan — op `true` zetten, opnieuw bouwen en
+// pushen is genoeg om hem aan te zetten. (Zelfde schakelaar op de site:
+// TIB_BETALEN_AAN in detail.jsx.)
+const TIB_BETALEN_AAN = false;
+
 const TIB_BETAAL_VELDEN = [
   'betaald', 'prijs', 'servicekosten', 'max_personen', 'plekken', 'aanmelden_tot',
   'vraag_dieet', 'vraag_adres', 'vraag_telefoon', 'vraag_opmerking', 'betaalmethodes',
@@ -2796,7 +2803,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
         </>}
       />
 
-      {bestaat && fd.betaald && betaalKolommen !== false && (
+      {TIB_BETALEN_AAN && bestaat && fd.betaald && betaalKolommen !== false && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
           {[['gegevens', 'Gegevens'], ['deelnemers', 'Deelnemers'], ['checklist', 'Checklist']].map(([id, label]) => (
             <button key={id} className="btn btn-sm" onClick={() => setTab(id)}
@@ -2807,10 +2814,10 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
         </div>
       )}
 
-      {tab === 'deelnemers' && <BetaalDeelnemers activiteit={fd} />}
-      {tab === 'checklist' && <BetaalChecklist activiteit={fd} />}
+      {TIB_BETALEN_AAN && tab === 'deelnemers' && <BetaalDeelnemers activiteit={fd} />}
+      {TIB_BETALEN_AAN && tab === 'checklist' && <BetaalChecklist activiteit={fd} />}
 
-      {tab === 'gegevens' && (
+      {(!TIB_BETALEN_AAN || tab === 'gegevens') && (
       <div className="form-grid">
         {/* Main */}
         <div>
@@ -2851,6 +2858,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
             <Toggle on={fd.herhalend !== false} label="Terugkerend" sub="Activiteit herhaalt wekelijks of maandelijks" onChange={v => up('herhalend', v)} />
           </div>
 
+          {TIB_BETALEN_AAN && (
           <div className="form-section">
             <h3>Betalen</h3>
             <div className="sec-sub">Staat dit uit, dan werkt aanmelden zoals altijd: zonder bedrag en zonder betaalstap.</div>
@@ -2928,6 +2936,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
               </>
             )}
           </div>
+          )}
 
           <div className="form-section">
             <h3>Contact</h3>
