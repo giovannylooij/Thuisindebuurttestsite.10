@@ -1495,6 +1495,78 @@ uit haar mail.
 
 ---
 
+## 🗓️ Gesprek met Margareth — 23 oktober 2026 *(nieuwe punten, nog niets gebouwd)*
+
+Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
+
+### Blok 1 — Kleine zichtbare dingen
+- [ ] **Voorzieningen uit de Buurtatlas.** Let op: die voorzieningen zijn
+      *verzonnen demodata* die in de code staat (`buurtatlas.jsx`, o.a.
+      "Boekhandel De Vries", "Restaurant De Pier"). Ze komen nergens uit de
+      database. Weghalen is dus eenvoudig én het haalt nepinformatie van de
+      site af.
+- [ ] **Evenement-bolletje eruit** (agenda). Nu zijn er drie kleuren:
+      activiteit oranje, buurtinitiatief paars, evenement groen. Vraag: gaan
+      de losse agenda-items (evenementen) helemaal weg, of blijven ze staan
+      met dezelfde kleur als een activiteit?
+- [ ] **Kaart verspringt bij veel activiteiten op één punt.** Te onderzoeken:
+      waarschijnlijk springt de kaart naar het midden van de verzamelstip bij
+      het openklappen. Eerst namaken, dan pas repareren.
+
+### Blok 2 — Teksten en links
+- [ ] **Links klikbaar maken in de teksten.** Alle teksten uit het CMS zijn nu
+      platte tekst; typt Margareth er een adres in, dan is het niet aan te
+      klikken. Oplossing: webadressen en e-mailadressen automatisch herkennen
+      en als link tonen — in de paginateksten, de omschrijvingen van
+      activiteiten en buurtinitiatieven, en het nieuws. Geen opmaakknoppen
+      nodig, dus klein werk.
+- [ ] **Doe mee: het groene blok "Wat gebeurt er daarna?" beheerbaar maken.**
+      Staat nu vast in `other.jsx` (kop, vier stappen, de mailregel). Gaat via
+      dezelfde weg als blok A: rijen in `pagina_teksten`, een veld per stap.
+
+### Blok 3 — CMS werkend maken
+- [ ] **Partners-scherm werkt niet.** Het scherm schrijft wél naar de database
+      (`__supabaseUpsert('partners', ...)`), dus het is geen localStorage-
+      probleem zoals bij het menu. Navragen bij Margareth: wat gaat er precies
+      mis — opslaan, een foutmelding, of komt het niet op de site?
+- [ ] **Agenda-kleuren instelbaar in het CMS.** Nu vast in de code
+      (`#E07A3A` activiteit, `#8E44AD` buurtinitiatief, groen evenement).
+      Vraag: per soort, of per categorie? Past bij het scherm Huisstijl.
+- [ ] **Sleepvolgorde voor activiteiten en buurtinitiatieven.** Vraagt een
+      kolom `volgorde` (zoals `site_navigatie` die heeft) plus slepen in het
+      CMS. Buurtinitiatieven hebben al een veld `uitgelicht`; activiteiten
+      niet. Vraag: gaat het om de volgorde van álle kaartjes, of om één item
+      bovenaan zetten?
+
+### Blok 4 — Startdatum en frequentie *(de belangrijkste)*
+- [ ] Per activiteit en buurtinitiatief een **startdatum** en een **frequentie**
+      (wekelijks, om de week, maandelijks, hoeveelste dag van de maand), in
+      plaats van de vrije tekst "wanneer".
+- Dit is precies wat de agenda mist: nu wordt de tekst geraden, en daarom
+  staat de Wijkborrel mogelijk op de verkeerde week en missen de Soepgroep en
+  Happy Feet helemaal. Met echte velden klopt de agenda altijd.
+- Raakt: database, CMS (beide schermen), de agenda, de homepagina en de
+  weekkalender. Margareth moet bij de bestaande items eenmalig invullen.
+
+### Blok 5 — Voorzieningen-pagina
+- [ ] Een eigen pagina zoals Buurtinitiatieven en Activiteiten: eigen tabel,
+      eigen CMS-scherm, kaart, filters en detailpagina.
+- Vragen: welke gegevens (naam, adres, telefoon, website, openingstijden,
+  categorie)? Wie vult ze? Komen ze ook op de Buurtatlas-kaart terug — want
+  die haalt Margareth er nu juist uit?
+
+### Volgorde die ik voorstel
+1. Blok 1 (klein en meteen zichtbaar, en weg met de nepdata)
+2. Blok 2 (links en het groene blok — kleine klussen met veel effect)
+3. Blok 4 (startdatum en frequentie — hier hangt de agenda van af)
+4. Blok 3 (CMS: partners, kleuren, slepen)
+5. Blok 5 (voorzieningen — nieuw onderdeel, het meeste werk)
+
+De betaalfunctie loopt hier dwars doorheen; die ligt stil tot de Mollie-sleutel
+er is.
+
+---
+
 ## 💾 Wekelijkse back-up van de database *(plan, 5 oktober 2026)*
 
 **Waarom:** nu bestaat er alleen een handmatige knop in het CMS. Gaat er iets
