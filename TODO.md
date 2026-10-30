@@ -1570,6 +1570,14 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       dezelfde weg als blok A: rijen in `pagina_teksten`, een veld per stap.
 
 ### Blok 3 — CMS werkend maken
+- [ ] **Nieuw buurtinitiatief aanmaken mislukt** *(gevonden 30-10 tijdens het
+      testen van blok 4).* Klik je op "Nieuw buurtinitiatief" en sla je op, dan
+      komt er soms "Opslaan mislukt". De teller die het volgende id uitdeelt
+      loopt achter op het hoogste bestaande id (stond op 27, hoogste id is 34),
+      dus de database weigert de rij. Staat los van blok 4 — bestaande items
+      opslaan werkt gewoon. Oplossing ligt klaar:
+      **`sql/id_teller_herstellen.sql`** (Giovanny draaien).
+      Mogelijk is dit ook wat er bij het Partners-scherm misgaat.
 - [ ] **Partners-scherm werkt niet.** Het scherm schrijft wél naar de database
       (`__supabaseUpsert('partners', ...)`), dus het is geen localStorage-
       probleem zoals bij het menu. Navragen bij Margareth: wat gaat er precies
@@ -1618,9 +1626,17 @@ Margareth. Nog niet gepusht.**
       5 nov (5 en 19 nov, 3 dec, niet daarvoor), laatste vrijdag (27 nov,
       25 dec, 29 jan) en eenmalig (Walking Dinner 3 april 2027). Geen
       consolefouten, alle pagina's nagelopen.
-- [ ] **Giovanny:** `sql/blok4_startdatum_frequentie.sql` in Supabase draaien.
-      Tot dat moment toont het CMS een waarschuwing bij het blok en gaan de
-      velden niet mee bij opslaan — de rest blijft gewoon werken.
+- [x] **SQL gedraaid (30-10).** Alle twaalf kolommen staan in de database.
+      Daarna met Giovanny ingelogd getest in het echte CMS: bij een activiteit
+      (testt, id 29 — elke 2e en 4e woensdag, 19:00–21:00) en bij een
+      buurtinitiatief (proefrij id 28 — om de week vanaf vrijdag 6 november,
+      16:00–18:00, tot en met 31 december) staan alle velden goed in de
+      database. De controle in de database weigert een onzinwaarde, en kiest
+      Margareth "Nog niet ingevuld", dan komt er leeg in de database te staan
+      (niet een lege tekst, waar de controle op zou struikelen).
+- [ ] **Opruimen:** proefrij `clubjes` id 28 ("Proef blok 4 (mag weg)",
+      Concept, staat niet op de site) en de velden bij activiteit 29 ("testt")
+      mogen weg zodra Giovanny dat zegt.
 - [ ] **Margareth:** eenmalig invullen bij de bestaande items (19 activiteiten,
       8 buurtinitiatieven). Daarna is het raden uit de tekst nergens meer nodig.
 - [ ] Vraag die hiermee ook te beantwoorden is: de Wijkborrel-week en de
