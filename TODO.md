@@ -1705,7 +1705,15 @@ Margareth vult ze in. En ja, ze komen óók op de Buurtatlas.
 - [x] Getest zonder dat de tabel bestaat: de site toont een nette uitleg in
       plaats van een gat, en het CMS-scherm meldt dat de SQL nog moet lopen.
       Geen consolefouten.
-- [ ] **Giovanny:** `sql/blok5_voorzieningen.sql` draaien.
+- [x] **SQL gedraaid (30-10).** De tabel staat er, de menuregel ook (op
+      verborgen). Daarna met Giovanny ingelogd de hele keten getest: in het CMS
+      een proefvoorziening aangemaakt met het adresveld (adres → suggestie →
+      coördinaten), die verscheen meteen op de pagina Voorzieningen met de
+      juiste filterknop, als stip op de Buurtatlas ("Voorzieningen · 1"), en de
+      detailpagina toonde alle gegevens met een werkende telefoon- en
+      websitelink. Proefrij daarna weer verwijderd; de tabel is weer leeg.
+      Meegefikst: de omschrijving op de detailpagina werd twee keer door de
+      link-omzetter gehaald en toonde ",[object Object],".
 - [ ] **Margareth:** de eerste voorzieningen invullen. Advies: begin met een
       stuk of tien die er echt toe doen, kijk of het werkt zoals ze bedoelde,
       en vul daarna pas de rest aan.
