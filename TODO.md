@@ -1638,9 +1638,10 @@ Margareth. Nog niet gepusht.**
       database. De controle in de database weigert een onzinwaarde, en kiest
       Margareth "Nog niet ingevuld", dan komt er leeg in de database te staan
       (niet een lege tekst, waar de controle op zou struikelen).
-- [ ] **Opruimen:** proefrij `clubjes` id 28 ("Proef blok 4 (mag weg)",
-      Concept, staat niet op de site) en de velden bij activiteit 29 ("testt")
-      mogen weg zodra Giovanny dat zegt.
+- [x] **Opgeruimd (30-10):** proefrij `clubjes` id 28 verwijderd en de
+      proefvelden bij activiteit 29 ("testt") weer leeggemaakt — de activiteit
+      zelf blijft staan. In beide tabellen staat nu nergens meer een
+      startdatum of frequentie; Margareth begint met een schone lei.
 - [ ] **Margareth:** eenmalig invullen bij de bestaande items (19 activiteiten,
       8 buurtinitiatieven). Daarna is het raden uit de tekst nergens meer nodig.
 - [ ] Vraag die hiermee ook te beantwoorden is: de Wijkborrel-week en de
