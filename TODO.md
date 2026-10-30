@@ -1649,6 +1649,15 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       `sql/netwerken_herstellen.sql` zet de vier echte netwerken in de
       database en de acht oude regels op onzichtbaar — **er wordt niets
       verwijderd**, dus Margareth beslist zelf of ze weg mogen.
+      **SQL gedraaid en getest (31-10), met Giovanny ingelogd:** het scherm
+      toont de vier echte netwerken als Zichtbaar en de acht oude als
+      Verborgen; een bestaand netwerk aanpassen en opslaan werkt (wijziging
+      stond meteen in de database), een nieuw netwerk aanmaken lukt weer
+      (kreeg vanzelf een id), en verwijderen werkt. De site toont dezelfde
+      vier netwerken als voorheen, met alle regels op het kaartje. Proefrij
+      en proeftekst daarna weer teruggezet.
+      *Nog open:* de acht oude regels mogen weg zodra Giovanny of Margareth
+      dat zegt.
 
 ### Blok 4 — Startdatum en frequentie *(de belangrijkste)*
 
