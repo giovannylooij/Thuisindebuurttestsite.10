@@ -1643,8 +1643,9 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       de tabel leeg of onbereikbaar is), het scherm heeft alle velden die de
       site toont (bijeenkomsten, voor wie, toegankelijkheid, contact, e-mail,
       telefoon) plus een zichtbaarheidsschakelaar, en opslaan wacht op de
-      database en meldt een fout ook echt. Een nieuw netwerk krijgt zelf een
-      sleutel, want de kolom `id` is tekst en vult zichzelf niet.
+      database en meldt een fout ook echt. De kolom `id` is een getal zónder
+      teller — daarom kon het CMS geen nieuw netwerk aanmaken; de SQL zet die
+      teller erbij, net als bij clubjes.
       `sql/netwerken_herstellen.sql` zet de vier echte netwerken in de
       database en de acht oude regels op onzichtbaar — **er wordt niets
       verwijderd**, dus Margareth beslist zelf of ze weg mogen.
