@@ -1718,6 +1718,11 @@ Margareth vult ze in. En ja, ze komen óók op de Buurtatlas.
       blijft het kaartje zoals het was en kun je op de eigen pagina nog steeds
       een foto toevoegen. Vraagt `sql/blok5_voorzieningen_icoon.sql`; tot dat
       moment toont het scherm een uitleg en blijft opslaan werken.
+      **SQL gedraaid (30-10)** en getest met een proefvoorziening: icoon
+      gekozen in het CMS, verscheen op het kaartje en groot op de eigen
+      pagina; zonder icoon blijft alles zoals het was. Proefrij daarna weer
+      verwijderd. Het vlak achter het icoon is crème geworden in plaats van de
+      kleur van het soort: de iconen hebben zelf al een kleur en dat botste.
 - [ ] **Margareth:** de eerste voorzieningen invullen. Advies: begin met een
       stuk of tien die er echt toe doen, kijk of het werkt zoals ze bedoelde,
       en vul daarna pas de rest aan.
