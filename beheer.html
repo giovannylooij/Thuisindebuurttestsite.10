@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.222', datum: '30-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.224', datum: '30-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1270,6 +1270,7 @@ const NAV = [
     { id: "agenda", label: "Agenda", icon: "calendar", count: 7 },
     { id: "nieuws", label: "Nieuws", icon: "news", count: 18 },
     { id: "partners", label: "Partners", icon: "partners" },
+    { id: "voorzieningen", label: "Voorzieningen", icon: "map" },
     { id: "netwerken", label: "Netwerken", icon: "network" },
     { id: "doneren", label: "Doneren & Boek", icon: "heart" },
     { id: "contact", label: "Contact", icon: "mail" },
@@ -1308,7 +1309,7 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
     redactie: ['gebruikers', 'huisstijl', 'domein'],
     beheerder: ['clubjes', 'activiteiten', 'agenda', 'nieuws', 'partners',
                 'netwerken', 'buurtatlas', 'categorieen', 'media', 'menu',
-                'gebruikers', 'huisstijl', 'domein'],
+                'voorzieningen', 'gebruikers', 'huisstijl', 'domein'],
   };
   const hidden = HIDDEN[role] || [];
   const visibleNav = NAV.map(group => ({
@@ -4046,7 +4047,12 @@ const TIB_TEKST_PAGINAS = [
   { id: 'buurtatlas', label: 'Buurtatlas', velden: [
     { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Buurtatlas' },
     { sleutel: 'titel', label: 'Titel', standaard: 'Alles in de wijk, op één kaart.' },
-    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Buurtinitiatieven, activiteiten en partners in de wijk, bij elkaar op één kaart. Klik op een stip voor meer informatie.' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Buurtinitiatieven, activiteiten, partners en voorzieningen in de wijk, bij elkaar op één kaart. Klik op een stip voor meer informatie.' },
+  ]},
+  { id: 'voorzieningen', label: 'Voorzieningen', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Voorzieningen' },
+    { sleutel: 'titel', label: 'Titel', standaard: 'Wat er in de wijk is.' },
+    { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Van de huisarts tot het buurthuis: hier vind je de plekken in Noordelijk Scheveningen waar je terechtkunt. Klik op een stip in de kaart voor meer informatie.' },
   ]},
   { id: 'partners', label: 'Partners', velden: [
     { sleutel: 'eyebrow', label: 'Klein kopje', standaard: 'Partners' },
@@ -4440,6 +4446,234 @@ function PartnerEdit({ item, onBack }) {
           </div>
         </div>
       </div>
+    </>
+  );
+}
+
+/* === Voorzieningen (blok 5) ===
+   Wat er in de wijk is: huisarts, apotheek, buurthuis. Staat in de eigen tabel
+   `voorzieningen` (sql/blok5_voorzieningen.sql). Komt op een eigen pagina én
+   als stip op de Buurtatlas. */
+const TIB_VOORZIENING_SOORTEN = [
+  { id: 'Zorg',      kleur: '#e53935' },
+  { id: 'Winkels',   kleur: '#f57c00' },
+  { id: 'Buurthuis', kleur: '#1faa59' },
+  { id: 'Overheid',  kleur: '#1a73e8' },
+  { id: 'Vervoer',   kleur: '#8e44d6' },
+  { id: 'Onderwijs', kleur: '#2f6db5' },
+  { id: 'Overig',    kleur: '#7a7363' },
+];
+function tibSoortKleur(soort) {
+  const hit = TIB_VOORZIENING_SOORTEN.find(s => s.id === soort);
+  return hit ? hit.kleur : '#7a7363';
+}
+
+function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
+  const leeg = {
+    naam: '', soort: 'Overig', omschrijving: '', adres: '', lat: null, lng: null,
+    telefoon: '', website: '', openingstijden: '', zichtbaar: true, volgorde: 0,
+  };
+  const [fd, setFd] = React.useState(() => ({ ...leeg, ...(item || {}) }));
+  const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
+  const [bezig, setBezig] = React.useState(false);
+  const bestaat = fd.id != null;
+  const toast = (t) => window.__showToast && window.__showToast(t);
+
+  async function opslaan() {
+    if (bezig) return;
+    if (!String(fd.naam || '').trim()) { toast('Vul een naam in.'); return; }
+    setBezig(true);
+    const rij = {
+      naam: String(fd.naam).trim(),
+      soort: fd.soort || 'Overig',
+      omschrijving: fd.omschrijving || null,
+      adres: fd.adres || null,
+      lat: __getalOfNull(fd.lat),
+      lng: __getalOfNull(fd.lng),
+      telefoon: fd.telefoon || null,
+      website: fd.website || null,
+      openingstijden: fd.openingstijden || null,
+      zichtbaar: fd.zichtbaar !== false,
+      volgorde: fd.volgorde || 0,
+      bijgewerkt_op: new Date().toISOString(),
+    };
+    const res = bestaat
+      ? await window.supabase.from('voorzieningen').update(rij).eq('id', fd.id).select().single()
+      : await window.supabase.from('voorzieningen').insert(rij).select().single();
+    setBezig(false);
+    if (res.error) { toast('Opslaan mislukt: ' + res.error.message); return; }
+    toast('Voorziening opgeslagen!');
+    onOpgeslagen && onOpgeslagen();
+    onBack();
+  }
+
+  async function verwijder() {
+    if (!window.confirm('Voorziening "' + fd.naam + '" definitief verwijderen?')) return;
+    const { error } = await window.supabase.from('voorzieningen').delete().eq('id', fd.id);
+    if (error) { toast('Verwijderen mislukt: ' + error.message); return; }
+    toast('Voorziening verwijderd');
+    onOpgeslagen && onOpgeslagen();
+    onBack();
+  }
+
+  return (
+    <>
+      <PageHead
+        title={fd.naam || 'Nieuwe voorziening'}
+        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar voorzieningen</a></>}
+        actions={<>
+          {bestaat && <button className="btn btn-ghost btn-danger" onClick={verwijder}><Icon name="trash" size={14} /> Verwijderen</button>}
+          <button className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>
+        </>}
+      />
+      <div className="form-grid">
+        <div>
+          <div className="form-section">
+            <h3>Gegevens</h3>
+            <div className="sec-sub">Dit staat op de pagina Voorzieningen en in het venster op de Buurtatlas.</div>
+            <Field label="Naam"><input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} placeholder="bijv. Apotheek Duinstraat" /></Field>
+            <Field label="Soort" hint="Bepaalt de kleur van de stip en de knop waarmee bezoekers filteren.">
+              <select value={fd.soort || 'Overig'} onChange={e => up('soort', e.target.value)}>
+                {TIB_VOORZIENING_SOORTEN.map(s => <option key={s.id} value={s.id}>{s.id}</option>)}
+              </select>
+            </Field>
+            <Field label="Omschrijving" hint="Eén of twee zinnen. Een webadres of e-mailadres wordt vanzelf klikbaar.">
+              <textarea rows={3} value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} />
+            </Field>
+            <div className="row-2">
+              <Field label="Openingstijden" hint="Vrije tekst, bijvoorbeeld: ma–vr 08:30–17:30.">
+                <input type="text" value={fd.openingstijden || ''} onChange={e => up('openingstijden', e.target.value)} />
+              </Field>
+              <Field label="Telefoon (optioneel)">
+                <input type="tel" value={fd.telefoon || ''} onChange={e => up('telefoon', e.target.value)} />
+              </Field>
+            </div>
+            <Field label="Website (optioneel)">
+              <input type="text" value={fd.website || ''} onChange={e => up('website', e.target.value)} placeholder="bijv. apotheekduinstraat.nl" />
+            </Field>
+          </div>
+
+          <div className="form-section">
+            <h3>Locatie op de kaart</h3>
+            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Zonder coördinaten verschijnt de voorziening wel in de lijst, maar niet op de kaart.</div>
+            <Field label="Adres">
+              <AdresVeld
+                value={fd.adres || ''}
+                onChange={v => up('adres', v)}
+                onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
+              />
+            </Field>
+            <div className="row-2">
+              <Field label="Latitude">
+                <input type="number" step="0.0001" value={fd.lat != null ? fd.lat : ''} onChange={e => up('lat', __getalOfNull(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+              </Field>
+              <Field label="Longitude">
+                <input type="number" step="0.0001" value={fd.lng != null ? fd.lng : ''} onChange={e => up('lng', __getalOfNull(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+              </Field>
+            </div>
+            {(fd.lat && fd.lng) && <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} />}
+          </div>
+        </div>
+        <div>
+          <div className="side-card">
+            <h4>Zichtbaarheid</h4>
+            <Toggle on={fd.zichtbaar !== false} label="Zichtbaar op website" sub="Toon op de pagina Voorzieningen en op de Buurtatlas" onChange={v => up('zichtbaar', v)} />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function VoorzieningenScreen() {
+  const [rijen, setRijen] = React.useState(null);
+  const [zoek, setZoek] = React.useState('');
+  const [soortFilter, setSoortFilter] = React.useState('alle');
+  const [bewerken, setBewerken] = React.useState(null); // 'nieuw' | rij | null
+  // null = nog niet gekeken, false = sql/blok5_voorzieningen.sql is nog niet gedraaid
+  const [tabelBestaat, setTabelBestaat] = React.useState(null);
+
+  async function laad() {
+    const { data, error } = await window.supabase.from('voorzieningen').select('*')
+      .order('volgorde', { ascending: true }).order('naam', { ascending: true });
+    if (error) { setTabelBestaat(false); setRijen([]); return; }
+    setTabelBestaat(true);
+    setRijen(data || []);
+  }
+  React.useEffect(() => { laad(); }, []);
+
+  if (bewerken) {
+    return <VoorzieningEdit
+      item={bewerken === 'nieuw' ? null : bewerken}
+      onBack={() => setBewerken(null)}
+      onOpgeslagen={laad}
+    />;
+  }
+
+  const lijst = (rijen || [])
+    .filter(v => soortFilter === 'alle' || v.soort === soortFilter)
+    .filter(v => !zoek || [v.naam, v.adres, v.omschrijving].some(x => x && x.toLowerCase().includes(zoek.toLowerCase())));
+
+  return (
+    <>
+      <PageHead
+        title="Voorzieningen"
+        sub="Wat er in de wijk is: de huisarts, de apotheek, het buurthuis. Ze komen op een eigen pagina en als stip op de Buurtatlas."
+        actions={tabelBestaat !== false && <button className="btn btn-primary" onClick={() => setBewerken('nieuw')}><Icon name="plus" size={14} /> Nieuwe voorziening</button>}
+      />
+
+      {tabelBestaat === false && (
+        <HintCard variant="warn" icon="warn" style={{ marginBottom: 16 }}>
+          Dit scherm werkt pas nadat <strong>sql/blok5_voorzieningen.sql</strong> in Supabase is uitgevoerd.
+        </HintCard>
+      )}
+
+      {tabelBestaat && (
+        <>
+          <div className="chip-row" style={{ marginBottom: 14, gap: 8, alignItems: 'center', flexWrap: 'wrap', display: 'flex' }}>
+            <input type="text" value={zoek} onChange={e => setZoek(e.target.value)} placeholder="Zoeken op naam of adres…" style={{ maxWidth: 260 }} />
+            <button className={'btn btn-sm' + (soortFilter === 'alle' ? ' btn-primary' : '')} onClick={() => setSoortFilter('alle')}>Alle</button>
+            {TIB_VOORZIENING_SOORTEN.map(s => (
+              <button key={s.id} className={'btn btn-sm' + (soortFilter === s.id ? ' btn-primary' : '')} onClick={() => setSoortFilter(s.id)}>{s.id}</button>
+            ))}
+          </div>
+
+          {rijen === null ? (
+            <p style={{ color: 'var(--ink-soft)' }}>Bezig met laden…</p>
+          ) : lijst.length === 0 ? (
+            <HintCard icon="info">
+              {rijen.length === 0
+                ? 'Nog geen voorzieningen. Klik rechtsboven op "Nieuwe voorziening" om de eerste toe te voegen. Zolang er niets staat, blijft de pagina op de website verborgen.'
+                : 'Geen voorzieningen gevonden met deze zoekopdracht.'}
+            </HintCard>
+          ) : (
+            <div className="card">
+              <table className="table">
+                <thead><tr><th>Naam</th><th>Soort</th><th>Adres</th><th>Op de kaart</th><th>Zichtbaar</th></tr></thead>
+                <tbody>
+                  {lijst.map(v => (
+                    <tr key={v.id} onClick={() => setBewerken(v)} style={{ cursor: 'pointer' }}>
+                      <td style={{ fontWeight: 600 }}>{v.naam}</td>
+                      <td><span className="badge" style={{ background: tibSoortKleur(v.soort), color: 'white' }}>{v.soort}</span></td>
+                      <td>{v.adres || '—'}</td>
+                      <td>{v.lat != null && v.lng != null
+                        ? <Icon name="check" size={14} style={{ color: 'var(--accent-2)' }} />
+                        : <span style={{ color: 'var(--ink-soft)' }}>geen locatie</span>}</td>
+                      <td><Pill variant={v.zichtbaar !== false ? 'published' : 'draft'}>{v.zichtbaar !== false ? 'Zichtbaar' : 'Verborgen'}</Pill></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {rijen && rijen.length > 0 && (
+            <div className="hint" style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 10 }}>
+              Staat de pagina nog niet in het menu van de website? Zet hem aan bij <strong>Navigatie</strong>.
+            </div>
+          )}
+        </>
+      )}
     </>
   );
 }
@@ -5123,7 +5357,7 @@ function ContactScreen() {
   );
 }
 
-Object.assign(window, { PagesScreen, PartnersScreen, NetwerkenScreen, DonerenScreen, ContactScreen });
+Object.assign(window, { PagesScreen, PartnersScreen, NetwerkenScreen, DonerenScreen, ContactScreen, VoorzieningenScreen });
 
 /* === screens/manage.jsx === */
 // Categorieën, Media, Navigatie
@@ -5608,6 +5842,7 @@ const TIB_MENU_PAGINAS = [
   { target: '/activiteiten', label: 'Activiteiten' },
   { target: '/agenda', label: 'Agenda' },
   { target: '/buurtatlas', label: 'Buurtatlas' },
+  { target: '/voorzieningen', label: 'Voorzieningen' },
   { target: '/partners', label: 'Partners' },
   { target: '/netwerken', label: 'Netwerken' },
   { target: '/nieuws', label: 'Nieuws' },
@@ -7649,6 +7884,7 @@ function App() {
     agenda: { crumbs: ['Agenda'], render: () => <AgendaScreen /> },
     nieuws: { crumbs: ['Nieuws'], render: () => <NieuwsScreen /> },
     partners: { crumbs: ['Partners'], render: () => <PartnersScreen /> },
+    voorzieningen: { crumbs: ['Voorzieningen'], render: () => <VoorzieningenScreen /> },
     netwerken: { crumbs: ['Netwerken'], render: () => <NetwerkenScreen /> },
     doneren: { crumbs: ['Doneren & Boek'], render: () => <DonerenScreen /> },
     contact: { crumbs: ['Contact'], render: () => <ContactScreen /> },

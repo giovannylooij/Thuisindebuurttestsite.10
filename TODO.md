@@ -1677,6 +1677,536 @@ Margareth. Nog niet gepusht.**
       Verhalenclub-woensdag stonden nog open — met een startdatum is dat klaar.
 
 ### Blok 5 — Voorzieningen-pagina
+
+**Status: gebouwd (30-10). Wacht op `sql/blok5_voorzieningen.sql` en daarna op
+Margareth om ze in te vullen. Nog niet gepusht.**
+
+Antwoorden Giovanny (30-10): velden naam, adres, website (mag leeg),
+openingstijden en omschrijving — telefoon heb ik er als extra bij gezet.
+Margareth vult ze in. En ja, ze komen óók op de Buurtatlas.
+
+- [x] **Eigen tabel** `voorzieningen` met soort, omschrijving, adres,
+      coördinaten, telefoon, website, openingstijden, zichtbaar en volgorde.
+      Lezen mag iedereen, schrijven alleen wie is ingelogd.
+- [x] **CMS-scherm** "Voorzieningen" onder Inhoud: zoeken, filteren op soort,
+      en een bewerkscherm met hetzelfde adresveld als bij partners — typ het
+      adres, kies de suggestie, en de pin springt naar die plek.
+- [x] **Eigen pagina** op de site met kaart, filterknoppen per soort en een
+      lijst; plus een detailpagina per voorziening.
+- [x] **Op de Buurtatlas** een vierde knop "Voorzieningen", met een stip per
+      plek. Dit zijn echte gegevens uit het CMS, niet de tien verzonnen
+      voorbeelden die er bij blok 1 uit zijn gehaald.
+- [x] **Soort** is een vaste lijst (Zorg, Winkels, Buurthuis, Overheid,
+      Vervoer, Onderwijs, Overig). Vrije tekst zou tot "Zorg", "zorg" en
+      "Gezondheid" naast elkaar leiden.
+- [x] **De pagina begint verborgen** in het menu. Zo staat er niets op de site
+      zolang er nog geen voorzieningen zijn ingevuld; Margareth zet hem aan
+      bij Navigatie zodra ze klaar is.
+- [x] Getest zonder dat de tabel bestaat: de site toont een nette uitleg in
+      plaats van een gat, en het CMS-scherm meldt dat de SQL nog moet lopen.
+      Geen consolefouten.
+- [ ] **Giovanny:** `sql/blok5_voorzieningen.sql` draaien.
+- [ ] **Margareth:** de eerste voorzieningen invullen. Advies: begin met een
+      stuk of tien die er echt toe doen, kijk of het werkt zoals ze bedoelde,
+      en vul daarna pas de rest aan.
+- [ ] Daarna de pagina aanzetten bij Navigatie.
+
+### Volgorde die ik voorstel
+1. ~~G1, G6/G7, G8, G10~~ — live (commit `67cd8ef`)
+2. ~~G2, G3, G5~~ — live (commit `35e8ec7`), live gecontroleerd:
+   introtekst 1124px op alle pagina's, korte zin nog 1x op de detailpagina,
+   CMS-lijsten 8 en 13 eigen icoontjes, 0 blauwe, geen consolefouten
+3. ~~G9~~ — live (commit `3687fb7`)
+4. G11 kleuren, daarna G13 iconen uploaden
+5. G14/G15 (CMS-schermen die niets doorsturen)
+6. G12 meerdere categorieën, als aparte klus
+
+---
+
+## 🗓️ Gesprek met Margareth — 16 oktober 2026 *(nieuw werk, nog niets gebouwd)*
+
+Zeven punten uit het gesprek en haar mail, gebundeld in vier blokken. Per blok
+staat wat er nu is, wat eraan moet gebeuren en welke besluiten er eerst nodig
+zijn. Nog niets van dit alles is gebouwd.
+
+### Blok A — Teksten zelf kunnen aanpassen *(gebouwd 22-10, wacht op SQL)*
+
+**Besluiten Giovanny (22-10):** alles beheerbaar (pagina's, homepagina en het
+contactblok), platte tekst zoals het nu is, haar tekst wordt letterlijk
+overgenomen (de je/u-schakelaar werkt daar dan niet meer op), alleen
+superadmin, en het komt in het bestaande scherm Pagina's.
+
+- [x] `sql/blokA_pagina_teksten.sql`: tabel `pagina_teksten` (pagina, sleutel,
+      tekst), lezen openbaar, schrijven alleen ingelogd.
+- [x] Website: `tibTekst(pagina, sleutel, standaard)` in `ui.jsx`; elke
+      paginakop, de zes blokken op de homepagina en het contactblok onderaan
+      halen hun tekst daaruit, met de huidige tekst als terugval. Geen rij of
+      een lege tekst = de standaardtekst blijft staan.
+- [x] De tabel wordt los opgehaald en foutbestendig: bestaat hij nog niet, dan
+      blijft de site gewoon werken zonder foutmelding.
+- [x] Twee uitzonderingen met een reden: de titel op de homepagina houdt zijn
+      regelovergang tot ze hem aanpast, en de link naar BNS in de nieuwsintro
+      blijft staan tot die alinea wordt aangepast (staat als waarschuwing in
+      het scherm).
+- [x] CMS: scherm Pagina's opnieuw gebouwd. Links de pagina's, rechts de
+      velden met de huidige tekst als grijze hulptekst, "Terug naar standaard"
+      per veld, opslaan per pagina. Alleen superadmin.
+- [x] Het oude scherm Pagina's is weg: dat toonde verzonnen gegevens
+      ("Herbruikbare secties") en maakte eigen menu-rijen met andere id's dan
+      het scherm Navigatie — die botsing is daarmee opgelost.
+- [x] Lokaal getest: alle pagina's en de footer tonen onveranderd hun tekst,
+      geen foutmelding terwijl de tabel nog niet bestaat, CMS compileert.
+- [x] SQL gedraaid door Giovanny (22-10); lezen met de publieke sleutel werkt,
+      schrijven ermee wordt geweigerd.
+- [x] Samen getest in het echte CMS (22-10), daarna alles teruggedraaid:
+      scherm laadt, titel aangepast → stond op de site, "Terug naar standaard"
+      → oorspronkelijke tekst terug, veld leegmaken doet hetzelfde en haalt de
+      regel uit de database.
+- [x] **Blok A afgerond** (besluit Giovanny 22-10).
+- *Staat nog in de tabel:* `clubjes.intro1`, een eigen proef van Giovanny met
+  exact de standaardtekst. Onschuldig; alleen telt dat veld als "aangepast".
+  Weg te halen met "Terug naar standaard" bij de eerste alinea.
+
+### Oorspronkelijk plan
+Raakt: "bovenste veld (Informatie) op Buurtinitiatieven", "contactblok onderaan
+de site", en punt 1 uit haar mail ("de teksten op de pagina's zelf aanpassen").
+Dit is hetzelfde als punt E uit deel 1, dat al sinds september open staat.
+
+- Nu: alle paginateksten staan vast in de code. De twee alinea's bovenaan
+  Buurtinitiatieven staan in `clubjes.jsx`, het contactblok en de footerteksten
+  in `ui.jsx`. Margareth kan er niets aan veranderen.
+- [ ] Nieuwe tabel voor paginateksten (pagina, sleutel, tekst) + een
+      CMS-scherm waar ze per pagina de kop, de eyebrow en de alinea's bewerkt.
+- [ ] Site leest die teksten, met de huidige tekst als terugval.
+- [ ] Contactblok onderaan (footer): e-mailadres, de regel eronder, de
+      social-link, en de kolommen.
+- **Besluit 1:** welke teksten mag ze aanpassen? Voorstel: per pagina de
+  eyebrow, de h1 en de introalinea's, plus het footerblok. Niet de knoppen,
+  labels en formuliertekst — daar hangt logica aan.
+- **Besluit 2:** opmaak toestaan (vet, link, opsomming) of alleen platte
+  tekst? Vet en links kosten een kleine editor; platte tekst is zo klaar.
+- **Risico:** het bestaande scherm "Pagina's" schrijft nu nog naar de browser
+  én maakt eigen rijen in `site_navigatie` met andere id's dan het scherm
+  Navigatie. Dat moet gelijkgetrokken worden, anders krijgen we dubbele
+  menu-items.
+
+### Blok B — Agenda opnieuw opbouwen
+Raakt: "ActiviteitKalender weg", "lijst eronder weg", "onderscheid eenmalig en
+terugkerend weg", "agenda wordt buurtinitiatief en activiteit", en punt 4 uit
+haar mail (doorlopende agenda, alles automatisch erin).
+
+- Nu: de Agenda toont een weekkalender, daaronder twee kolommen (Eenmalige
+  Activiteiten en Terugkerende Activiteiten). Buurtinitiatieven staan er
+  helemaal niet in.
+- [ ] Weekkalender eraf.
+- [x] **Stap 1 (22-10): de twee kolommen zijn eraf.** "Eenmalige
+      Activiteiten", "Terugkerende Activiteiten" en de knop "Toon afgelopen
+      evenementen" staan niet meer op de Agenda; de bijbehorende berekeningen
+      zijn uit de code. De weekkalender staat er nog, dus de pagina is nu kort.
+      De kaartjes (`EenmaligCard` en `TerugkerendCard`) heb ik laten staan,
+      die hergebruiken we in de doorlopende agenda.
+- [x] **Stap 2 (22-10): buurtinitiatieven in de agenda, in eigen kleur.**
+      Toelichting Giovanny: de agenda (de kalender) loopt al door; wat nodig
+      was, is dat buurtinitiatieven er ook in staan, met een eigen kleur.
+      Activiteiten oranje, buurtinitiatieven paars (#8E44AD), losse
+      evenementen groen. De legenda heet nu Activiteit / Buurtinitiatief /
+      Evenement in plaats van Eenmalig / Terugkerend. Alleen gepubliceerde
+      buurtinitiatieven; klikken opent het juiste initiatief.
+- *Grens van de tekstherkenning (gemeten op de echte gegevens):* een
+  buurtinitiatief komt in de kalender als in "wanneer" een weekdag of een
+  echte datum staat. "4x per jaar" en "Af te spreken in de WhatsApp groep"
+  komen er niet in; daarvoor zijn echte herhaalvelden in het CMS nodig
+  (besluit 3, optie a).
+- [x] **Herhaling beter lezen (22-10-2026).** De agenda rekent nu ook met
+      "om de week", met meerdere weken in één tekst en met "per maand":
+      - "Elke 2 weken op vrijdagmiddag" / "om de week" → om de week in plaats
+        van elke week. Welke week dat is, kan niet uit de tekst blijken, dus
+        de agenda rekent vanaf een vaste ankerweek (maandag 19 oktober 2026).
+        Zet Margareth "(vanaf 30 oktober)" in Wanneer, dan telt die week.
+      - "Elke 2e en 4e vrijdag v.d. maand" → nu beide vrijdagen (was alleen
+        de tweede).
+      - "1x per maand op woensdagmiddag" → de eerste woensdag van de maand
+        (stond elke woensdag). Welke woensdag het echt is, weet Margareth;
+        met "elke 2e woensdag" klopt het meteen.
+- [ ] Aan Margareth vragen: valt de Wijkborrel in de week van 19 okt of die
+      van 26 okt, en welke woensdag is de Verhalenclub? Daarna de tekst in het
+      CMS aanvullen (of het anker in ui.jsx een week verzetten).
+- [ ] Besluit: weekkalender zo laten (hij loopt per week door) of alsnog
+      vervangen door een lijstweergave.
+- [x] Onderscheid wordt: buurtinitiatief of activiteit (label en kleur).
+- [x] Buurtinitiatieven verschijnen automatisch in de agenda.
+- **Besluit 3 (het lastigste):** een doorlopende agenda heeft echte datums
+  nodig, maar "wanneer" is nu een vrij tekstveld ("elke dinsdag van 13:30 tot
+  17:00"). Drie opties:
+  (a) in het CMS echte herhaalvelden toevoegen (dag, frequentie, begin- en
+      einddatum) en de agenda rekent de datums uit — netjes, maar Margareth
+      moet bij alle bestaande items eenmalig invullen;
+  (b) de tekst blijven uitlezen zoals nu — werkt bij "elke dinsdag", gaat mis
+      bij alles wat afwijkt;
+  (c) terugkerende items niet per datum herhalen, maar één keer tonen op hun
+      eerstvolgende datum met de tekst erbij.
+  Mijn advies: (a), met (c) als tussenstap zodat de agenda meteen klopt.
+- **Besluit 4:** wat gebeurt er met de losse agenda-items (Informatiebijeen-
+  komst, Parklunch, Buurtfotografen-expositie)? Blijven die als derde soort
+  bestaan, of worden ze voortaan als activiteit ingevoerd?
+- ~~**Besluit 5:** blijft de knop "Kalenderweergave" op de pagina
+  Activiteiten?~~ **Beslist 22-10: weg.** De knop en de weekweergave
+  (`KalenderView`) zijn uit de pagina Activiteiten gehaald; er blijven twee
+  knoppen over, Kaart en Lijst. De weekkalender op de Agenda-pagina staat er
+  nog (die valt onder blok B).
+- **Let op:** veel buurtinitiatieven zijn doorlopend en hebben geen datum. Die
+  vallen zonder besluit 3 buiten de agenda.
+
+### Blok C — Kaart op Activiteiten *(gebouwd 22-10)*
+
+**Besluit Giovanny (22-10):** Buurtinitiatieven houdt zijn eigen kaart; er komt
+alleen een kaart bij op Activiteiten.
+
+- [x] De kaart van Buurtinitiatieven (`ClubjesMap`) geschikt gemaakt voor
+      activiteiten: eigen kopje in het popup-venster en id's als tekst
+      ("a12") in plaats van getallen.
+- [x] Pagina Activiteiten: knop **Kaart** tussen "Per categorie" en
+      "Kalenderweergave", met daaronder een regel hoeveel activiteiten een
+      locatie hebben.
+- [x] Lokaal getest: 13 van de 13 activiteiten op de kaart, popup toont
+      "10 ACTIVITEITEN" op het drukste adres, klikken opent de juiste
+      detailpagina. Buurtinitiatieven ongewijzigd (popup "1 BUURTINITIATIEF",
+      klikken opent het juiste initiatief). Geen consolefouten.
+- [x] Gepusht (commit 8a9758e) en live gecontroleerd: knop Kaart staat er,
+      kaart laadt met 3 stippen voor 13 activiteiten.
+- [x] **Stippen op de kaart lichter (Giovanny, 22-10) — gedaan.** Elke stip
+      krijgt een lichtere tint van zijn eigen kleur (25% naar wit) en de stip
+      voor meerdere items is niet langer grijs maar de hoofdkleur van de
+      huisstijl, 35% lichter (#77aca9 bij de huidige huisstijl). De kleur
+      wordt uit de stylesheet gelezen, dus hij loopt mee als de huisstijl
+      verandert. Lokaal getest op beide kaarten, geen consolefouten.
+- *Oorspronkelijke notitie:* de stippen op de kaart lichter maken.
+- [x] **Activiteiten dezelfde indeling als Buurtinitiatieven (Giovanny,
+      22-10).** Je moest eerst op Kaart klikken; nu staat de kaart meteen
+      open. De pagina heeft dezelfde opbouw gekregen: tipregel, filterknoppen
+      per categorie met rechts Kaart / Lijst / Kalender, de kaart erboven en
+      daaronder "x activiteiten gevonden" met de kaartjes, nog steeds
+      gegroepeerd per categorie (G6 blijft dus staan). Het filter werkt op de
+      kaart én op de lijst tegelijk.
+- [x] Gepusht (commit 118ef38) en live gecontroleerd: kaart staat meteen open,
+      7 filterknoppen, "13 activiteiten gevonden", geen consolefouten.
+- [x] **Filterbalk netjes (Giovanny, 22-10).** Bij Activiteiten viel
+      Kaart/Lijst op een eigen regel linksonder de categorieknoppen. De balk
+      is nu één geheel: knoppen links, Kaart/Lijst rechts op dezelfde regel;
+      past het niet, dan schuift Kaart/Lijst naar de regel eronder maar blijft
+      rechts uitgelijnd. De knoppen in deze balk staan iets krapper, zodat de
+      zeven categorieën van Activiteiten op één regel passen. Zelfde opmaak op
+      Buurtinitiatieven, zodat de twee pagina's gelijk blijven. Getest op
+      breed scherm (beide één regel) en op telefoon (geen horizontale balk).
+- [x] Regel "x van de x activiteiten staan op de kaart" eruit (Giovanny,
+      22-10). Gevolg: staat er bij een activiteit geen locatie, dan valt dat
+      niet meer op. Desgewenst terug te zetten als melding die alleen
+      verschijnt wanneer er iets ontbreekt.
+      Vooral de stip voor meerdere items valt nu uit de toon: die is grijs
+      (`#4a5563`) terwijl één item de kleur van zijn categorie krijgt. Die
+      grijze moet een andere, lichtere kleur worden. Geldt voor de kaart op
+      Buurtinitiatieven én op Activiteiten (dezelfde kaart) — de Buurtatlas
+      heeft zijn eigen stippen, die apart bekijken.
+      Te beslissen: welke kleur wordt het (voorstel: de hoofdkleur van de
+      huisstijl in een lichtere tint), en worden de losse stippen ook lichter
+      of alleen die ene.
+
+### Oorspronkelijk plan blok C
+Punt 3 uit haar mail.
+
+- Nu: de Buurtatlas heeft de goede kaart, met filters en live gegevens uit
+  buurtinitiatieven, activiteiten en partners. Buurtinitiatieven heeft een
+  eigen, simpelere kaart; Activiteiten heeft helemaal geen kaart.
+- ~~De kaart van de Buurtatlas als los onderdeel bruikbaar maken.~~
+- ~~Buurtinitiatieven: die kaart gebruiken, gefilterd op buurtinitiatieven.~~
+- ~~Activiteiten: dezelfde kaart erbij, gefilterd op activiteiten.~~
+- *Achterhaald (22-10):* we hebben niet de Buurtatlas-kaart hergebruikt maar
+  de kaart die Buurtinitiatieven al had. Buurtinitiatieven bleef daardoor
+  ongemoeid en Activiteiten kreeg dezelfde kaart en indeling. Blok C is klaar.
+- **Besluit 6:** vervangt de kaart de huidige kaartweergave op
+  Buurtinitiatieven, of komt hij ernaast?
+- Technisch het makkelijkste blok; de bouwstenen bestaan al.
+
+### Blok D — Betalen: aanmelden, iDEAL en de doneerpagina
+Raakt: "iDEAL bespreken met Armando", "doneerpagina moet het doen" en punt 2
+uit haar mail.
+
+- Nu: de doneerpagina is een demo — je kiest een bedrag en krijgt een melding
+  "in een echte site ga je nu door naar Donorbox". Er gebeurt niets.
+  Aanmelden voor een activiteit kan wel, maar zonder betaling.
+- [ ] Doneerpagina echt laten werken.
+- [ ] Aanmelden voor een betaalde activiteit met doorverwijzing naar betalen.
+- [ ] Bedrag per activiteit in het CMS.
+- [ ] Bevestiging na betaling (vraagt de e-mailkoppeling).
+- **Voor Armando:** hoe deed de oude website dit, en welke rekening of account
+  gebruikt TIB nu? Mollie vraagt een KVK-koppeling; Donorbox heeft TIB mogelijk
+  al.
+- **Plan Giovanny (22-10), uitgesteld — bouwen wanneer hij het zegt.**
+  Eerst de eenvoudige versie zonder betaalkoppeling:
+  - CMS, bij een activiteit: schakelaar "Betaalde activiteit"; staat die aan,
+    dan verschijnen **Bedrag** en **Betaallink** (een link van bv. Mollie,
+    Tikkie of Donorbox).
+  - Website: bedrag bij de gegevens, en na het aanmelden de knop "Nu betalen"
+    met de tekst dat de plek vaststaat zodra de betaling binnen is. Zonder
+    link verandert er niets aan het huidige aanmelden.
+  - CMS, bij Aanmeldingen: kolom **Betaald** die de beheerder zelf aanvinkt
+    (met datum), filter "nog niet betaald", en bedrag + activiteit in de regel
+    zodat het met het bankoverzicht te vergelijken is.
+  - Database: 3 velden op `activiteiten` (betaald, bedrag, betaallink) en 2 op
+    `aanmeldingen` (betaald, betaald_op). Eén SQL-bestand, zoals bij de
+    contactkaarten.
+  - *Grens:* een betaallink meldt niet terug wie betaald heeft, dus het vinkje
+    gaat met de hand. Met een echte Mollie-koppeling gaat dat later vanzelf;
+    de server daarvoor kan een Supabase Edge Function zijn, dus daar is geen
+    nieuwe hosting voor nodig.
+- **Concept gebouwd (25-10), lokaal, niet gepusht.** Eerste stap: het
+  CMS-gedeelte.
+  - `sql/betaalde_activiteiten.sql` — kolommen op `activiteiten` (betaald,
+    prijs, servicekosten, max_personen, plekken, aanmelden_tot, welke vragen,
+    betaalmethodes), kolommen op `aanmeldingen` (personen, deelnemers als
+    jsonb, adres, opmerking, bedrag, betaalstatus, betaald_op, kenmerk,
+    mollie_id) en de nieuwe tabel `activiteit_checklist`. Alleen toevoegen,
+    niets wijzigen of verwijderen; nog niet uitgevoerd.
+  - CMS, bij een activiteit: blok **Betalen** met schakelaar en alle velden,
+    plus tabbladen **Deelnemers** en **Checklist** zodra een activiteit
+    betaald is.
+  - **Deelnemers**: tellingen (aanmeldingen, personen, binnengekomen, nog niet
+    betaald), filters, tabel met wensen per persoon, de betaalstatus met de
+    hand te zetten, en **Download als Excel** — één regel per persoon, zodat
+    de kok de lijst kan aflezen (bibliotheek wordt pas geladen bij exporteren).
+  - **Checklist**: elf punten in drie groepen, per activiteit af te vinken,
+    met voortgangsbalk. Niets gaat automatisch.
+  - Het CMS blijft werken zolang de SQL niet gedraaid is: de schermen leggen
+    uit wat er nog moet gebeuren en het opslaan laat de nieuwe velden weg.
+  - **Samen getest op 25-10 (lokaal, met de SQL uitgevoerd):** proefactiviteit
+    met prijs € 32,50 en € 0,50 servicekosten opgeslagen, drie proefaanmeldingen
+    erin gezet. Tellingen klopten (3 aanmeldingen, 4 personen van 40,
+    € 65,50 binnen, 2 nog niet betaald), status met de hand omgezet →
+    € 98,50 en de filters liepen mee, Excel gedownload en nagekeken: 4 regels
+    uit 3 aanmeldingen, "geen vis" alleen bij de juiste persoon. Checklist
+    afvinken en weer uitvinken werkt, teller loopt mee. Alle proefgegevens
+    daarna verwijderd (19 activiteiten, zoals ervoor).
+  - *Fout gevonden en hersteld tijdens die test:* het CMS schrijft activiteiten
+    weg via een vaste lijst kolommen (`__mapActiviteitenToDb`); de nieuwe
+    betaalvelden zaten daar niet in en werden stil weggegooid. De lijst is
+    aangevuld; de velden gaan alleen mee als zeker is dat de kolommen bestaan.
+  - **Algemeen gemaakt (26-10):** de vaste dieetvraag is eruit. De beheerder
+    stelt per activiteit zelf vragen samen (tekst, soort antwoord, opties, en
+    of de vraag aan iedere deelnemer apart gesteld wordt), met een knop die de
+    dieetvraag als voorbeeld invult. Extra SQL:
+    `sql/betaalde_activiteiten_vragen.sql` (uitgevoerd 27-10).
+  - **Getest op 27-10:** proefactiviteit met twee eigen vragen — "Eet je iets
+    niet?" (meerkeuze, per persoon) en "Hoe kom je?" (één keuze, per
+    aanmelding). Beide goed opgeslagen, de deelnemerslijst toont de antwoorden
+    per persoon én per aanmelding, en de Excel krijgt een kolom per vraag:
+    de persoonsvraag op elke regel, de aanmeldingsvraag alleen op de eerste.
+    Proefgegevens daarna verwijderd.
+  - **Site (27-10):** een apart aanmeldformulier voor betaalde activiteiten —
+    aantal personen, per persoon de eigen vragen, bedrag met servicekosten,
+    en de prijs plus deadline bij de gegevens. Gratis activiteiten en
+    buurtinitiatieven houden het gewone formulier.
+  - **Verborgen achter een schakelaar (29-10).** `TIB_BETALEN_AAN` staat op
+    `false` in `beheer.html` én in `bundle-src/detail.jsx`. Daardoor ziet
+    Margareth in het CMS geen blok Betalen en geen tabbladen Deelnemers en
+    Checklist, en krijgt elke activiteit op de site het gewone
+    aanmeldformulier — ook als er in de database `betaald = true` staat.
+    Zo kon blok 1 wél live zonder dat deze halve functie zichtbaar werd.
+    **Aanzetten:** beide regels op `true`, `node tools/tib-bundle.mjs encode`,
+    pushen.
+  - Nog te doen: Mollie (sleutel via Armando, webhook als Supabase Edge
+    Function), bevestigingsmail, en de schakelaar aanzetten.
+- **Besluit 7:** doneerpagina snel oplossen met de bestaande Donorbox-link, en
+  iDEAL pas bouwen als Armando's kant rond is? Dan heeft Margareth volgende
+  week al een werkende doneerknop.
+- **Let op:** een betaalkoppeling kan niet alleen in de browser; daar hoort een
+  stukje server bij. Dat is nieuw voor dit project en vraagt een keuze over
+  waar dat draait.
+
+### Volgorde die ik voorstel
+1. Blok C (kaart) — klein, zichtbaar resultaat, geen besluiten nodig behalve 6.
+2. Blok B (agenda) — zodra besluit 3, 4 en 5 er zijn.
+3. Blok A (teksten) — grootste klus, maar wel wat Margareth het vaakst vraagt.
+4. Blok D (betalen) — start met de doneerpagina; iDEAL volgt op Armando.
+
+### Nog open van vóór het gesprek
+- [ ] Icoon-upload één keer echt uitproberen met een ingelogde beheerder.
+- [ ] Scherm Navigatie nalopen na inloggen (pijltjes, hernoemen, schakelaar).
+- [ ] Vier vragen over de wekelijkse back-up (zie het blok hieronder).
+- [ ] Meerdere categorieën per item (punt 14 van Margareth).
+- [ ] Rechten-audit van de database.
+
+---
+
+## 🗓️ Gesprek met Margareth — 23 oktober 2026 *(nieuwe punten, nog niets gebouwd)*
+
+Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
+
+### Blok 1 — Kleine zichtbare dingen
+- [x] **Voorzieningen uit de Buurtatlas (29-10).** Categorie en de tien
+      verzonnen plekken verwijderd; de filterbalk toont nu Bewonersinitiatief,
+      Partners en Activiteiten (26 plekken). De introtekst noemde die
+      nepvoorzieningen ("van de bakker op de hoek tot het Geriatrisch
+      Netwerk") en is vervangen; die tekst is ook in het CMS aan te passen.
+      *Oorspronkelijk:* **Voorzieningen uit de Buurtatlas.** Let op: die voorzieningen zijn
+      *verzonnen demodata* die in de code staat (`buurtatlas.jsx`, o.a.
+      "Boekhandel De Vries", "Restaurant De Pier"). Ze komen nergens uit de
+      database. Weghalen is dus eenvoudig én het haalt nepinformatie van de
+      site af.
+- [x] **Evenement-bolletje eruit (29-10).** Losse agenda-items hebben geen
+      eigen groene kleur meer; ze staan er gewoon bij in dezelfde kleur als
+      een activiteit, en de legenda heeft nog twee stippen: Activiteit en
+      Buurtinitiatief. Er is niets verwijderd — de evenementen staan er nog.
+      *Te bevestigen bij Margareth:* moeten ze helemaal uit de agenda?
+      *Oorspronkelijk:* **Evenement-bolletje eruit** (agenda). Nu zijn er drie kleuren:
+      activiteit oranje, buurtinitiatief paars, evenement groen. Vraag: gaan
+      de losse agenda-items (evenementen) helemaal weg, of blijven ze staan
+      met dezelfde kleur als een activiteit?
+- [x] **Kaart verspringt bij veel activiteiten op één punt (29-10).**
+      Nagemaakt: op één adres staan dertien activiteiten, het venster werd
+      daardoor zo hoog dat de kaart er flink onder wegsprong. Het venster
+      heeft nu een maximumhoogte (de lijst scrolt er zelf in), waardoor de
+      kaart nog maar een klein stukje meebeweegt. **Daarbovenop (Giovanny):
+      per vijf items een kolom erbij** — dertien activiteiten worden 5, 5 en 3
+      naast elkaar, dus alles staat in beeld zonder scrollen en het venster
+      blijft laag. Past het niet naast elkaar (telefoon, kaart 335 px breed),
+      dan wordt het automatisch één kolom. Geldt voor Activiteiten én
+      Buurtinitiatieven.
+      *Oorspronkelijk:* **Kaart verspringt bij veel activiteiten op één punt.** Te onderzoeken:
+      waarschijnlijk springt de kaart naar het midden van de verzamelstip bij
+      het openklappen. Eerst namaken, dan pas repareren.
+
+### Blok 2 — Teksten en links
+- [x] **Links klikbaar maken in de teksten (29-10).** Webadressen
+      (https://… en www.…) en e-mailadressen worden nu automatisch een link,
+      waar ze ook staan: alle introteksten uit het CMS, de korte en
+      uitgebreide omschrijving van een activiteit of buurtinitiatief, het
+      nieuwsbericht en het blok onderaan de site. Leestekens aan het eind
+      blijven buiten de link, en een tekst zonder adres verandert niet.
+      Webadressen openen in een nieuw tabblad. *Niet herkend:* een adres
+      zonder `www.` of `https://` (bijvoorbeeld "thuisindebuurt.nl" los in een
+      zin) — dat levert te veel valse treffers op.
+      *Oorspronkelijk:* **Links klikbaar maken in de teksten.** Alle teksten uit het CMS zijn nu
+      platte tekst; typt Margareth er een adres in, dan is het niet aan te
+      klikken. Oplossing: webadressen en e-mailadressen automatisch herkennen
+      en als link tonen — in de paginateksten, de omschrijvingen van
+      activiteiten en buurtinitiatieven, en het nieuws. Geen opmaakknoppen
+      nodig, dus klein werk.
+- [x] **Doe mee: het groene blok beheerbaar (29-10).** Kopje, de vier stappen
+      en de regel onderaan staan nu bij Pagina's → Doe mee, zes velden erbij.
+      De mailregel is gewone tekst geworden; dankzij het punt hierboven blijft
+      het adres klikbaar.
+      *Oorspronkelijk:* **Doe mee: het groene blok "Wat gebeurt er daarna?" beheerbaar maken.**
+      Staat nu vast in `other.jsx` (kop, vier stappen, de mailregel). Gaat via
+      dezelfde weg als blok A: rijen in `pagina_teksten`, een veld per stap.
+
+### Blok 3 — CMS werkend maken
+- [x] **Nieuw buurtinitiatief aanmaken mislukt — opgelost en live (30-10)** *(gevonden tijdens het
+      testen van blok 4).* Klik je op "Nieuw buurtinitiatief" en sla je op, dan
+      komt er soms "Opslaan mislukt". De teller die het volgende id uitdeelt
+      loopt achter op het hoogste bestaande id (stond op 27, hoogste id is 34),
+      dus de database weigert de rij. Staat los van blok 4 — bestaande items
+      opslaan werkt gewoon.
+      **Opgelost (30-10):** `sql/id_teller_herstellen.sql` gedraaid; de tellers
+      staan nu op 34 (clubjes) en 31 (activiteiten). Daarna via het CMS een
+      nieuw buurtinitiatief aangemaakt: dat lukt weer (kreeg id 36, meteen
+      weer weggehaald). Checkbox blijft open tot dit mee is gepusht.
+      Mogelijk was dit ook wat er bij het Partners-scherm misging — bij
+      Margareth navragen zodra dit live staat.
+- [x] **Partners-scherm werkt niet — opgelost (30-10), wacht op de SQL.**
+      Margareth: *"er staat verborgen bij elke partner terwijl ze gewoon op de
+      site staat, dus ik denk dat die pagina het gewoon niet doet."* Klopt, en
+      er zaten drie dingen achter:
+      1. Het scherm keek naar een veld `zichtbaar`; de tabel heeft `actief`.
+         Dat veld bestond dus niet en werd gelezen als "leeg" → **Verborgen**.
+      2. Opslaan mislukte: het scherm stuurde `zichtbaar`, `contact` en
+         `email` mee, geen van drieën bestond in de tabel, dus de database
+         weigerde de hele rij. Het CMS meldde bovendien altijd "Partner
+         opgeslagen!", ook als het mislukte.
+      3. En zelfs als het was opgeslagen: **de Partners-pagina stond vast in
+         de code.** De vier partners met hun teksten stonden letterlijk in het
+         websitebestand. Het CMS-scherm stuurde dus niets aan.
+      Nu: het scherm leest en schrijft `actief`, opslaan wacht op de database
+      en meldt een fout ook echt, en de Partners-pagina én het blok op de
+      homepagina komen uit de tabel `partners`. Staat de tabel leeg of hapert
+      de verbinding, dan blijft de oude lijst staan — nooit een lege pagina.
+      Nieuwe velden: korte naam, de regel onder het logo, contactpersoon en
+      e-mail.
+      **SQL gedraaid (30-10).** De vier partners staan met hun teksten in de
+      database, op volgorde 1–4. Getest met Giovanny ingelogd: alle vier staan
+      nu op "Zichtbaar", opslaan werkt, en een wijziging in het CMS
+      (de regel onder Stichting Ichthus) kwam meteen op de site terecht.
+      Daarna weer teruggezet zoals het was.
+- [x] **Agenda-kleuren instelbaar — klaar (30-10).** Bij Huisstijl staat nu
+      "Kleuren in de agenda" met twee kleurkiezers: Activiteit en
+      Buurtinitiatief, met een voorbeeldblokje ernaast. Opgeslagen in
+      `huisstijl_secties` (sectie='agenda') — geen SQL nodig.
+      **Evenementen zijn uit de agenda gehaald** (Margareth: "evenement
+      eruit"). De vijf losse agenda-items zijn *niet verwijderd*: ze staan nog
+      in de database en hun eigen pagina blijft bestaan, ze staan alleen niet
+      meer in de weekkalender. Alle vijf lagen trouwens in het verleden
+      (mei–juli 2026), dus er is niets zichtbaars verdwenen.
+- [x] **Volgorde van de categorieën — klaar (30-10).** Margareth: *"dat je
+      zeg maar Sport en Bewegen naar boven kan zetten of naar onder."* Het
+      scherm Categorieën is één kolom geworden met pijltjes omhoog/omlaag;
+      verschuiven wordt meteen opgeslagen en hernummert alles netjes. De site
+      houdt die volgorde aan op Buurtinitiatieven, Activiteiten en de
+      Buurtatlas. De kolom `volgorde` bestond al — geen SQL nodig.
+      Getest: Sport en Bewegen naar boven → stond ook op de site vooraan;
+      daarna weer teruggezet zoals het was.
+
+### Blok 4 — Startdatum en frequentie *(de belangrijkste)*
+
+**Status: gebouwd en lokaal getest (29-10). Wacht op de SQL en daarna op
+Margareth. Nog niet gepusht.**
+
+- [x] **Nieuwe velden** per activiteit én buurtinitiatief: startdatum,
+      hoe vaak (één keer / elke week / om de week / elke maand / wisselend),
+      bij "elke maand" welke keer (1e, 2e, 3e, 4e, laatste — meerdere mag),
+      begintijd, eindtijd en een optionele einddatum.
+      **De weekdag wordt niet apart opgeslagen**: die volgt uit de startdatum,
+      zodat die twee elkaar nooit kunnen tegenspreken.
+- [x] **CMS:** "Wanneer" is uit het rijtje *Praktische informatie* gehaald en
+      heeft een eigen blok gekregen, in beide bewerkschermen. Daaronder staat
+      **"Zo komt het in de agenda"** met de eerstvolgende drie keren — zo ziet
+      Margareth meteen of het klopt. De schakelaar "Terugkerend" verdwijnt
+      zodra er een frequentie is gekozen; die volgt dan de keuze.
+- [x] **Tekst op de website** blijft bestaan: wat Margareth zelf typt gaat
+      voor. Laat ze het leeg, dan maakt de site de tekst zelf ("Om de week op
+      vrijdag, van 16:00 tot 18:00 uur"), met een knopje om die over te nemen
+      en aan te passen.
+- [x] **Terugval:** zolang de velden leeg zijn, raadt de site de dag uit de
+      tekst, precies zoals nu. Er valt dus niets om tijdens het invullen.
+      "Wisselend" houdt een item bewust uit de agenda (Soepgroep "4x per jaar",
+      Happy Feet "af te spreken in de WhatsApp-groep").
+- [x] Raakt: `sql/blok4_startdatum_frequentie.sql`, `beheer.html` (beide
+      bewerkschermen + opslaan), `bundle-src/ui.jsx` (het rekenwerk),
+      `bundle-src/other.jsx` (agenda en weekkalender) en
+      `bundle-src/clubjes.jsx`. De homepagina gaat automatisch mee.
+- [x] Getest met proefgegevens, zonder de database aan te raken: Wijkborrel om
+      de week (30 okt, 13 nov, 27 nov, 11 dec — niet 6 en 20 nov), Parklunch 2e
+      en 4e vrijdag (13 en 27 nov, 11 dec), Verhalenclub 2e woensdag (11 nov,
+      9 dec), Warme lunch 1e zondag (1 nov, 6 dec), koffieclub om de week vanaf
+      5 nov (5 en 19 nov, 3 dec, niet daarvoor), laatste vrijdag (27 nov,
+      25 dec, 29 jan) en eenmalig (Walking Dinner 3 april 2027). Geen
+      consolefouten, alle pagina's nagelopen.
+- [x] **SQL gedraaid (30-10).** Alle twaalf kolommen staan in de database.
+      Daarna met Giovanny ingelogd getest in het echte CMS: bij een activiteit
+      (testt, id 29 — elke 2e en 4e woensdag, 19:00–21:00) en bij een
+      buurtinitiatief (proefrij id 28 — om de week vanaf vrijdag 6 november,
+      16:00–18:00, tot en met 31 december) staan alle velden goed in de
+      database. De controle in de database weigert een onzinwaarde, en kiest
+      Margareth "Nog niet ingevuld", dan komt er leeg in de database te staan
+      (niet een lege tekst, waar de controle op zou struikelen).
+- [x] **Opgeruimd (30-10):** proefrij `clubjes` id 28 verwijderd en de
+      proefvelden bij activiteit 29 ("testt") weer leeggemaakt — de activiteit
+      zelf blijft staan. In beide tabellen staat nu nergens meer een
+      startdatum of frequentie; Margareth begint met een schone lei.
+- [ ] **Margareth:** eenmalig invullen bij de bestaande items (19 activiteiten,
+      8 buurtinitiatieven). Daarna is het raden uit de tekst nergens meer nodig.
+- [ ] Vraag die hiermee ook te beantwoorden is: de Wijkborrel-week en de
+      Verhalenclub-woensdag stonden nog open — met een startdatum is dat klaar.
+
+### Blok 5 — Voorzieningen-pagina
 - [ ] Een eigen pagina zoals Buurtinitiatieven en Activiteiten: eigen tabel,
       eigen CMS-scherm, kaart, filters en detailpagina.
 - Vragen: welke gegevens (naam, adres, telefoon, website, openingstijden,
