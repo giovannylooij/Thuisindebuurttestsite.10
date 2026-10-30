@@ -1600,8 +1600,12 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       homepagina komen uit de tabel `partners`. Staat de tabel leeg of hapert
       de verbinding, dan blijft de oude lijst staan — nooit een lege pagina.
       Nieuwe velden: korte naam, de regel onder het logo, contactpersoon en
-      e-mail. Giovanny draait nog **`sql/blok3_partners.sql`**; tot dat moment
-      toont het scherm een waarschuwing bij die velden.
+      e-mail.
+      **SQL gedraaid (30-10).** De vier partners staan met hun teksten in de
+      database, op volgorde 1–4. Getest met Giovanny ingelogd: alle vier staan
+      nu op "Zichtbaar", opslaan werkt, en een wijziging in het CMS
+      (de regel onder Stichting Ichthus) kwam meteen op de site terecht.
+      Daarna weer teruggezet zoals het was.
 - [x] **Agenda-kleuren instelbaar — klaar (30-10).** Bij Huisstijl staat nu
       "Kleuren in de agenda" met twee kleurkiezers: Activiteit en
       Buurtinitiatief, met een voorbeeldblokje ernaast. Opgeslagen in
