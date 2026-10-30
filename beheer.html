@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.217', datum: '29-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.222', datum: '30-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -4327,22 +4327,36 @@ function PartnerEdit({ item, onBack }) {
   const [fd, setFd] = React.useState({ ...item });
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
 
-  function handleSave() {
-    let toSave = { ...fd };
+  // null = nog niet gekeken, false = sql/blok3_partners.sql is nog niet gedraaid
+  const [extraKolommen, setExtraKolommen] = React.useState(null);
+  React.useEffect(() => {
+    window.supabase.from('partners').select('korte_naam, subtitel').limit(1)
+      .then(({ error }) => setExtraKolommen(!error));
+  }, []);
+
+  // Eerst wachten op de database, dan pas melden dat het gelukt is. Voorheen
+  // verscheen "Partner opgeslagen!" ook als de database de rij weigerde.
+  async function handleSave() {
+    const toSave = { ...fd };
+    // Zolang de kolommen niet bestaan, gaan deze velden niet mee.
+    if (extraKolommen !== true) {
+      ['contact', 'email', 'slug', 'korte_naam', 'subtitel', 'volgorde'].forEach(k => { delete toSave[k]; });
+    }
     const idx = DATA.partners.findIndex(p => p.id === item.id);
     if (idx >= 0) {
+      const gelukt = await window.__supabaseUpsert('partners', toSave);
+      if (!gelukt) return false;
       DATA.partners[idx] = toSave;
       window.__syncToSite && window.__syncToSite();
-      window.__supabaseUpsert('partners', toSave);
       window.__showToast && window.__showToast('Partner opgeslagen!');
-    } else {
-      window.__supabaseInsert('partners', toSave).then(created => {
-        if (!created) return;
-        DATA.partners.push({ ...toSave, id: created.id });
-        window.__syncToSite && window.__syncToSite();
-        window.__showToast && window.__showToast('Partner opgeslagen!');
-      });
+      return true;
     }
+    const created = await window.__supabaseInsert('partners', toSave);
+    if (!created) return false;
+    DATA.partners.push({ ...toSave, id: created.id });
+    window.__syncToSite && window.__syncToSite();
+    window.__showToast && window.__showToast('Partner opgeslagen!');
+    return true;
   }
 
   function handleDelete() {
@@ -4361,7 +4375,7 @@ function PartnerEdit({ item, onBack }) {
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar partners</a></>}
         actions={<>
           {item.id != null && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn btn-primary" onClick={() => { handleSave(); onBack(); }}><Icon name="save" size={14} /> Opslaan</button>
+          <button className="btn btn-primary" onClick={async () => { if (await handleSave()) onBack(); }}><Icon name="save" size={14} /> Opslaan</button>
         </>}
       />
       <div className="form-grid">
@@ -4374,12 +4388,29 @@ function PartnerEdit({ item, onBack }) {
                 <option>Ondernemer</option><option>Locatie</option><option>Overheid</option><option>Overig</option>
               </select>
             </Field>
+            {extraKolommen !== false && (
             <div className="row-2">
               <Field label="Contactpersoon"><input type="text" value={fd.contact || ''} onChange={e => up('contact', e.target.value)} /></Field>
               <Field label="E-mail"><input type="email" value={fd.email || ''} onChange={e => up('email', e.target.value)} /></Field>
             </div>
+            )}
             <Field label="Website"><input type="url" value={fd.website || ''} onChange={e => up('website', e.target.value)} placeholder="https://" /></Field>
-            <Field label="Omschrijving"><textarea value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} rows={3} /></Field>
+            {extraKolommen === false && (
+              <HintCard variant="warn" icon="warn" style={{ margin: '4px 0 12px' }}>
+                De velden "Korte naam", "Eén regel eronder" en de contactgegevens werken pas nadat <strong>sql/blok3_partners.sql</strong> in Supabase is uitgevoerd.
+              </HintCard>
+            )}
+            {extraKolommen !== false && (
+            <div className="row-2">
+              <Field label="Korte naam" hint="Staat onder het logo, bijvoorbeeld Bibliotheek.">
+                <input type="text" value={fd.korte_naam || ''} onChange={e => up('korte_naam', e.target.value)} />
+              </Field>
+              <Field label="Eén regel eronder" hint="Zichtbaar op de homepagina, bijvoorbeeld Zorg & welzijn in de wijk.">
+                <input type="text" value={fd.subtitel || ''} onChange={e => up('subtitel', e.target.value)} />
+              </Field>
+            </div>
+            )}
+            <Field label="Omschrijving" hint="De tekst op de Partners-pagina."><textarea value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} rows={3} /></Field>
           </div>
           <div className="form-section">
             <h3>Locatie op de Buurtatlas</h3>
@@ -4405,7 +4436,7 @@ function PartnerEdit({ item, onBack }) {
         <div>
           <div className="side-card">
             <h4>Zichtbaarheid</h4>
-            <Toggle on={!!fd.zichtbaar} label="Zichtbaar op website" sub="Toon partner op de partnerspagina" onChange={v => up('zichtbaar', v)} />
+            <Toggle on={fd.actief !== false} label="Zichtbaar op website" sub="Toon partner op de partnerspagina en op de homepagina" onChange={v => up('actief', v)} />
           </div>
         </div>
       </div>
@@ -4421,7 +4452,7 @@ function PartnersScreen() {
   const partnerChips = ['alle', 'Ondernemer', 'Locatie', 'Overheid'];
 
   if (editing !== null) {
-    const item = DATA.partners.find(p => p.id === editing) || { id: null, naam: '', type: 'Ondernemer', contact: '', email: '', website: '', omschrijving: '', zichtbaar: true };
+    const item = DATA.partners.find(p => p.id === editing) || { id: null, naam: '', type: 'Ondernemer', contact: '', email: '', website: '', omschrijving: '', korte_naam: '', subtitel: '', slug: '', actief: true };
     return <PartnerEdit item={item} onBack={() => setEditing(null)} />;
   }
 
@@ -4468,7 +4499,7 @@ function PartnersScreen() {
                 <td><Pill>{p.type}</Pill></td>
                 <td>{p.contact}</td>
                 <td>{p.email}</td>
-                <td><Pill variant={p.zichtbaar ? 'published' : 'draft'}>{p.zichtbaar ? 'Zichtbaar' : 'Verborgen'}</Pill></td>
+                <td><Pill variant={p.actief !== false ? 'published' : 'draft'}>{p.actief !== false ? 'Zichtbaar' : 'Verborgen'}</Pill></td>
                 <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
                   <button className="icon-btn" title="Bewerken" onClick={() => setEditing(p.id)}><Icon name="edit" size={15} /></button>
                   <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => handleDelete(p.id, p.naam)}><Icon name="trash" size={15} /></button>
@@ -5152,6 +5183,32 @@ function CategoriesScreen() {
     setEditKleur(c.kleur || kleuren[0]);
   }
 
+  // Blok 3 (Margareth, 23-10): de volgorde van de categorieën zelf bepalen.
+  // Deze volgorde bepaalt de rij filterknoppen op Buurtinitiatieven,
+  // Activiteiten en de Buurtatlas. We nummeren meteen alles opnieuw, zodat
+  // gaten in de nummering (1,2,3,5,6…) vanzelf verdwijnen.
+  async function verplaats(index, richting) {
+    const doel = index + richting;
+    if (doel < 0 || doel >= cats.length || saving) return;
+    const nieuweLijst = cats.slice();
+    const tmp = nieuweLijst[index];
+    nieuweLijst[index] = nieuweLijst[doel];
+    nieuweLijst[doel] = tmp;
+    setCats(nieuweLijst);
+    setSaving(true);
+    const resultaten = await Promise.all(nieuweLijst.map((c, i) =>
+      window.supabase.from('categorieen').update({ volgorde: i + 1 }).eq('id', c.id)
+    ));
+    setSaving(false);
+    const fout = resultaten.find(r => r.error);
+    if (fout) {
+      toast('Volgorde opslaan mislukt: ' + fout.error.message);
+      laad();
+      return;
+    }
+    toast('Volgorde aangepast — zo staan ze nu ook op de website');
+  }
+
   async function saveEdit(id, origIcoon, oudeNaam) {
     if (!editNaam.trim()) { toast('Vul een naam in voor de categorie.'); return; }
     const nieuweNaam = editNaam.trim();
@@ -5282,8 +5339,12 @@ function CategoriesScreen() {
         <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={handleCreate} disabled={saving}><Icon name="plus" size={14} /> Categorie aanmaken</button>
       </div>
 
-      <div className="grid grid-2">
-        {cats.map(c => (
+      <div className="hint" style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '18px 0 8px' }}>
+        Deze volgorde bepaalt de rij knoppen op de website: op Buurtinitiatieven, Activiteiten en de Buurtatlas.
+        Gebruik de pijltjes om een categorie omhoog of omlaag te zetten; dat wordt meteen opgeslagen.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {cats.map((c, index) => (
           <div key={c.id} className="card card-pad">
             {editingId === c.id ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -5308,6 +5369,12 @@ function CategoriesScreen() {
                   <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{c.aantal} items gekoppeld</div>
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
+                  <button className="icon-btn" title="Naar boven" disabled={index === 0 || saving} onClick={() => verplaats(index, -1)}>
+                    <Icon name="chevron" size={12} style={{ transform: 'rotate(-90deg)' }} />
+                  </button>
+                  <button className="icon-btn" title="Naar beneden" disabled={index === cats.length - 1 || saving} onClick={() => verplaats(index, 1)}>
+                    <Icon name="chevron" size={12} style={{ transform: 'rotate(90deg)' }} />
+                  </button>
                   <button className="icon-btn" onClick={() => startEdit(c)}><Icon name="edit" size={14} /></button>
                   <button className="icon-btn" onClick={() => handleDelete(c)}><Icon name="trash" size={14} /></button>
                 </div>
@@ -5833,6 +5900,15 @@ const HUISSTIJL_VELDEN = [
   { key: 'achtergrond', label: 'Achtergrond', uitleg: 'Witte secties en de hero-achtergrond.', default: '#ffffff' },
 ];
 const HUISSTIJL_DEFAULTS_V2 = Object.fromEntries(HUISSTIJL_VELDEN.map(v => [v.key, v.default]));
+
+// Blok 3 (Margareth, 23-10): de kleuren in de agenda instelbaar maken. Alleen
+// deze twee — losse agenda-items staan niet meer in de agenda. Opgeslagen in
+// dezelfde tabel huisstijl_secties, met sectie='agenda'.
+const AGENDA_KLEUR_VELDEN = [
+  { key: 'activiteit',      label: 'Activiteit',      uitleg: 'Kleur van een activiteit in de weekkalender.',      default: '#E07A3A' },
+  { key: 'buurtinitiatief', label: 'Buurtinitiatief', uitleg: 'Kleur van een buurtinitiatief in de weekkalender.', default: '#8E44AD' },
+];
+const AGENDA_KLEUR_DEFAULTS = Object.fromEntries(AGENDA_KLEUR_VELDEN.map(v => [v.key, v.default]));
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 // Snelkeuze-swatches naast de kleurkiezer/hex-invoer — zelfde palet op elk
 // van de 5 velden, inclusief de 3 kleuren die expliciet zijn opgegeven.
@@ -5846,18 +5922,24 @@ function HuisstijlScreen() {
   const [bodyFont, setBodyFont] = React.useState('Source Sans 3');
 
   const [kleuren, setKleuren] = React.useState(HUISSTIJL_DEFAULTS_V2);
+  const [agendaKleuren, setAgendaKleuren] = React.useState(AGENDA_KLEUR_DEFAULTS);
   const [kleurenLaden, setKleurenLaden] = React.useState(true);
   const [kleurenOpslaan, setKleurenOpslaan] = React.useState(false);
   const [kleurenFout, setKleurenFout] = React.useState(null);
 
   React.useEffect(() => {
     let actief = true;
-    window.supabase.from('huisstijl_secties').select('*').eq('sectie', 'huisstijl').then(({ data, error }) => {
+    window.supabase.from('huisstijl_secties').select('*').in('sectie', ['huisstijl', 'agenda']).then(({ data, error }) => {
       if (!actief) return;
       if (!error && data && data.length > 0) {
         setKleuren(prev => {
           const next = { ...prev };
-          data.forEach(rij => { next[rij.rol] = rij.kleur; });
+          data.filter(r => r.sectie === 'huisstijl').forEach(rij => { next[rij.rol] = rij.kleur; });
+          return next;
+        });
+        setAgendaKleuren(prev => {
+          const next = { ...prev };
+          data.filter(r => r.sectie === 'agenda').forEach(rij => { next[rij.rol] = rij.kleur; });
           return next;
         });
       }
@@ -5882,6 +5964,11 @@ function HuisstijlScreen() {
       HUISSTIJL_VELDEN.map(veld =>
         window.supabase.from('huisstijl_secties')
           .upsert({ sectie: 'huisstijl', rol: veld.key, kleur: kleuren[veld.key] }, { onConflict: 'sectie,rol' })
+      ).concat(
+        AGENDA_KLEUR_VELDEN.map(veld =>
+          window.supabase.from('huisstijl_secties')
+            .upsert({ sectie: 'agenda', rol: veld.key, kleur: agendaKleuren[veld.key] }, { onConflict: 'sectie,rol' })
+        )
       )
     );
     setKleurenOpslaan(false);
@@ -5990,6 +6077,35 @@ function HuisstijlScreen() {
                 </div>
               </Field>
             ))}
+          </div>
+
+          <div className="form-section">
+            <h3>Kleuren in de agenda</h3>
+            <div className="sec-sub">De blokjes in de weekkalender op de Agenda-pagina. Losse agenda-items staan daar niet meer tussen, dus dit zijn de enige twee.</div>
+            {AGENDA_KLEUR_VELDEN.map(veld => (
+              <Field key={veld.key} label={veld.label}>
+                <div className="sec-sub" style={{ marginTop: -4, marginBottom: 8 }}>{veld.uitleg}</div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
+                  <input
+                    type="color"
+                    value={HEX_RE.test(agendaKleuren[veld.key]) ? agendaKleuren[veld.key] : veld.default}
+                    onChange={e => setAgendaKleuren(prev => ({ ...prev, [veld.key]: e.target.value }))}
+                    style={{ width: 44, height: 36, padding: 0, border: '1px solid var(--line)', borderRadius: 6, cursor: 'pointer' }}
+                  />
+                  <input
+                    type="text"
+                    value={agendaKleuren[veld.key]}
+                    onChange={e => setAgendaKleuren(prev => ({ ...prev, [veld.key]: e.target.value }))}
+                    style={{ width: 130, fontFamily: 'var(--mono)' }}
+                  />
+                  <span style={{
+                    background: HEX_RE.test(agendaKleuren[veld.key]) ? agendaKleuren[veld.key] : veld.default,
+                    color: 'white', borderRadius: 8, padding: '8px 10px', fontSize: 12, fontWeight: 600,
+                  }}>{veld.label}</span>
+                </div>
+              </Field>
+            ))}
+            <div className="sec-sub" style={{ marginTop: 2 }}>Klik op "Opslaan" bij Kleuren hierboven; deze twee gaan dan mee.</div>
           </div>
 
           <div className="form-section">
@@ -7662,7 +7778,31 @@ function __mapActiviteitenToDb(item) {
   return rij;
 }
 
-const __DB_VERTALING = { clubjes: __mapClubjesToDb, activiteiten: __mapActiviteitenToDb };
+// Partners: het scherm stuurde eerder `zichtbaar`, `contact` en `email` mee
+// terwijl de tabel die kolommen niet had. De database weigerde dan de hele rij
+// en Margareth zag alleen dat het niet werkte. Deze lijst houdt dat tegen.
+function __mapPartnersToDb(item) {
+  const rij = {
+    id:           item.id,
+    naam:         item.naam,
+    type:         item.type,
+    omschrijving: item.omschrijving,
+    website:      item.website,
+    logo_url:     item.logo_url || null,
+    adres:        item.adres,
+    lat:          __getalOfNull(item.lat),
+    lng:          __getalOfNull(item.lng),
+    // De kolom heet `actief`; in het scherm heet hij "Zichtbaar op website".
+    actief:       item.actief !== false,
+  };
+  // Kolommen uit sql/blok3_partners.sql. Is dat nog niet gedraaid, dan laat
+  // het scherm ze weg en blijft opslaan gewoon werken.
+  ['contact', 'email', 'slug', 'korte_naam', 'subtitel', 'volgorde']
+    .forEach(function(k) { if (item[k] !== undefined) rij[k] = item[k] === '' ? null : item[k]; });
+  return rij;
+}
+
+const __DB_VERTALING = { clubjes: __mapClubjesToDb, activiteiten: __mapActiviteitenToDb, partners: __mapPartnersToDb };
 
 // Geeft true terug bij succes, false bij een fout (en toont dan zelf een melding).
 window.__supabaseUpsert = async function(tabel, item) {

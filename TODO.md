@@ -1582,18 +1582,43 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       weer weggehaald). Checkbox blijft open tot dit mee is gepusht.
       Mogelijk was dit ook wat er bij het Partners-scherm misging — bij
       Margareth navragen zodra dit live staat.
-- [ ] **Partners-scherm werkt niet.** Het scherm schrijft wél naar de database
-      (`__supabaseUpsert('partners', ...)`), dus het is geen localStorage-
-      probleem zoals bij het menu. Navragen bij Margareth: wat gaat er precies
-      mis — opslaan, een foutmelding, of komt het niet op de site?
-- [ ] **Agenda-kleuren instelbaar in het CMS.** Nu vast in de code
-      (`#E07A3A` activiteit, `#8E44AD` buurtinitiatief, groen evenement).
-      Vraag: per soort, of per categorie? Past bij het scherm Huisstijl.
-- [ ] **Sleepvolgorde voor activiteiten en buurtinitiatieven.** Vraagt een
-      kolom `volgorde` (zoals `site_navigatie` die heeft) plus slepen in het
-      CMS. Buurtinitiatieven hebben al een veld `uitgelicht`; activiteiten
-      niet. Vraag: gaat het om de volgorde van álle kaartjes, of om één item
-      bovenaan zetten?
+- [x] **Partners-scherm werkt niet — opgelost (30-10), wacht op de SQL.**
+      Margareth: *"er staat verborgen bij elke partner terwijl ze gewoon op de
+      site staat, dus ik denk dat die pagina het gewoon niet doet."* Klopt, en
+      er zaten drie dingen achter:
+      1. Het scherm keek naar een veld `zichtbaar`; de tabel heeft `actief`.
+         Dat veld bestond dus niet en werd gelezen als "leeg" → **Verborgen**.
+      2. Opslaan mislukte: het scherm stuurde `zichtbaar`, `contact` en
+         `email` mee, geen van drieën bestond in de tabel, dus de database
+         weigerde de hele rij. Het CMS meldde bovendien altijd "Partner
+         opgeslagen!", ook als het mislukte.
+      3. En zelfs als het was opgeslagen: **de Partners-pagina stond vast in
+         de code.** De vier partners met hun teksten stonden letterlijk in het
+         websitebestand. Het CMS-scherm stuurde dus niets aan.
+      Nu: het scherm leest en schrijft `actief`, opslaan wacht op de database
+      en meldt een fout ook echt, en de Partners-pagina én het blok op de
+      homepagina komen uit de tabel `partners`. Staat de tabel leeg of hapert
+      de verbinding, dan blijft de oude lijst staan — nooit een lege pagina.
+      Nieuwe velden: korte naam, de regel onder het logo, contactpersoon en
+      e-mail. Giovanny draait nog **`sql/blok3_partners.sql`**; tot dat moment
+      toont het scherm een waarschuwing bij die velden.
+- [x] **Agenda-kleuren instelbaar — klaar (30-10).** Bij Huisstijl staat nu
+      "Kleuren in de agenda" met twee kleurkiezers: Activiteit en
+      Buurtinitiatief, met een voorbeeldblokje ernaast. Opgeslagen in
+      `huisstijl_secties` (sectie='agenda') — geen SQL nodig.
+      **Evenementen zijn uit de agenda gehaald** (Margareth: "evenement
+      eruit"). De vijf losse agenda-items zijn *niet verwijderd*: ze staan nog
+      in de database en hun eigen pagina blijft bestaan, ze staan alleen niet
+      meer in de weekkalender. Alle vijf lagen trouwens in het verleden
+      (mei–juli 2026), dus er is niets zichtbaars verdwenen.
+- [x] **Volgorde van de categorieën — klaar (30-10).** Margareth: *"dat je
+      zeg maar Sport en Bewegen naar boven kan zetten of naar onder."* Het
+      scherm Categorieën is één kolom geworden met pijltjes omhoog/omlaag;
+      verschuiven wordt meteen opgeslagen en hernummert alles netjes. De site
+      houdt die volgorde aan op Buurtinitiatieven, Activiteiten en de
+      Buurtatlas. De kolom `volgorde` bestond al — geen SQL nodig.
+      Getest: Sport en Bewegen naar boven → stond ook op de site vooraan;
+      daarna weer teruggezet zoals het was.
 
 ### Blok 4 — Startdatum en frequentie *(de belangrijkste)*
 
