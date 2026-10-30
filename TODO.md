@@ -1656,8 +1656,11 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       (kreeg vanzelf een id), en verwijderen werkt. De site toont dezelfde
       vier netwerken als voorheen, met alle regels op het kaartje. Proefrij
       en proeftekst daarna weer teruggezet.
-      *Nog open:* de acht oude regels mogen weg zodra Giovanny of Margareth
-      dat zegt.
+      **Opgeruimd (31-10, op verzoek van Giovanny):** de acht oude regels zijn
+      verwijderd. Het CMS toont nu alleen de vier netwerken die ook op de site
+      staan. Vóór het verwijderen heb ik ze vastgelegd in
+      `sql/netwerken_oude_regels_terugzetten.sql`, zodat ze terug te zetten
+      zijn als dat ooit nodig is.
 
 ### Blok 4 — Startdatum en frequentie *(de belangrijkste)*
 
