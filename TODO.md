@@ -1570,7 +1570,7 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       dezelfde weg als blok A: rijen in `pagina_teksten`, een veld per stap.
 
 ### Blok 3 — CMS werkend maken
-- [ ] **Nieuw buurtinitiatief aanmaken mislukt** *(gevonden 30-10 tijdens het
+- [x] **Nieuw buurtinitiatief aanmaken mislukt — opgelost en live (30-10)** *(gevonden tijdens het
       testen van blok 4).* Klik je op "Nieuw buurtinitiatief" en sla je op, dan
       komt er soms "Opslaan mislukt". De teller die het volgende id uitdeelt
       loopt achter op het hoogste bestaande id (stond op 27, hoogste id is 34),
