@@ -1628,6 +1628,27 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       Getest: Sport en Bewegen naar boven → stond ook op de site vooraan;
       daarna weer teruggezet zoals het was.
 
+- [x] **Netwerken-scherm klopte niet met de site (31-10).** Margareth: *"de
+      site klopt, het CMS niet."* Precies hetzelfde patroon als bij Partners:
+      1. De Netwerken-pagina stond **vast in de code** — vier netwerken
+         (Geriatrisch Netwerk, Ouder Worden voor Beginners, Netwerk Mantelzorg
+         en Cultuur Noordelijk Scheveningen) met hun teksten.
+      2. In de tabel `netwerken` stonden **acht hele andere regels**: vier
+         namen uit een demo-opzet van 16 juni, allemaal dubbel. Die stonden
+         nergens op de site, maar dát liet het CMS zien.
+      3. Opslaan mislukte: het scherm stuurde `omschrijving` mee en die kolom
+         bestond niet, dus weigerde de database de hele rij — en het CMS
+         meldde toch "Netwerk opgeslagen!".
+      Nu: de Netwerken-pagina leest uit de tabel (met terugval op de code als
+      de tabel leeg of onbereikbaar is), het scherm heeft alle velden die de
+      site toont (bijeenkomsten, voor wie, toegankelijkheid, contact, e-mail,
+      telefoon) plus een zichtbaarheidsschakelaar, en opslaan wacht op de
+      database en meldt een fout ook echt. Een nieuw netwerk krijgt zelf een
+      sleutel, want de kolom `id` is tekst en vult zichzelf niet.
+      `sql/netwerken_herstellen.sql` zet de vier echte netwerken in de
+      database en de acht oude regels op onzichtbaar — **er wordt niets
+      verwijderd**, dus Margareth beslist zelf of ze weg mogen.
+
 ### Blok 4 — Startdatum en frequentie *(de belangrijkste)*
 
 **Status: gebouwd en lokaal getest (29-10). Wacht op de SQL en daarna op

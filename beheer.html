@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.229', datum: '30-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.231', datum: '31-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -4803,34 +4803,67 @@ function PartnersScreen() {
   );
 }
 
-function NetwerkEdit({ item, onBack }) {
+function NetwerkEdit({ item, onBack, onOpgeslagen }) {
   const [fd, setFd] = React.useState({ ...item });
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
+  const [bezig, setBezig] = React.useState(false);
+  // null = nog niet gekeken, false = sql/netwerken_herstellen.sql is nog niet gedraaid
+  const [extraKolommen, setExtraKolommen] = React.useState(null);
+  React.useEffect(() => {
+    window.supabase.from('netwerken').select('omschrijving, contact').limit(1)
+      .then(({ error }) => setExtraKolommen(!error));
+  }, []);
 
-  function handleSave() {
-    let toSave = { ...fd };
-    const idx = DATA.netwerken.findIndex(n => n.id === item.id);
-    if (idx >= 0) {
-      DATA.netwerken[idx] = toSave;
-      window.__syncToSite && window.__syncToSite();
-      window.__supabaseUpsert('netwerken', toSave);
-      window.__showToast && window.__showToast('Netwerk opgeslagen!');
-    } else {
-      window.__supabaseInsert('netwerken', toSave).then(created => {
-        if (!created) return;
-        DATA.netwerken.push({ ...toSave, id: created.id });
-        window.__syncToSite && window.__syncToSite();
-        window.__showToast && window.__showToast('Netwerk opgeslagen!');
-      });
+  // De kolom `id` is tekst en wordt niet automatisch gevuld; een nieuw netwerk
+  // krijgt daarom een naam-sleutel, net als de bestaande rijen ('mantelzorg').
+  function maakId(naam) {
+    const basis = String(naam || 'netwerk').toLowerCase()
+      .replace(/[àáâä]/g, 'a').replace(/[èéêë]/g, 'e').replace(/[ìíîï]/g, 'i')
+      .replace(/[òóôö]/g, 'o').replace(/[ùúûü]/g, 'u')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'netwerk';
+    const bezet = (DATA.netwerken || []).map(n => String(n.id));
+    if (bezet.indexOf(basis) === -1) return basis;
+    let i = 2;
+    while (bezet.indexOf(basis + '-' + i) !== -1) i++;
+    return basis + '-' + i;
+  }
+
+  // Eerst wachten op de database, dan pas melden dat het gelukt is. Voorheen
+  // verscheen "Netwerk opgeslagen!" ook als de database de rij weigerde.
+  async function handleSave() {
+    if (bezig) return false;
+    if (!String(fd.naam || '').trim()) { window.__showToast && window.__showToast('Vul een naam in.'); return false; }
+    const toSave = { ...fd };
+    if (extraKolommen !== true) {
+      ['omschrijving', 'contact', 'email', 'telefoon', 'bijeenkomsten', 'voor_wie', 'toegankelijk', 'volgorde']
+        .forEach(k => { delete toSave[k]; });
     }
+    setBezig(true);
+    const idx = DATA.netwerken.findIndex(n => String(n.id) === String(item.id));
+    let gelukt = false;
+    if (idx >= 0) {
+      gelukt = await window.__supabaseUpsert('netwerken', toSave);
+      if (gelukt) DATA.netwerken[idx] = toSave;
+    } else {
+      toSave.id = maakId(toSave.naam);
+      gelukt = await window.__supabaseUpsert('netwerken', toSave);
+      if (gelukt) DATA.netwerken.push(toSave);
+    }
+    setBezig(false);
+    if (!gelukt) return false;
+    window.__syncToSite && window.__syncToSite();
+    window.__showToast && window.__showToast('Netwerk opgeslagen!');
+    onOpgeslagen && onOpgeslagen();
+    return true;
   }
 
   function handleDelete() {
     if (!window.confirm('Netwerk "' + fd.naam + '" definitief verwijderen?')) return;
-    const idx = DATA.netwerken.findIndex(n => n.id === item.id);
+    const idx = DATA.netwerken.findIndex(n => String(n.id) === String(item.id));
     if (idx >= 0) { window.__supabaseDelete('netwerken', item.id); DATA.netwerken.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Netwerk verwijderd');
+    onOpgeslagen && onOpgeslagen();
     onBack();
   }
 
@@ -4841,26 +4874,56 @@ function NetwerkEdit({ item, onBack }) {
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar netwerken</a></>}
         actions={<>
           {item.id != null && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn btn-primary" onClick={() => { handleSave(); onBack(); }}><Icon name="save" size={14} /> Opslaan</button>
+          <button className="btn btn-primary" disabled={bezig} onClick={async () => { if (await handleSave()) onBack(); }}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>
         </>}
       />
       <div className="form-grid">
         <div>
           <div className="form-section">
             <h3>Netwerkgegevens</h3>
+            {extraKolommen === false && (
+              <HintCard variant="warn" icon="warn" style={{ marginBottom: 12 }}>
+                De meeste velden hieronder werken pas nadat <strong>sql/netwerken_herstellen.sql</strong> in Supabase is uitgevoerd.
+              </HintCard>
+            )}
             <Field label="Naam"><input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} /></Field>
             <div className="row-2">
               <Field label="Doelgroep"><input type="text" value={fd.doelgroep || ''} onChange={e => up('doelgroep', e.target.value)} placeholder="bijv. Zorg & welzijn" /></Field>
               <Field label="Bereik / locatie"><input type="text" value={fd.locatie || ''} onChange={e => up('locatie', e.target.value)} placeholder="bijv. Wijk" /></Field>
             </div>
-            <Field label="Website"><input type="url" value={fd.website || ''} onChange={e => up('website', e.target.value)} placeholder="https://" /></Field>
-            <Field label="Omschrijving"><textarea value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} rows={3} /></Field>
+            <Field label="Website"><input type="text" value={fd.website || ''} onChange={e => up('website', e.target.value)} placeholder="bijv. welzijnscheveningen.nl" /></Field>
+            <Field label="Omschrijving" hint="De tekst onder de naam op de Netwerken-pagina.">
+              <textarea value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} rows={3} />
+            </Field>
           </div>
+
+          {extraKolommen !== false && (
+          <div className="form-section">
+            <h3>Wat de bezoeker verder ziet</h3>
+            <div className="sec-sub">Deze velden staan op het kaartje op de Netwerken-pagina. Laat je er een leeg, dan valt dat regeltje gewoon weg.</div>
+            <Field label="Wanneer komen ze samen" hint="bijv. Maandelijks · 2ᵉ dinsdag · Bibliotheek Scheveningen">
+              <input type="text" value={fd.bijeenkomsten || ''} onChange={e => up('bijeenkomsten', e.target.value)} />
+            </Field>
+            <Field label="Voor wie"><input type="text" value={fd.voor_wie || ''} onChange={e => up('voor_wie', e.target.value)} /></Field>
+            <Field label="Toegankelijkheid" hint="bijv. Begane grond · ringleiding aanwezig">
+              <input type="text" value={fd.toegankelijk || ''} onChange={e => up('toegankelijk', e.target.value)} />
+            </Field>
+            <div className="row-2">
+              <Field label="Contactpersoon"><input type="text" value={fd.contact || ''} onChange={e => up('contact', e.target.value)} /></Field>
+              <Field label="E-mailadres"><input type="email" value={fd.email || ''} onChange={e => up('email', e.target.value)} /></Field>
+            </div>
+            <Field label="Telefoon"><input type="tel" value={fd.telefoon || ''} onChange={e => up('telefoon', e.target.value)} /></Field>
+          </div>
+          )}
         </div>
         <div>
+          <div className="side-card">
+            <h4>Zichtbaarheid</h4>
+            <Toggle on={fd.actief !== false} label="Zichtbaar op website" sub="Toon dit netwerk op de Netwerken-pagina" onChange={v => up('actief', v)} />
+          </div>
           <div className="side-card" style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
             <h4>Info</h4>
-            <p>Netwerken verschijnen op de Netwerken-pagina van de website. Ze zijn altijd zichtbaar zodra ze zijn aangemaakt.</p>
+            <p style={{ margin: 0 }}>De volgorde op de website volgt het veld Volgorde; netwerken zonder volgorde komen achteraan.</p>
           </div>
         </div>
       </div>
@@ -4872,14 +4935,28 @@ function NetwerkenScreen() {
   const [editing, setEditing] = React.useState(null);
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
 
+  // De lijst vers uit de database halen, zodat het scherm laat zien wat er
+  // echt staat (en niet alleen wat er bij het laden van het CMS in zat).
+  async function laad() {
+    const { data, error } = await window.supabase.from('netwerken').select('*');
+    if (error || !data) return;
+    data.sort((a, b) => ((a.volgorde == null ? 99 : a.volgorde) - (b.volgorde == null ? 99 : b.volgorde))
+      || String(a.naam || '').localeCompare(String(b.naam || '')));
+    DATA.netwerken.length = 0;
+    data.forEach(n => DATA.netwerken.push(n));
+    forceUpdate();
+  }
+  React.useEffect(() => { laad(); }, []);
+
   if (editing !== null) {
-    const item = DATA.netwerken.find(n => n.id === editing) || { id: null, naam: '', doelgroep: '', locatie: '', website: '', omschrijving: '' };
-    return <NetwerkEdit item={item} onBack={() => setEditing(null)} />;
+    const item = DATA.netwerken.find(n => String(n.id) === String(editing))
+      || { id: null, naam: '', doelgroep: '', locatie: '', website: '', omschrijving: '', actief: true };
+    return <NetwerkEdit item={item} onBack={() => setEditing(null)} onOpgeslagen={laad} />;
   }
 
   function handleDelete(id, naam) {
     if (!window.confirm('Netwerk "' + naam + '" definitief verwijderen?')) return;
-    const idx = DATA.netwerken.findIndex(n => n.id === id);
+    const idx = DATA.netwerken.findIndex(n => String(n.id) === String(id));
     if (idx >= 0) { window.__supabaseDelete('netwerken', id); DATA.netwerken.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Netwerk verwijderd');
@@ -4900,8 +4977,11 @@ function NetwerkenScreen() {
               <div className="row-icon" style={{ width: 44, height: 44 }}><Icon name="network" size={16} /></div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 600 }}>{n.naam}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>Doelgroep: {n.doelgroep}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>Bereik: {n.locatie}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>Doelgroep: {n.doelgroep || '—'}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>Bereik: {n.locatie || '—'}</div>
+                <div style={{ marginTop: 6 }}>
+                  <Pill variant={n.actief !== false ? 'published' : 'draft'}>{n.actief !== false ? 'Zichtbaar' : 'Verborgen'}</Pill>
+                </div>
                 <div style={{ marginTop: 12, display: 'flex', gap: 6 }}>
                   <button className="btn btn-sm" onClick={() => setEditing(n.id)}><Icon name="edit" size={12} /> Bewerk</button>
                   <button className="btn btn-sm btn-ghost btn-danger" onClick={() => handleDelete(n.id, n.naam)}><Icon name="trash" size={12} /></button>
@@ -8094,7 +8174,25 @@ function __mapPartnersToDb(item) {
   return rij;
 }
 
-const __DB_VERTALING = { clubjes: __mapClubjesToDb, activiteiten: __mapActiviteitenToDb, partners: __mapPartnersToDb };
+// Netwerken: het scherm stuurde `omschrijving` mee terwijl die kolom niet
+// bestond, dus weigerde de database de hele rij en lukte opslaan nooit.
+function __mapNetwerkenToDb(item) {
+  const rij = {
+    id:        item.id,
+    naam:      item.naam,
+    doelgroep: item.doelgroep,
+    locatie:   item.locatie,
+    website:   item.website,
+    actief:    item.actief !== false,
+  };
+  // Kolommen uit sql/netwerken_herstellen.sql. Is dat nog niet gedraaid, dan
+  // laat het scherm ze weg en blijft opslaan gewoon werken.
+  ['omschrijving', 'contact', 'email', 'telefoon', 'bijeenkomsten', 'voor_wie', 'toegankelijk', 'volgorde']
+    .forEach(function(k) { if (item[k] !== undefined) rij[k] = item[k] === '' ? null : item[k]; });
+  return rij;
+}
+
+const __DB_VERTALING = { clubjes: __mapClubjesToDb, activiteiten: __mapActiviteitenToDb, partners: __mapPartnersToDb, netwerken: __mapNetwerkenToDb };
 
 // Geeft true terug bij succes, false bij een fout (en toont dan zelf een melding).
 window.__supabaseUpsert = async function(tabel, item) {
