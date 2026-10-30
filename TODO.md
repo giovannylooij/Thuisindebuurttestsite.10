@@ -1575,9 +1575,13 @@ Nagekeken in de code op 29-10. Vijf blokken, van klein naar groot.
       komt er soms "Opslaan mislukt". De teller die het volgende id uitdeelt
       loopt achter op het hoogste bestaande id (stond op 27, hoogste id is 34),
       dus de database weigert de rij. Staat los van blok 4 — bestaande items
-      opslaan werkt gewoon. Oplossing ligt klaar:
-      **`sql/id_teller_herstellen.sql`** (Giovanny draaien).
-      Mogelijk is dit ook wat er bij het Partners-scherm misgaat.
+      opslaan werkt gewoon.
+      **Opgelost (30-10):** `sql/id_teller_herstellen.sql` gedraaid; de tellers
+      staan nu op 34 (clubjes) en 31 (activiteiten). Daarna via het CMS een
+      nieuw buurtinitiatief aangemaakt: dat lukt weer (kreeg id 36, meteen
+      weer weggehaald). Checkbox blijft open tot dit mee is gepusht.
+      Mogelijk was dit ook wat er bij het Partners-scherm misging — bij
+      Margareth navragen zodra dit live staat.
 - [ ] **Partners-scherm werkt niet.** Het scherm schrijft wél naar de database
       (`__supabaseUpsert('partners', ...)`), dus het is geen localStorage-
       probleem zoals bij het menu. Navragen bij Margareth: wat gaat er precies
