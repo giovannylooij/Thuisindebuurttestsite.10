@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.224', datum: '30-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.229', datum: '30-10-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -4469,13 +4469,21 @@ function tibSoortKleur(soort) {
 }
 
 function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
+  const iconenLijst = useIconen(); // zelfde lijst als bij buurtinitiatieven
   const leeg = {
     naam: '', soort: 'Overig', omschrijving: '', adres: '', lat: null, lng: null,
     telefoon: '', website: '', openingstijden: '', zichtbaar: true, volgorde: 0,
+    icoon_url: null, icoon_label: null,
   };
   const [fd, setFd] = React.useState(() => ({ ...leeg, ...(item || {}) }));
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [bezig, setBezig] = React.useState(false);
+  // null = nog niet gekeken, false = sql/blok5_voorzieningen_icoon.sql is nog niet gedraaid
+  const [icoonKolommen, setIcoonKolommen] = React.useState(null);
+  React.useEffect(() => {
+    window.supabase.from('voorzieningen').select('icoon_url, icoon_label').limit(1)
+      .then(({ error }) => setIcoonKolommen(!error));
+  }, []);
   const bestaat = fd.id != null;
   const toast = (t) => window.__showToast && window.__showToast(t);
 
@@ -4497,6 +4505,11 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
       volgorde: fd.volgorde || 0,
       bijgewerkt_op: new Date().toISOString(),
     };
+    // Zolang de icoonkolommen niet bestaan, gaan ze niet mee.
+    if (icoonKolommen === true) {
+      rij.icoon_url = fd.icoon_url || null;
+      rij.icoon_label = fd.icoon_label || null;
+    }
     const res = bestaat
       ? await window.supabase.from('voorzieningen').update(rij).eq('id', fd.id).select().single()
       : await window.supabase.from('voorzieningen').insert(rij).select().single();
@@ -4572,6 +4585,49 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
               </Field>
             </div>
             {(fd.lat && fd.lng) && <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} />}
+          </div>
+
+          <div className="form-section">
+            <h3>Icoon</h3>
+            <div className="sec-sub">Kies een icoon dat bij deze plek past. Het staat op het kaartje op de pagina Voorzieningen en bovenaan de eigen pagina. Kies je niets, dan komt er een vlak in de kleur van het soort.</div>
+            {icoonKolommen === false && (
+              <HintCard variant="warn" icon="warn" style={{ marginBottom: 12 }}>
+                Iconen werken pas nadat <strong>sql/blok5_voorzieningen_icoon.sql</strong> in Supabase is uitgevoerd.
+              </HintCard>
+            )}
+            {icoonKolommen !== false && (
+              <>
+                {fd.icoon_url && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '8px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8 }}>
+                    <img src={fd.icoon_url} alt={fd.icoon_label || ''} style={{ width: 36, height: 36, borderRadius: 8 }} />
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase' }}>Huidig icoon</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#166534' }}>{fd.icoon_label}</div>
+                    </div>
+                    <button className="btn btn-ghost btn-danger" style={{ marginLeft: 'auto' }} onClick={() => { up('icoon_url', null); up('icoon_label', null); }}>
+                      <Icon name="trash" size={13} /> Verwijderen
+                    </button>
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, maxHeight: 280, overflowY: 'auto', padding: 8, border: '1px solid #e5e7eb', borderRadius: 10, background: '#f9fafb' }}>
+                  {iconenLijst.map(icon => {
+                    const url = CMS_ICOON_BASE_URL + icon.bestand;
+                    const gekozen = fd.icoon_label === icon.label;
+                    return (
+                      <div
+                        key={icon.label}
+                        onClick={() => { up('icoon_url', url); up('icoon_label', icon.label); }}
+                        title={icon.label}
+                        style={{ background: 'white', border: gekozen ? '2px solid #2d6a4f' : '2px solid transparent', borderRadius: 8, padding: 6, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}
+                      >
+                        <img src={url} alt={icon.label} style={{ width: 28, height: 28, objectFit: 'contain' }} />
+                        <span style={{ fontSize: 8, color: '#6b7280', textAlign: 'center' }}>{icon.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
         <div>

@@ -1712,6 +1712,12 @@ Margareth vult ze in. En ja, ze komen óók op de Buurtatlas.
       Proefrij daarna weer verwijderd; de tabel is weer leeg.
       Meegefikst: de omschrijving op de detailpagina ging twee keer door de
       link-omzetter en toonde ",[object Object],".
+- [x] **Icoon per voorziening (30-10, vraag Giovanny).** Zelfde iconenlijst
+      als bij buurtinitiatieven en activiteiten: kiezen in het bewerkscherm,
+      zichtbaar op het kaartje en groot op de eigen pagina. Kies je niets, dan
+      blijft het kaartje zoals het was en kun je op de eigen pagina nog steeds
+      een foto toevoegen. Vraagt `sql/blok5_voorzieningen_icoon.sql`; tot dat
+      moment toont het scherm een uitleg en blijft opslaan werken.
 - [ ] **Margareth:** de eerste voorzieningen invullen. Advies: begin met een
       stuk of tien die er echt toe doen, kijk of het werkt zoals ze bedoelde,
       en vul daarna pas de rest aan.
