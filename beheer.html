@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.241', datum: '03-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.243', datum: '03-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1850,6 +1850,152 @@ function CategorieSelect({ value, onChange }) {
   );
 }
 
+/* ===== Punt 16 — rijen slepen om de volgorde te bepalen (Margareth, 3-11) =====
+   Zelfde rekenwerk als op de site (bundle-src/ui.jsx): het veld `volgorde`
+   bepaalt de plek op de website, 1 staat bovenaan. Verplaatsen schrijft de
+   nummers voor de hele lijst opnieuw weg, zodat gaten in de nummering
+   (1,2,4,7...) vanzelf verdwijnen.
+
+   Slepen kan alleen in de volledige lijst. Staat er een filter of zoekterm aan,
+   dan zie je de rijen ertussen niet en zou je een volgorde bepalen die je niet
+   kunt controleren. Zie sql/punt16_volgorde.sql */
+function tibVolgordeVan(rij) {
+  const v = rij && rij.volgorde;
+  if (v === null || v === undefined || v === '') return 999999;
+  const n = Number(v);
+  return isNaN(n) ? 999999 : n;
+}
+function tibOpVolgorde(rijen) {
+  return (rijen || []).slice().sort(
+    (a, b) => tibVolgordeVan(a) - tibVolgordeVan(b) || (Number(a && a.id) || 0) - (Number(b && b.id) || 0)
+  );
+}
+
+// lijst = de volledige, ongefilterde lijst in de volgorde die op het scherm
+// staat. aan = of slepen nu mag. naVerplaatsen = de lijst in het scherm
+// bijwerken (de ene schermsoort houdt DATA bij, de andere eigen state).
+function useSleepVolgorde({ tabel, lijst, aan, naVerplaatsen }) {
+  const [opgepakt, setOpgepakt] = React.useState(null);
+  const [zweeft, setZweeft] = React.useState(null);
+  const [bezig, setBezig] = React.useState(false);
+  // De drop moet weten welke rij is opgepakt. Dat uit de state lezen is niet
+  // betrouwbaar: die is pas bij de volgende tekenbeurt bijgewerkt, en een
+  // snelle sleep kan daar tussendoor glippen. De ref is er meteen; de state
+  // is er alleen voor hoe het eruitziet.
+  const opgepaktRef = React.useRef(null);
+  const rijen = lijst || [];
+
+  async function verplaatsNaar(van, naar) {
+    if (bezig || van == null || naar == null || van === naar) return;
+    if (van < 0 || naar < 0 || van >= rijen.length || naar >= rijen.length) return;
+    const nieuw = rijen.slice();
+    const rij = nieuw.splice(van, 1)[0];
+    nieuw.splice(naar, 0, rij);
+    nieuw.forEach((r, i) => { r.volgorde = i + 1; });
+    naVerplaatsen && naVerplaatsen(nieuw);
+    setBezig(true);
+    const resultaten = await Promise.all(nieuw.map((r, i) =>
+      window.supabase.from(tabel).update({ volgorde: i + 1 }).eq('id', r.id)
+    ));
+    setBezig(false);
+    const fout = resultaten.find(r => r.error);
+    if (fout) {
+      window.__showToast && window.__showToast('Volgorde opslaan mislukt: ' + fout.error.message);
+      return;
+    }
+    window.__showToast && window.__showToast('Volgorde aangepast — zo staat het nu ook op de website');
+  }
+
+  // Op de <tr> zetten. De hele rij is sleepbaar, zodat het ook werkt als je
+  // net naast de greep pakt.
+  function rijProps(index) {
+    if (!aan) return { style: { cursor: 'pointer' } };
+    const isOpgepakt = opgepakt === index;
+    const isDoel = zweeft === index && opgepakt !== null && opgepakt !== index;
+    return {
+      draggable: !bezig,
+      onDragStart: (e) => {
+        opgepaktRef.current = index;
+        setOpgepakt(index);
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          try { e.dataTransfer.setData('text/plain', String(index)); } catch (err) {}
+        }
+      },
+      onDragOver: (e) => { e.preventDefault(); if (zweeft !== index) setZweeft(index); },
+      onDragEnd: () => { opgepaktRef.current = null; setOpgepakt(null); setZweeft(null); },
+      onDrop: (e) => {
+        e.preventDefault();
+        const van = opgepaktRef.current;
+        opgepaktRef.current = null;
+        setOpgepakt(null);
+        setZweeft(null);
+        verplaatsNaar(van, index);
+      },
+      style: {
+        cursor: 'pointer',
+        opacity: isOpgepakt ? 0.45 : 1,
+        // Streep aan de kant waar de rij terechtkomt.
+        boxShadow: isDoel
+          ? (opgepakt > index ? 'inset 0 2px 0 0 var(--accent-2)' : 'inset 0 -2px 0 0 var(--accent-2)')
+          : undefined
+      }
+    };
+  }
+
+  // In de eerste cel van de rij. De pijltjes zijn er voor wie niet sleept —
+  // zelfde knoppen als bij Categorieën.
+  function greepCel(index) {
+    if (!aan) return null;
+    return (
+      <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <span
+          title="Sleep deze rij naar boven of beneden"
+          style={{ cursor: bezig ? 'progress' : 'grab', color: 'var(--ink-soft)', display: 'inline-flex' }}
+        ><Icon name="drag" size={18} stroke={2.6} /></span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <button className="icon-btn" title="Naar boven" style={{ height: 18, width: 20, minHeight: 0, padding: 0, lineHeight: 0 }}
+            disabled={index === 0 || bezig} onClick={() => verplaatsNaar(index, index - 1)}>
+            <Icon name="chevron" size={13} stroke={2.2} style={{ transform: 'rotate(-90deg)' }} />
+          </button>
+          <button className="icon-btn" title="Naar beneden" style={{ height: 18, width: 20, minHeight: 0, padding: 0, lineHeight: 0 }}
+            disabled={index === rijen.length - 1 || bezig} onClick={() => verplaatsNaar(index, index + 1)}>
+            <Icon name="chevron" size={13} stroke={2.2} style={{ transform: 'rotate(90deg)' }} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return { aan, bezig, rijProps, greepCel, verplaatsNaar };
+}
+
+// Het regeltje boven de tabel: hoe je sleept, of waarom het nu niet kan.
+function SleepUitleg({ aan, redenUit }) {
+  return (
+    <div className="hint" style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>
+      {aan ? (
+        <>Pak een rij bij de greep <Icon name="drag" size={12} style={{ verticalAlign: '-2px' }} /> en sleep hem naar
+        boven of beneden; zo staat hij ook op de website. De pijltjes doen hetzelfde. Het wordt meteen opgeslagen.</>
+      ) : redenUit}
+    </div>
+  );
+}
+
+// Of de kolom `volgorde` al bestaat. null = nog niet gekeken, false = de
+// migratie sql/punt16_volgorde.sql is nog niet gedraaid.
+function useVolgordeKolom(tabel) {
+  const [bestaat, setBestaat] = React.useState(null);
+  React.useEffect(() => {
+    let levend = true;
+    window.supabase.from(tabel).select('volgorde').limit(1)
+      .then(({ error }) => { if (levend) setBestaat(!error); })
+      .catch(() => { if (levend) setBestaat(false); });
+    return () => { levend = false; };
+  }, [tabel]);
+  return bestaat;
+}
+
 /* === screens/clubjes.jsx === */
 // Clubjes screen — list + edit detail
 function ClubjesList({ onNav, onEdit, profile }) {
@@ -1857,6 +2003,22 @@ function ClubjesList({ onNav, onEdit, profile }) {
   const [search, setSearch] = React.useState('');
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
   const isBeheerder = profile?.role === 'beheerder';
+  // Punt 16: volgorde slepen. Alleen in de volledige lijst, en pas nadat
+  // sql/punt16_volgorde.sql is gedraaid.
+  const volgordeKolom = useVolgordeKolom('clubjes');
+  const volleLijst = tibOpVolgorde(DATA.clubjes);
+  const magSlepen = volgordeKolom === true && !isBeheerder && filter === 'Alle' && !search;
+  const sleep = useSleepVolgorde({
+    tabel: 'clubjes',
+    lijst: volleLijst,
+    aan: magSlepen,
+    naVerplaatsen: (nieuweLijst) => {
+      DATA.clubjes.length = 0;
+      nieuweLijst.forEach(r => DATA.clubjes.push(r));
+      window.__syncToSite && window.__syncToSite();
+      forceUpdate();
+    }
+  });
 
   function handleDelete(id, naam) {
     if (!window.confirm('Bewonersinitiatief "' + naam + '" definitief verwijderen?')) return;
@@ -1870,7 +2032,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
   const cats = ['Alle'].concat(
     Array.from(new Set(DATA.clubjes.map(c => c.categorie).filter(Boolean))).sort()
   );
-  const rows = DATA.clubjes
+  const rows = volleLijst
     .filter(c => !isBeheerder || c.id === profile.club_id)
     .filter(c => filter === 'Alle' || c.categorie === filter)
     .filter(c => !search || [c.naam, c.wijk, c.contact, c.omschrijving].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
@@ -1897,11 +2059,22 @@ function ClubjesList({ onNav, onEdit, profile }) {
         </div>
       </div>
 
+      {volgordeKolom === false ? (
+        <HintCard variant="warn" icon="warn" style={{ marginBottom: 12 }}>
+          De volgorde slepen werkt pas nadat <strong>sql/punt16_volgorde.sql</strong> in Supabase is uitgevoerd.
+        </HintCard>
+      ) : volgordeKolom === true && !isBeheerder && (
+        <SleepUitleg
+          aan={magSlepen}
+          redenUit={<>Zet het filter op <strong>Alle</strong> en maak het zoekveld leeg om de volgorde te kunnen slepen.</>}
+        />
+      )}
+
       <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
-              <th style={{ width: 36 }}></th>
+              <th style={{ width: 52 }}></th>
               <th>Naam</th>
               <th>Categorie</th>
               <th>Wijk</th>
@@ -1913,9 +2086,9 @@ function ClubjesList({ onNav, onEdit, profile }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map(c => (
-              <tr key={c.id} onClick={() => onEdit(c.id)} style={{ cursor: 'pointer' }}>
-                <td><input type="checkbox" onClick={e => e.stopPropagation()} /></td>
+            {rows.map((c, index) => (
+              <tr key={c.id} onClick={() => onEdit(c.id)} {...sleep.rijProps(index)}>
+                <td>{sleep.greepCel(index)}</td>
                 <td>
                   <div className="cell-flex">
                     {/* G5: eigen icoon uit het CMS; het automatische blauwe icoon is weg */}
@@ -3304,6 +3477,22 @@ function ActiviteitenScreen() {
   const [filter, setFilter] = React.useState('Alle');
   const [editing, setEditing] = React.useState(null);
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+  // Punt 16: volgorde slepen — alleen op het tabblad Alle, zonder filter of
+  // zoekterm, en pas nadat sql/punt16_volgorde.sql is gedraaid.
+  const volgordeKolom = useVolgordeKolom('activiteiten');
+  const volleLijst = tibOpVolgorde(DATA.activiteiten);
+  const magSlepen = volgordeKolom === true && tab === 'alle' && filter === 'Alle' && !search;
+  const sleep = useSleepVolgorde({
+    tabel: 'activiteiten',
+    lijst: volleLijst,
+    aan: magSlepen,
+    naVerplaatsen: (nieuweLijst) => {
+      DATA.activiteiten.length = 0;
+      nieuweLijst.forEach(r => DATA.activiteiten.push(r));
+      window.__syncToSite && window.__syncToSite();
+      forceUpdate();
+    }
+  });
 
   function handleDelete(id, naam) {
     if (!window.confirm('Activiteit "' + naam + '" definitief verwijderen?')) return;
@@ -3317,7 +3506,7 @@ function ActiviteitenScreen() {
   const cats = ['Alle'].concat(
     Array.from(new Set(DATA.activiteiten.map(a => a.categorie).filter(Boolean))).sort()
   );
-  const rows = DATA.activiteiten
+  const rows = volleLijst
     .filter(a => tab === 'alle' ? true : tab === 'concept' ? a.status === 'Concept' : a.status === 'Gepubliceerd')
     .filter(a => filter === 'Alle' || a.categorie === filter)
     .filter(a => !search || [a.naam, a.categorie, a.waar, a.contact].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
@@ -3353,11 +3542,22 @@ function ActiviteitenScreen() {
         ))}
       </div>
 
+      {volgordeKolom === false ? (
+        <HintCard variant="warn" icon="warn" style={{ marginBottom: 12 }}>
+          De volgorde slepen werkt pas nadat <strong>sql/punt16_volgorde.sql</strong> in Supabase is uitgevoerd.
+        </HintCard>
+      ) : volgordeKolom === true && (
+        <SleepUitleg
+          aan={magSlepen}
+          redenUit={<>Ga naar het tabblad <strong>Alle</strong>, zet het filter op <strong>Alle</strong> en maak het zoekveld leeg om de volgorde te kunnen slepen.</>}
+        />
+      )}
+
       <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
-              <th style={{ width: 36 }}></th>
+              <th style={{ width: 52 }}></th>
               <th>Activiteit</th>
               <th>Categorie</th>
               <th>Wanneer</th>
@@ -3368,9 +3568,9 @@ function ActiviteitenScreen() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(a => (
-              <tr key={a.id} onClick={() => setEditing(a.id)} style={{ cursor: 'pointer' }}>
-                <td><input type="checkbox" onClick={e => e.stopPropagation()} /></td>
+            {rows.map((a, index) => (
+              <tr key={a.id} onClick={() => setEditing(a.id)} {...sleep.rijProps(index)}>
+                <td>{sleep.greepCel(index)}</td>
                 <td><div className="cell-flex">
                   {/* G5: eigen icoon uit het CMS; het automatische blauwe icoon is weg */}
                   <div className="activity-icon-badge" title={a.icoon_label || a.naam}>
@@ -4654,6 +4854,14 @@ function VoorzieningenScreen() {
   const [bewerken, setBewerken] = React.useState(null); // 'nieuw' | rij | null
   // null = nog niet gekeken, false = sql/blok5_voorzieningen.sql is nog niet gedraaid
   const [tabelBestaat, setTabelBestaat] = React.useState(null);
+  // Punt 16: volgorde slepen. De kolom `volgorde` zit al in de tabel.
+  const magSlepen = soortFilter === 'alle' && !zoek;
+  const sleep = useSleepVolgorde({
+    tabel: 'voorzieningen',
+    lijst: rijen || [],
+    aan: magSlepen,
+    naVerplaatsen: (nieuweLijst) => setRijen(nieuweLijst)
+  });
 
   async function laad() {
     const { data, error } = await window.supabase.from('voorzieningen').select('*')
@@ -4709,23 +4917,32 @@ function VoorzieningenScreen() {
                 : 'Geen voorzieningen gevonden met deze zoekopdracht.'}
             </HintCard>
           ) : (
-            <div className="card">
-              <table className="table">
-                <thead><tr><th>Naam</th><th>Soort</th><th>Adres</th><th>Op de kaart</th><th>Zichtbaar</th></tr></thead>
-                <tbody>
-                  {lijst.map(v => (
-                    <tr key={v.id} onClick={() => setBewerken(v)} style={{ cursor: 'pointer' }}>
-                      <td style={{ fontWeight: 600 }}>{v.naam}</td>
-                      <td><span className="badge" style={{ background: tibSoortKleur(v.soort), color: 'white' }}>{v.soort}</span></td>
-                      <td>{v.adres || '—'}</td>
-                      <td>{v.lat != null && v.lng != null
-                        ? <Icon name="check" size={14} style={{ color: 'var(--accent-2)' }} />
-                        : <span style={{ color: 'var(--ink-soft)' }}>geen locatie</span>}</td>
-                      <td><Pill variant={v.zichtbaar !== false ? 'published' : 'draft'}>{v.zichtbaar !== false ? 'Zichtbaar' : 'Verborgen'}</Pill></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div>
+              {rijen.length > 1 && (
+                <SleepUitleg
+                  aan={magSlepen}
+                  redenUit={<>Zet het filter op <strong>Alle</strong> en maak het zoekveld leeg om de volgorde te kunnen slepen.</>}
+                />
+              )}
+              <div className="card">
+                <table className="table">
+                  <thead><tr><th style={{ width: 52 }}></th><th>Naam</th><th>Soort</th><th>Adres</th><th>Op de kaart</th><th>Zichtbaar</th></tr></thead>
+                  <tbody>
+                    {lijst.map((v, index) => (
+                      <tr key={v.id} onClick={() => setBewerken(v)} {...sleep.rijProps(index)}>
+                        <td>{sleep.greepCel(index)}</td>
+                        <td style={{ fontWeight: 600 }}>{v.naam}</td>
+                        <td><span className="badge" style={{ background: tibSoortKleur(v.soort), color: 'white' }}>{v.soort}</span></td>
+                        <td>{v.adres || '—'}</td>
+                        <td>{v.lat != null && v.lng != null
+                          ? <Icon name="check" size={14} style={{ color: 'var(--accent-2)' }} />
+                          : <span style={{ color: 'var(--ink-soft)' }}>geen locatie</span>}</td>
+                        <td><Pill variant={v.zichtbaar !== false ? 'published' : 'draft'}>{v.zichtbaar !== false ? 'Zichtbaar' : 'Verborgen'}</Pill></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -4744,13 +4961,28 @@ function PartnersScreen() {
   const [search, setSearch] = React.useState('');
   const [editing, setEditing] = React.useState(null);
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+  // Punt 16: volgorde slepen. De kolom `volgorde` bestaat hier al sinds
+  // sql/blok3_partners.sql.
+  const volleLijst = tibOpVolgorde(DATA.partners);
+  const magSlepen = !search;
+  const sleep = useSleepVolgorde({
+    tabel: 'partners',
+    lijst: volleLijst,
+    aan: magSlepen,
+    naVerplaatsen: (nieuweLijst) => {
+      DATA.partners.length = 0;
+      nieuweLijst.forEach(r => DATA.partners.push(r));
+      window.__syncToSite && window.__syncToSite();
+      forceUpdate();
+    }
+  });
 
   if (editing !== null) {
     const item = DATA.partners.find(p => p.id === editing) || { id: null, naam: '', type: 'Overig', contact: '', email: '', website: '', omschrijving: '', korte_naam: '', subtitel: '', slug: '', actief: true };
     return <PartnerEdit item={item} onBack={() => setEditing(null)} />;
   }
 
-  const rows = DATA.partners
+  const rows = volleLijst
     .filter(p => !search || [p.naam, p.contact, p.email].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
 
   function handleDelete(id, naam) {
@@ -4773,13 +5005,18 @@ function PartnersScreen() {
       <div className="toolbar">
         <div className="search"><Icon name="search" size={14} /><input placeholder="Zoek partner…" value={search} onChange={e => setSearch(e.target.value)} /></div>
       </div>
+      <SleepUitleg
+        aan={magSlepen}
+        redenUit={<>Maak het zoekveld leeg om de volgorde te kunnen slepen.</>}
+      />
+
       <div className="table-wrap">
         <table className="table">
-          <thead><tr><th style={{width:36}}></th><th>Partner</th><th>Contactpersoon</th><th>E-mail</th><th>Zichtbaar</th><th></th></tr></thead>
+          <thead><tr><th style={{width:52}}></th><th>Partner</th><th>Contactpersoon</th><th>E-mail</th><th>Zichtbaar</th><th></th></tr></thead>
           <tbody>
-            {rows.map(p => (
-              <tr key={p.id} onClick={() => setEditing(p.id)} style={{ cursor: 'pointer' }}>
-                <td><input type="checkbox" onClick={e => e.stopPropagation()} /></td>
+            {rows.map((p, index) => (
+              <tr key={p.id} onClick={() => setEditing(p.id)} {...sleep.rijProps(index)}>
+                <td>{sleep.greepCel(index)}</td>
                 <td><div className="cell-flex">
                   <div className="row-icon" style={{ fontFamily: 'var(--serif)' }}>{(p.naam||'?')[0]}</div>
                   <div className="strong">{p.naam}</div>
@@ -8246,6 +8483,9 @@ async function loadFromSupabase() {
           window.DATA.weekagenda = data;
         } else if (tabel === 'site_navigatie') {
           window.DATA.nav = data;
+        } else if (tabel === 'clubjes' || tabel === 'activiteiten' || tabel === 'partners') {
+          // Punt 16: dezelfde volgorde als de website aanhoudt.
+          window.DATA[tabel] = tibOpVolgorde(data);
         } else {
           window.DATA[tabel] = data;
         }
