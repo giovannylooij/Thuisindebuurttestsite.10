@@ -1848,13 +1848,18 @@ Legenda: **[klaar]** al gerepareerd · **[te doen]** nog te bouwen ·
     volgorde aanhouden.
 
 ### Pagina Bewonersinitiatieven — de naam
-17. [te doen] **"Buurtinitiatief" overal vervangen door "Bewonersinitiatief".**
-    Zij noemt: home (vier knoppen), de pagina zelf ("8 buurtinitiatieven
-    gevonden" en de groene knop), het aanmeldformulier (3×), de legenda van de
-    agenda, het scherm Pagina's en de contactpagina. Het woord staat op ~50
-    plekken in de websitecode en ~67 in het CMS. Aanpak: het woord **op één
-    plek vastleggen** en overal gebruiken, zodat een volgende naamswijziging
-    één regel is.
+17. [klaar, 3-11] **"Buurtinitiatief" overal vervangen door
+    "Bewonersinitiatief".** 49 plekken in de websitecode en 72 in het CMS.
+    Alle plekken die zij noemde nagelopen: de vier knoppen op de homepagina,
+    "8 bewonersinitiatieven gevonden", de groene knop, het aanmeldformulier,
+    de legenda van de agenda, het scherm Pagina's en de zijbalk van het CMS.
+    **Niet meegenomen, met opzet:** de sleutel `buurtinitiatief` waaronder de
+    agendakleur is opgeslagen. Dat is geen tekst maar een verwijzing naar een
+    rij in de database; hernoemen zou Margareths kleurinstelling losmaken. Het
+    label ernaast is wél bijgewerkt, dus in beeld staat overal het nieuwe
+    woord.
+    Eén zin staat niet in de code maar in de database (de contactkaart op de
+    Contactpagina): daarvoor ligt `sql/term_bewonersinitiatief.sql` klaar.
 
 ### Pagina Agenda — het veld Wanneer
 **Margareth heeft de nieuwe velden nog niet gebruikt.** Bij alle acht
