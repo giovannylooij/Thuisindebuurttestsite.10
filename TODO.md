@@ -1774,6 +1774,108 @@ er is.
 
 ---
 
+## 🗓️ Bevindingen Margareth — deel 3+4 *(document 3 november 2026)*
+
+Haar punten naast de stand van vandaag gelegd. Een deel was al gerepareerd
+tussen het gesprek en nu; dat staat hieronder als **al klaar**, zodat ze het
+opnieuw kan bekijken. De rest is nieuw werk.
+
+### Al gerepareerd sinds het gesprek — Margareth kan het nakijken
+- [x] **Partners: wat in het CMS staat klopt niet met de site.** Opgelost
+      30-10. De Partners-pagina stond vast in de code; nu komt hij uit de
+      tabel. Ook de losse teksten per partner zijn nu aan te passen.
+- [x] **Partners: zichtbaarheid stond op 'uit' terwijl ze zichtbaar waren.**
+      Opgelost 30-10 — het scherm keek naar een veld dat niet bestond.
+- [x] **Netwerken: CMS en site komen niet overeen.** Opgelost 31-10, zelfde
+      oorzaak. De acht oude demo-regels zijn opgeruimd.
+- [x] **Voorzieningen-pagina met koppeling naar de Buurtatlas.** Gebouwd
+      30-10. De pagina staat klaar maar is nog verborgen in het menu; zodra
+      Margareth de eerste voorzieningen invult zetten we hem aan. Ze komen
+      automatisch als stip op de Buurtatlas.
+- [x] **Verzonnen voorzieningen van de Buurtatlas.** Weggehaald 29-10.
+
+### A. Naam: Bewonersinitiatief in plaats van Buurtinitiatief
+- [ ] Margareth heeft de paginanaam aangepast, maar het oude woord staat nog
+      op ~50 plekken in de websitecode en ~67 plekken in het CMS. Zij noemt:
+      home (vier knoppen), de pagina zelf ("8 buurtinitiatieven gevonden",
+      "Meld jouw buurtinitiatief aan"), het aanmeldformulier (3×), de legenda
+      van de agenda, het scherm Pagina's en de contactpagina.
+- [ ] Aanpak: **één woord op één plek vastleggen** en overal gebruiken, zodat
+      een volgende naamswijziging één regel is in plaats van vijftig.
+
+### B. Buurtatlas
+- [ ] **Buurttuin achter Ichthus en Repair Café weghalen** — die staan vast in
+      de code en zijn nooit als bewonersinitiatief ingevoerd.
+- [ ] **Partners koppelen.** Margareth ziet BNS en Ichthus niet als blauwe
+      stip, en mist Bibliotheek en Welzijn. Oorzaak: de Buurtatlas haalt
+      partners niet uit de tabel, maar probeert namen te matchen met vier
+      plekken die vast in de code staan. Wat daar niet in staat, verschijnt
+      nooit. Oplossing: partners net zo uit de database halen als
+      voorzieningen; dan staan alle vier er vanzelf op en verdwijnen de twee
+      hierboven in dezelfde beweging.
+- [ ] **De tip in de lichtgroene balk** gelijktrekken met die op
+      Bewonersinitiatieven en Activiteiten.
+
+### C. Nieuw item aanmaken lukt niet
+- [ ] **"Ik kan geen nieuwe partner invoeren"** — vrijwel zeker dezelfde
+      id-teller die bij de bewonersinitiatieven achterliep (opgelost 30-10) en
+      bij netwerken (opgelost 31-10). Nu in één keer nakijken en repareren
+      voor álle tabellen waar het CMS in kan schrijven, zodat dit niet per
+      scherm blijft opduiken.
+
+### D. Volgorde van items in de lijst
+- [ ] Margareth wil een ingevoerd bewonersinitiatief, activiteit, partner of
+      voorziening kunnen verplaatsen. Vorige keer heb ik de volgorde van de
+      **categorieën** gebouwd (dat was het antwoord op mijn vraag); dit gaat
+      over de items zelf. Vraagt een kolom `volgorde` op clubjes en
+      activiteiten (partners en voorzieningen hebben hem al) plus pijltjes in
+      de vier schermen, en de site moet die volgorde aanhouden.
+
+### E. Agenda — het veld Wanneer
+**Belangrijk: Margareth heeft de nieuwe velden nog niet gebruikt.** Bij alle
+acht bewonersinitiatieven en bij Test 12 staan Startdatum en Frequentie leeg;
+ze typt nog in het oude tekstveld. Haar drie klachten gaan dus over het raden
+uit die tekst. Twee ervan zijn al opgelost met blok 4, één is een echt gat:
+- [x] **Wijkborrel in de verkeerde week** — met Startdatum kiest ze nu zelf in
+      welke week het begint. Precies wat ze vraagt. Alleen nog invullen.
+- [x] **Test 11: alleen zaterdagen in november 2026** — daar is "Tot en met"
+      voor. (Dit initiatief heeft ze intussen zelf verwijderd.)
+- [ ] **Test 12: elke dag van 1 t/m 15 november** — dít kan nog niet. In de
+      lijst ontbreekt **"Elke dag"**. Toevoegen, dan werkt haar voorbeeld.
+- [ ] Haar laten zien waar het blok staat; dat ze het niet gevonden heeft is
+      net zo goed een bevinding.
+
+### F. Kaartvenster op Activiteiten
+- [ ] "Het kaartje is nu beter, maar verspringt nog steeds een beetje. Lukt
+      het om het witte kader gewoon naar links (in de zee) te zetten? Dan kan
+      het ook groter worden zonder dat het kaartje verspringt."
+      Het venster opent nu boven de stip, waardoor de kaart meeschuift. Links
+      vastzetten lost het helemaal op én geeft ruimte voor meer kolommen.
+      Daarna hetzelfde doen bij Bewonersinitiatieven en Voorzieningen.
+
+### G. Partners — klein
+- [ ] Veld **"Type"** weg uit het partnerscherm; dat doet niets op de site.
+
+### H. Blijft openstaan
+- [ ] **Wachtwoord vergeten.** Margareth vraagt wat er gebeurt als ze haar
+      wachtwoord kwijtraakt. Nu is er geen herstelmogelijkheid in het CMS.
+      Vraag aan Giovanny: blijf jij beheerder, of moet zij zichzelf kunnen
+      herstellen?
+- [ ] **Betaalde aanmeldingen.** Gebouwd en getest, staat verborgen achter een
+      schakelaar. Wacht op een Mollie-sleutel. Zij zegt: geen haast, maar moet
+      wel gebeuren.
+
+### Volgorde die ik voorstel
+1. **A + B + G** — naam, Buurtatlas en het type-veld. Klein werk, meteen
+   zichtbaar, en het haalt de laatste verzonnen plekken van de kaart.
+2. **C** — nieuw item kunnen aanmaken. Eén reparatie voor alle schermen.
+3. **E** — "Elke dag" erbij, en met Margareth het Wanneer-blok doorlopen.
+4. **F** — kaartvenster links vastzetten op drie pagina's.
+5. **D** — volgorde slepen in vier schermen; het meeste werk.
+6. **H** — wachtwoord en betalen, als Giovanny de knopen doorhakt.
+
+---
+
 ## 💾 Wekelijkse back-up van de database *(plan, 5 oktober 2026)*
 
 **Waarom:** nu bestaat er alleen een handmatige knop in het CMS. Gaat er iets
