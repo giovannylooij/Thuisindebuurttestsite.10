@@ -1821,14 +1821,16 @@ Legenda: **[klaar]** al gerepareerd · **[te doen]** nog te bouwen ·
     tot Margareth de eerste heeft ingevuld. De koppeling naar de Buurtatlas
     zit erin: een voorziening met adres komt automatisch als stip op de kaart.
 12. — *"Bewonersinitiatieven en Activiteiten goed gekoppeld. Top!"*
-13. [te doen] **Buurttuin achter Ichthus en Repair Café weghalen** van de
-    kaart; die staan vast in de code en zijn nooit ingevoerd.
-14. [te doen] **Koppeling van de partners.** Haar vermoeden klopt: BNS en
-    Ichthus staan er niet als partner op, en Bibliotheek en Welzijn ontbreken
-    helemaal. Oorzaak: de Buurtatlas haalt partners niet uit de tabel, maar
-    matcht namen tegen vier plekken die vast in de code staan. Oplossing:
-    partners net zo uit de database halen als voorzieningen — dan staan alle
-    vier erop en verdwijnen de twee van punt 13 in dezelfde beweging.
+13. [klaar, 3-11] **Buurttuin achter Ichthus en Repair Café weggehaald.**
+    Er staat nu niets meer vast in de code: alles op de kaart komt uit het
+    CMS.
+14. [klaar, 3-11] **Koppeling van de partners.** Haar vermoeden klopte: de
+    Buurtatlas haalde partners niet uit de tabel maar matchte namen tegen vier
+    plekken die vast in de code stonden. Stond een partner daar niet in, dan
+    verscheen hij nooit — zo misten Bibliotheek en Welzijn. Partners komen nu
+    rechtstreeks uit de tabel, net als voorzieningen. Getest: de knop staat op
+    **Partners · 4** (was 2), alle vier staan op de kaart, en het venster
+    toont adres en website.
 15. [te doen] **De tip in de lichtgroene balk** gelijktrekken met die op
     Bewonersinitiatieven en Activiteiten.
 
