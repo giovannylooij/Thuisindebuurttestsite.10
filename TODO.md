@@ -1793,8 +1793,10 @@ Legenda: **[klaar]** al gerepareerd · **[te doen]** nog te bouwen ·
    staat bij Pagina's → Partners → Titel. De losse tekst per partner staat
    sinds 30-10 bij de partner zelf (veld Omschrijving). Lukte eerder niet,
    want de pagina stond vast in de code.
-4. [te doen] **Veld "Type" kan weg** uit het partnerscherm; het doet niets op
-   de site.
+4. [klaar, 3-11] **Veld "Type" is weg** uit het partnerscherm, en daarmee ook
+   de kolom Type en de filterknoppen "Alle types / Ondernemer / Locatie /
+   Overheid" — filteren op iets wat je niet kunt invullen heeft geen zin. De
+   kolom in de database blijft bestaan, dus er gaat niets verloren.
 5. [klaar] **"Op de invoerpagina staat alleen naam en adres, toch staat er
    meer op de website."** Klopte: de teksten stonden in de code. Sinds 30-10
    staan ze in de database en zijn ze aan te passen.
@@ -1831,8 +1833,11 @@ Legenda: **[klaar]** al gerepareerd · **[te doen]** nog te bouwen ·
     rechtstreeks uit de tabel, net als voorzieningen. Getest: de knop staat op
     **Partners · 4** (was 2), alle vier staan op de kaart, en het venster
     toont adres en website.
-15. [te doen] **De tip in de lichtgroene balk** gelijktrekken met die op
-    Bewonersinitiatieven en Activiteiten.
+15. [klaar, 3-11] **De tip in de lichtgroene balk** is nu dezelfde als op
+    Bewonersinitiatieven en Activiteiten: *"Tip: klik op een categorie om
+    alleen die te tonen. Klik er nog eens op om weer alles te zien. Klik op
+    een stip in de kaart voor meer info."* Op alle drie de pagina's woord voor
+    woord gelijk.
 
 ### Invoerpagina's Bewonersinitiatieven, Activiteiten, Partners en Voorzieningen
 16. [te doen] **Een ingevoerd item kunnen verplaatsen in de lijst.**

@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.232', datum: '31-10-2026' };
+const CMS_VERSIE = { nummer: '1.0.238', datum: '03-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -4389,11 +4389,6 @@ function PartnerEdit({ item, onBack }) {
           <div className="form-section">
             <h3>Partnergegevens</h3>
             <Field label="Naam"><input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} /></Field>
-            <Field label="Type">
-              <select value={fd.type || ''} onChange={e => up('type', e.target.value)}>
-                <option>Ondernemer</option><option>Locatie</option><option>Overheid</option><option>Overig</option>
-              </select>
-            </Field>
             {extraKolommen !== false && (
             <div className="row-2">
               <Field label="Contactpersoon"><input type="text" value={fd.contact || ''} onChange={e => up('contact', e.target.value)} /></Field>
@@ -4736,19 +4731,16 @@ function VoorzieningenScreen() {
 
 function PartnersScreen() {
   const [search, setSearch] = React.useState('');
-  const [typeFilter, setTypeFilter] = React.useState('alle');
   const [editing, setEditing] = React.useState(null);
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
-  const partnerChips = ['alle', 'Ondernemer', 'Locatie', 'Overheid'];
 
   if (editing !== null) {
-    const item = DATA.partners.find(p => p.id === editing) || { id: null, naam: '', type: 'Ondernemer', contact: '', email: '', website: '', omschrijving: '', korte_naam: '', subtitel: '', slug: '', actief: true };
+    const item = DATA.partners.find(p => p.id === editing) || { id: null, naam: '', type: 'Overig', contact: '', email: '', website: '', omschrijving: '', korte_naam: '', subtitel: '', slug: '', actief: true };
     return <PartnerEdit item={item} onBack={() => setEditing(null)} />;
   }
 
   const rows = DATA.partners
-    .filter(p => typeFilter === 'alle' || p.type === typeFilter)
-    .filter(p => !search || [p.naam, p.type, p.contact, p.email].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
+    .filter(p => !search || [p.naam, p.contact, p.email].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
 
   function handleDelete(id, naam) {
     if (!window.confirm('Partner "' + naam + '" definitief verwijderen?')) return;
@@ -4769,15 +4761,10 @@ function PartnersScreen() {
 
       <div className="toolbar">
         <div className="search"><Icon name="search" size={14} /><input placeholder="Zoek partner…" value={search} onChange={e => setSearch(e.target.value)} /></div>
-        {partnerChips.map(t => (
-          <button key={t} className={"chip" + (typeFilter === t ? ' active' : '')} onClick={() => setTypeFilter(t)}>
-            {t === 'alle' ? 'Alle types' : t}
-          </button>
-        ))}
       </div>
       <div className="table-wrap">
         <table className="table">
-          <thead><tr><th style={{width:36}}></th><th>Partner</th><th>Type</th><th>Contactpersoon</th><th>E-mail</th><th>Zichtbaar</th><th></th></tr></thead>
+          <thead><tr><th style={{width:36}}></th><th>Partner</th><th>Contactpersoon</th><th>E-mail</th><th>Zichtbaar</th><th></th></tr></thead>
           <tbody>
             {rows.map(p => (
               <tr key={p.id} onClick={() => setEditing(p.id)} style={{ cursor: 'pointer' }}>
@@ -4786,7 +4773,6 @@ function PartnersScreen() {
                   <div className="row-icon" style={{ fontFamily: 'var(--serif)' }}>{(p.naam||'?')[0]}</div>
                   <div className="strong">{p.naam}</div>
                 </div></td>
-                <td><Pill>{p.type}</Pill></td>
                 <td>{p.contact}</td>
                 <td>{p.email}</td>
                 <td><Pill variant={p.actief !== false ? 'published' : 'draft'}>{p.actief !== false ? 'Zichtbaar' : 'Verborgen'}</Pill></td>
