@@ -1875,8 +1875,16 @@ die tekst.
     29-10). Alleen nog invullen.
 19. [klaar] **Test 11: alleen de zaterdagen in november 2026.** Daar is "Tot
     en met" voor. Dit initiatief heeft ze intussen zelf verwijderd.
-20. [te doen] **Test 12: elke dag van 1 t/m 15 november.** Dít kan echt nog
-    niet — in de lijst ontbreekt **"Elke dag"**. Toevoegen.
+20. [klaar, 3-11] **"Elke dag" toegevoegd.** Haar voorbeeld werkt nu: start
+    1 november, Elke dag, tot en met 15 november → in de weekkalender staat
+    Test 12 op alle zeven dagen van die week, niet daarvoor en niet daarna.
+    Bij "Elke dag" heet het veld **Tot en met** (zonder "optioneel"), met de
+    uitleg dat leeg laten betekent: zonder eind.
+    Meegenomen: een reeks met een einddatum zegt dat nu ook in de tekst op de
+    site — "Elke dag van 1 november t/m 15 november", of bij de andere
+    soorten "Elke vrijdag, t/m 31 december".
+    Vraagt `sql/frequentie_dagelijks.sql`: de database laat alleen de bekende
+    frequenties toe, en "dagelijks" moet daarbij.
 21. [te doen] **Margareth door het blok Wanneer heen lopen.** Dat ze het niet
     gevonden heeft is net zo goed een bevinding.
 
