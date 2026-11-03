@@ -1803,10 +1803,14 @@ Legenda: **[klaar]** al gerepareerd · **[te doen]** nog te bouwen ·
 6. [klaar] **"Zichtbaarheid staat op uit en toch zijn ze zichtbaar."**
    Het scherm keek naar een veld dat niet bestond. Opgelost 30-10; alle vier
    staan nu op Zichtbaar.
-7. [te doen] **"Ik kan geen nieuwe partner invoeren."** Vrijwel zeker dezelfde
-   id-teller die bij bewonersinitiatieven (30-10) en netwerken (31-10)
-   achterliep. In één keer nakijken voor álle tabellen waar het CMS in
-   schrijft, zodat dit niet per scherm blijft terugkomen.
+7. [klaar, 3-11] **"Ik kan geen nieuwe partner invoeren."** Zelfde oorzaak
+   als eerder bij bewonersinitiatieven en netwerken: de teller die het
+   volgende id uitdeelt liep achter. `sql/id_tellers_allemaal.sql` zet die
+   teller recht voor **alle** tabellen tegelijk — en maakt er een aan waar hij
+   ontbreekt — zodat dit niet per scherm blijft terugkomen.
+   Getest met Giovanny ingelogd: via de knop "Nieuwe partner" een proefpartner
+   aangemaakt, die kwam goed in de database (id 8, met korte naam, regel
+   eronder en omschrijving). Daarna weer verwijderd.
 
 ### (Invoer)pagina Netwerken
 8. [klaar] **Zelfde als Partners.** Opgelost 31-10.
