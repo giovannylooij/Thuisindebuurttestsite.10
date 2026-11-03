@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.243', datum: '03-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.244', datum: '03-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1262,6 +1262,7 @@ window.addEventListener('message', function(evt) {
 const NAV = [
   { group: "Werkruimte", items: [
     { id: "dashboard", label: "Dashboard", icon: "dashboard" },
+    { id: "wijzigingen", label: "Wijzigingen", icon: "refresh" },
   ]},
   { group: "Inhoud", items: [
     { id: "pages", label: "Pagina's", icon: "pages" },
@@ -1306,10 +1307,12 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
   const role = profile?.role || 'beheerder';
   const HIDDEN = {
     superadmin: ['agenda', 'buurtatlas'],
-    redactie: ['gebruikers', 'huisstijl', 'domein'],
+    // Het wijzigingenlogboek is er voor Margareth: zij kijkt na wat de
+    // anderen hebben gedaan, dus zij alleen ziet dit scherm.
+    redactie: ['gebruikers', 'huisstijl', 'domein', 'wijzigingen'],
     beheerder: ['clubjes', 'activiteiten', 'agenda', 'nieuws', 'partners',
                 'netwerken', 'buurtatlas', 'categorieen', 'media', 'menu',
-                'voorzieningen', 'gebruikers', 'huisstijl', 'domein'],
+                'voorzieningen', 'gebruikers', 'huisstijl', 'domein', 'wijzigingen'],
   };
   const hidden = HIDDEN[role] || [];
   const visibleNav = NAV.map(group => ({
@@ -1532,7 +1535,18 @@ Object.assign(window, { NAV, NAV_LOOKUP, Sidebar, Topbar, PageHead, Pill, Toggle
 
 /* === screens/dashboard.jsx === */
 // Dashboard screen
-function Dashboard({ onNav, onPreview }) {
+function Dashboard({ onNav, onPreview, badges }) {
+  // De laatste wijzigingen voor het kaartje hieronder. Tot nu toe stond daar
+  // altijd "Nog geen wijzigingen geregistreerd"; sinds het logboek bestaat
+  // kan het echt gevuld worden. Zie sql/wijzigingenlogboek.sql
+  const [laatsteWijzigingen, setLaatsteWijzigingen] = React.useState(null);
+  React.useEffect(() => {
+    if (window._tibProfile?.role !== 'superadmin') { setLaatsteWijzigingen([]); return; }
+    window.supabase.from('wijzigingen').select('*')
+      .order('aangemaakt_op', { ascending: false }).limit(6)
+      .then(({ data, error }) => setLaatsteWijzigingen(error ? [] : (data || [])));
+  }, []);
+
   const quickActions = [
     { id: 'clubjes', icon: 'club', title: 'Nieuw bewonersinitiatief', sub: 'Verschijnt in de Bewonersinitiatieven-cards' },
     { id: 'activiteiten', icon: 'activity', title: 'Nieuwe activiteit', sub: 'Wekelijks of eenmalig' },
@@ -1550,6 +1564,28 @@ function Dashboard({ onNav, onPreview }) {
           <button className="btn btn-primary" onClick={() => onNav('clubjes')}><Icon name="plus" size={14} /> Snel toevoegen</button>
         </>}
       />
+
+      {/* Wat de anderen hebben aangepast — het eerste wat Margareth moet zien
+          als ze inlogt. Alleen zichtbaar als er iets te bekijken is. */}
+      {window._tibProfile?.role === 'superadmin' && badges && badges.wijzigingen > 0 && (
+        <HintCard icon="refresh" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 240 }}>
+              <strong>
+                {badges.wijzigingen === 1
+                  ? 'Er is 1 wijziging die u nog niet hebt bekeken.'
+                  : 'Er zijn ' + badges.wijzigingen + ' wijzigingen die u nog niet hebt bekeken.'}
+              </strong>
+              <div style={{ fontSize: 13, marginTop: 2 }}>
+                Wat er is aangepast en door wie. Alles staat al op de website.
+              </div>
+            </div>
+            <button className="btn btn-primary" onClick={() => onNav('wijzigingen')}>
+              <Icon name="arrow" size={14} /> Bekijken
+            </button>
+          </div>
+        </HintCard>
+      )}
 
       {/* Quick actions */}
       <div className="quick" style={{ marginBottom: 24 }}>
@@ -1594,10 +1630,34 @@ function Dashboard({ onNav, onPreview }) {
           <div className="card" style={{ marginBottom: 18 }}>
             <div className="card-head">
               <h3 className="card-title">Recente wijzigingen</h3>
+              {laatsteWijzigingen && laatsteWijzigingen.length > 0 && (
+                <a className="card-link" href="#" onClick={e => { e.preventDefault(); onNav('wijzigingen'); }}>Alles bekijken →</a>
+              )}
             </div>
-            <div style={{ padding: '28px 20px', textAlign: 'center', color: 'var(--ink-mute)', fontSize: 13 }}>
-              Nog geen wijzigingen geregistreerd.
-            </div>
+            {!laatsteWijzigingen || laatsteWijzigingen.length === 0 ? (
+              <div style={{ padding: '28px 20px', textAlign: 'center', color: 'var(--ink-mute)', fontSize: 13 }}>
+                Nog geen wijzigingen geregistreerd.
+              </div>
+            ) : (
+              <div>
+                {laatsteWijzigingen.map(w => (
+                  <div key={w.id} style={{ padding: '10px 18px', borderTop: '1px solid var(--lijn, #ece9e2)', display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {w.titel || '(zonder naam)'}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--ink-mute)' }}>
+                        {(TIB_SOORT_LABEL[w.soort] || w.soort) + ' · ' + (TIB_LOG_TABEL_LABEL[w.tabel] || w.tabel) +
+                         ' · ' + (w.door_email || 'onbekend')}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-mute)', whiteSpace: 'nowrap' }}>
+                      {tibLogWanneer(w.aangemaakt_op)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="card">
@@ -4384,6 +4444,16 @@ function PagesScreen() {
       }
       teBewaren.push({ pagina: pagina.id, sleutel: v.sleutel, tekst: nieuw, bijgewerkt_op: new Date().toISOString() });
     });
+    // Voor het wijzigingenlogboek: welke velden veranderen er, met de tekst
+    // die er stond. Eén regel per opslagactie, niet per veld.
+    const logVelden = pagina.velden.filter(v => {
+      const nieuw = waardeVan(v).trim();
+      return nieuw !== tekstOpDeSite(v);
+    }).map(v => ({
+      veld: v.label || v.sleutel,
+      oud: tibLogWaarde(tekstOpDeSite(v)),
+      nieuw: tibLogWaarde(waardeVan(v).trim()),
+    }));
     let foutmelding = null;
     if (teBewaren.length > 0) {
       const res = await window.supabase.from('pagina_teksten').upsert(teBewaren, { onConflict: 'pagina,sleutel' });
@@ -4399,6 +4469,12 @@ function PagesScreen() {
       toast('Niet opgeslagen: ' + foutmelding + ' (is sql/blokA_pagina_teksten.sql al uitgevoerd?)');
     } else {
       toast('Teksten opgeslagen voor ' + pagina.label);
+      if (logVelden.length) {
+        window.__logWijziging({
+          tabel: 'pagina_teksten', rij_id: pagina.id, titel: 'Pagina ' + pagina.label,
+          soort: 'aangepast', velden: logVelden
+        });
+      }
     }
     await laad();
   }
@@ -4716,11 +4792,13 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
       rij.icoon_url = fd.icoon_url || null;
       rij.icoon_label = fd.icoon_label || null;
     }
+    const klaar = await window.__logVooraf('voorzieningen', bestaat ? fd.id : null);
     const res = bestaat
       ? await window.supabase.from('voorzieningen').update(rij).eq('id', fd.id).select().single()
       : await window.supabase.from('voorzieningen').insert(rij).select().single();
     setBezig(false);
     if (res.error) { toast('Opslaan mislukt: ' + res.error.message); return; }
+    klaar(res.data || rij);
     toast('Voorziening opgeslagen!');
     onOpgeslagen && onOpgeslagen();
     onBack();
@@ -4728,8 +4806,10 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
 
   async function verwijder() {
     if (!window.confirm('Voorziening "' + fd.naam + '" definitief verwijderen?')) return;
+    const klaar = await window.__logVooraf('voorzieningen', fd.id);
     const { error } = await window.supabase.from('voorzieningen').delete().eq('id', fd.id);
     if (error) { toast('Verwijderen mislukt: ' + error.message); return; }
+    klaar(null, 'verwijderd');
     toast('Voorziening verwijderd');
     onOpgeslagen && onOpgeslagen();
     onBack();
@@ -5568,6 +5648,40 @@ function ContactScreen() {
       })),
     };
     window.__syncToSite && window.__syncToSite();
+    // Eén logboekregel voor de hele opslagactie: de contactpagina wordt in
+    // zijn geheel bewaard, niet kaartje voor kaartje.
+    const logVelden = [];
+    if (verwijderd.length) {
+      logVelden.push({ veld: 'Contactkaarten verwijderd', oud: String(verwijderd.length), nieuw: '' });
+    }
+    kaarten.forEach(k => {
+      const oudeKaart = k.id ? bewaardeKaarten.find(o => o.id === k.id) : null;
+      ['rol', 'omschrijving', 'email', 'icoon'].forEach(v => {
+        if (tekstVan(k, v) !== tekstVan(oudeKaart, v)) {
+          logVelden.push({
+            veld: (tekstVan(k, 'rol') || 'Contactkaart') + ' — ' + tibLogVeldLabel(v),
+            oud: tibLogWaarde(tekstVan(oudeKaart, v)),
+            nieuw: tibLogWaarde(tekstVan(k, v)),
+          });
+        }
+      });
+    });
+    ['titel', 'intro1'].forEach(sleutel => {
+      const nieuweTekst = (tekst[sleutel] || '').trim();
+      const oudeTekst = (bewaardeTekst[sleutel] || '').trim();
+      if (nieuweTekst !== oudeTekst) {
+        logVelden.push({
+          veld: sleutel === 'titel' ? 'Titel' : 'Intro',
+          oud: tibLogWaarde(oudeTekst), nieuw: tibLogWaarde(nieuweTekst),
+        });
+      }
+    });
+    if (logVelden.length) {
+      window.__logWijziging({
+        tabel: 'contact_kaarten', rij_id: 'contact', titel: 'Contactpagina',
+        soort: 'aangepast', velden: logVelden
+      });
+    }
     toast('Contactpagina opgeslagen — staat nu op de website.');
     await laad();
   }
@@ -5805,11 +5919,13 @@ function CategoriesScreen() {
     const nieuweNaam = editNaam.trim();
     if (naamBestaat(nieuweNaam, id)) { toast('Er bestaat al een categorie met de naam "' + nieuweNaam + '".'); return; }
     setSaving(true);
+    const klaar = await window.__logVooraf('categorieen', id);
     const { error } = await window.supabase.from('categorieen').update({
       naam: nieuweNaam,
       kleur: editKleur,
       icoon: origIcoon
     }).eq('id', id);
+    if (!error) klaar({ id: id, naam: nieuweNaam, kleur: editKleur, icoon: origIcoon });
     if (error) {
       window.__showToast && window.__showToast('Fout: ' + error.message);
       setSaving(false);
@@ -5851,12 +5967,9 @@ function CategoriesScreen() {
     if (naamBestaat(newNaam)) { toast('Er bestaat al een categorie met de naam "' + newNaam.trim() + '".'); return; }
     setSaving(true);
     const maxVolgorde = cats.length > 0 ? Math.max(...cats.map(c => c.volgorde || 0)) + 1 : 1;
-    const { error } = await window.supabase.from('categorieen').insert({
-      naam: newNaam.trim(),
-      icoon: newIcoon,
-      kleur: newKleur,
-      volgorde: maxVolgorde
-    });
+    const nieuweCategorie = { naam: newNaam.trim(), icoon: newIcoon, kleur: newKleur, volgorde: maxVolgorde };
+    const { error } = await window.supabase.from('categorieen').insert(nieuweCategorie);
+    if (!error) (await window.__logVooraf('categorieen', null))(nieuweCategorie, 'nieuw');
     if (error) { window.__showToast && window.__showToast('Fout: ' + error.message); }
     else { window.__showToast && window.__showToast('Categorie aangemaakt: ' + newNaam.trim()); setNewNaam(''); await laad(); }
     setSaving(false);
@@ -5891,7 +6004,9 @@ function CategoriesScreen() {
     }
 
     if (!window.confirm(`Categorie "${c.naam}" definitief verwijderen?`)) return;
+    const klaar = await window.__logVooraf('categorieen', c.id);
     const { error } = await window.supabase.from('categorieen').delete().eq('id', c.id);
+    if (!error) klaar(null, 'verwijderd');
     if (error) { window.__showToast && window.__showToast('Fout: ' + error.message); }
     else { window.__showToast && window.__showToast('Verwijderd: ' + c.naam); await laad(); }
   }
@@ -6085,6 +6200,294 @@ function useIconen() {
   return lijst;
 }
 
+/* ===== Wijzigingen — "wat is er veranderd, en door wie" (3-11) =====
+   Het logboek dat window.__logWijziging vult. Margareth ziet hier wat de
+   redactie heeft aangepast, kan het nakijken en afvinken met Goedgekeurd of
+   wegleggen met Archiveren. De wijziging staat dan allang live; dit is geen
+   wachtkamer. Zie sql/wijzigingenlogboek.sql */
+
+const TIB_SOORT_LABEL = { nieuw: 'Nieuw', aangepast: 'Aangepast', verwijderd: 'Verwijderd' };
+
+// Naar welk scherm de knop "Bekijken" springt.
+const TIB_LOG_ROUTE = {
+  clubjes: 'clubjes', activiteiten: 'activiteiten', agenda: 'agenda',
+  nieuws: 'nieuws', partners: 'partners', netwerken: 'netwerken',
+  voorzieningen: 'voorzieningen', categorieen: 'categorieen',
+  site_navigatie: 'menu', pagina_teksten: 'pages', contact_kaarten: 'contact',
+  weekagenda: 'agenda', terugkerende_activiteiten: 'agenda',
+};
+
+const TIB_ROL_LABEL = { superadmin: 'Superadmin', redactie: 'Redactie', beheerder: 'Initiatief-beheerder' };
+
+// "vandaag om 14:02", "gisteren om 9:30", anders de datum erbij.
+function tibLogWanneer(waarde) {
+  if (!waarde) return '';
+  const d = new Date(waarde);
+  if (isNaN(d.getTime())) return String(waarde);
+  const tijd = d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+  const nu = new Date();
+  const zelfdeDag = (a, b) => a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+  const gisteren = new Date(nu.getTime() - 86400000);
+  if (zelfdeDag(d, nu)) return 'vandaag om ' + tijd;
+  if (zelfdeDag(d, gisteren)) return 'gisteren om ' + tijd;
+  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' }) + ' om ' + tijd;
+}
+
+// Eén veld: wat stond er, wat staat er nu.
+function WijzigingVeld({ veld }) {
+  const leeg = <span style={{ color: 'var(--ink-soft)', fontStyle: 'italic' }}>leeg</span>;
+  return (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '5px 0', borderTop: '1px solid var(--lijn, #ece9e2)' }}>
+      <div style={{ minWidth: 150, fontSize: 12.5, color: 'var(--ink-soft)', flexShrink: 0 }}>
+        {tibLogVeldLabel(veld.veld)}
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--ink-soft)', textDecoration: 'line-through', maxWidth: 260, wordBreak: 'break-word' }}>
+        {veld.oud ? veld.oud : leeg}
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--ink-soft)', flexShrink: 0 }}>→</div>
+      <div style={{ fontSize: 13, fontWeight: 600, maxWidth: 320, wordBreak: 'break-word' }}>
+        {veld.nieuw ? veld.nieuw : leeg}
+      </div>
+    </div>
+  );
+}
+
+function WijzigingenScreen({ onNav, onBadgeRefresh }) {
+  const [rijen, setRijen] = React.useState(null);
+  const [tab, setTab] = React.useState('nieuw');
+  const [bezig, setBezig] = React.useState(null);
+  // null = nog niet gekeken, false = sql/wijzigingenlogboek.sql is nog niet gedraaid
+  const [tabelBestaat, setTabelBestaat] = React.useState(null);
+  const ikZelf = (window._tibGebruiker && window._tibGebruiker.email) || '';
+
+  async function laad() {
+    const { data, error } = await window.supabase.from('wijzigingen').select('*')
+      .order('aangemaakt_op', { ascending: false }).limit(300);
+    if (error) { setTabelBestaat(false); setRijen([]); return; }
+    setTabelBestaat(true);
+    setRijen(data || []);
+  }
+  React.useEffect(() => { laad(); }, []);
+
+  async function zetStatus(rij, status) {
+    setBezig(rij.id);
+    const { error } = await window.supabase.from('wijzigingen').update({
+      status: status,
+      beoordeeld_door: ikZelf || null,
+      beoordeeld_op: status === 'nieuw' ? null : new Date().toISOString(),
+    }).eq('id', rij.id);
+    setBezig(null);
+    if (error) { window.__showToast && window.__showToast('Opslaan mislukt: ' + error.message); return; }
+    setRijen(prev => prev.map(r => r.id === rij.id ? { ...r, status: status } : r));
+    onBadgeRefresh && onBadgeRefresh();
+    window.__showToast && window.__showToast(
+      status === 'goedgekeurd' ? 'Goedgekeurd' :
+      status === 'gearchiveerd' ? 'Gearchiveerd' : 'Teruggezet op nieuw'
+    );
+  }
+
+  // Alles in één keer afvinken — bij een drukke week scheelt dat veel klikken.
+  async function alleNieuweGoedkeuren() {
+    const open = (rijen || []).filter(r => r.status === 'nieuw');
+    if (!open.length) return;
+    if (!window.confirm('Alle ' + open.length + ' wijzigingen als nagekeken afvinken?')) return;
+    setBezig('alles');
+    const nu = new Date().toISOString();
+    const res = await Promise.all(open.map(r => window.supabase.from('wijzigingen')
+      .update({ status: 'goedgekeurd', beoordeeld_door: ikZelf || null, beoordeeld_op: nu }).eq('id', r.id)));
+    setBezig(null);
+    const fout = res.find(x => x.error);
+    if (fout) { window.__showToast && window.__showToast('Opslaan mislukt: ' + fout.error.message); laad(); return; }
+    setRijen(prev => prev.map(r => r.status === 'nieuw' ? { ...r, status: 'goedgekeurd' } : r));
+    onBadgeRefresh && onBadgeRefresh();
+    window.__showToast && window.__showToast(open.length + ' wijzigingen afgevinkt');
+  }
+
+  const alles = rijen || [];
+  const aantalNieuw = alles.filter(r => r.status === 'nieuw').length;
+  const lijst = alles.filter(r => r.status === tab);
+
+  return (
+    <>
+      <PageHead
+        title="Wijzigingen"
+        sub="Wat er in het beheerpaneel is aangepast, en door wie. Alles staat al op de website; hier kijkt u het na en vinkt u het af."
+        actions={tab === 'nieuw' && aantalNieuw > 0 && (
+          <button className="btn" onClick={alleNieuweGoedkeuren} disabled={bezig === 'alles'}>
+            <Icon name="check" size={14} /> Alles afvinken
+          </button>
+        )}
+      />
+
+      {tabelBestaat === false && (
+        <HintCard variant="warn" icon="warn" style={{ marginBottom: 16 }}>
+          Dit scherm werkt pas nadat <strong>sql/wijzigingenlogboek.sql</strong> in Supabase is uitgevoerd.
+        </HintCard>
+      )}
+
+      {tabelBestaat && (
+        <>
+          <div className="tabs">
+            <div className={"tab" + (tab === 'nieuw' ? ' active' : '')} onClick={() => setTab('nieuw')}>
+              Nog na te kijken <span style={{ opacity: 0.5, marginLeft: 4 }}>{aantalNieuw}</span>
+            </div>
+            <div className={"tab" + (tab === 'goedgekeurd' ? ' active' : '')} onClick={() => setTab('goedgekeurd')}>Nagekeken</div>
+            <div className={"tab" + (tab === 'gearchiveerd' ? ' active' : '')} onClick={() => setTab('gearchiveerd')}>Gearchiveerd</div>
+          </div>
+
+          {rijen === null ? (
+            <p style={{ color: 'var(--ink-soft)' }}>Bezig met laden…</p>
+          ) : lijst.length === 0 ? (
+            <HintCard icon="info">
+              {tab === 'nieuw'
+                ? (alles.length === 0
+                    ? 'Nog niets vastgelegd. Vanaf nu komt elke aanpassing in het beheerpaneel hier te staan: wat er veranderd is, door wie en wanneer.'
+                    : 'Alles is nagekeken. Zodra iemand iets aanpast, verschijnt het hier.')
+                : tab === 'goedgekeurd'
+                  ? 'Nog niets afgevinkt.'
+                  : 'Niets gearchiveerd.'}
+            </HintCard>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {lijst.map(r => {
+                const velden = Array.isArray(r.velden) ? r.velden : [];
+                const vanMijzelf = !!ikZelf && r.door_email === ikZelf;
+                return (
+                  <div key={r.id} className="card card-pad">
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 260 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: 'var(--serif)', fontSize: 15.5, fontWeight: 600 }}>
+                            {r.titel || '(zonder naam)'}
+                          </span>
+                          <Pill variant={r.soort === 'verwijderd' ? 'draft' : 'published'}>
+                            {TIB_SOORT_LABEL[r.soort] || r.soort}
+                          </Pill>
+                          <span style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>
+                            {TIB_LOG_TABEL_LABEL[r.tabel] || r.tabel}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 3 }}>
+                          door <strong>{r.door_email || 'onbekend'}</strong>
+                          {r.door_rol ? ' (' + (TIB_ROL_LABEL[r.door_rol] || r.door_rol) + ')' : ''}
+                          {vanMijzelf ? ' — dat was u zelf' : ''}
+                          {' · ' + tibLogWanneer(r.aangemaakt_op)}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {TIB_LOG_ROUTE[r.tabel] && r.soort !== 'verwijderd' && (
+                          <button className="btn btn-sm" onClick={() => onNav && onNav(TIB_LOG_ROUTE[r.tabel])}>
+                            <Icon name="eye" size={13} /> Bekijken
+                          </button>
+                        )}
+                        {r.status === 'nieuw' ? (
+                          <>
+                            <button className="btn btn-sm btn-primary" disabled={bezig === r.id}
+                              onClick={() => zetStatus(r, 'goedgekeurd')}>
+                              <Icon name="check" size={13} /> Goedkeuren
+                            </button>
+                            <button className="btn btn-sm" disabled={bezig === r.id}
+                              onClick={() => zetStatus(r, 'gearchiveerd')}>
+                              <Icon name="archive" size={13} /> Archiveren
+                            </button>
+                          </>
+                        ) : (
+                          <button className="btn btn-sm" disabled={bezig === r.id}
+                            onClick={() => zetStatus(r, 'nieuw')}>
+                            <Icon name="refresh" size={13} /> Terugzetten
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {velden.length > 0 && (
+                      <div style={{ marginTop: 10 }}>
+                        {velden.map((v, i) => <WijzigingVeld key={i} veld={v} />)}
+                      </div>
+                    )}
+                    {velden.length === 0 && r.soort === 'verwijderd' && (
+                      <div style={{ marginTop: 8, fontSize: 13, color: 'var(--ink-soft)' }}>
+                        Dit item is verwijderd en staat niet meer op de website.
+                      </div>
+                    )}
+
+                    {r.status !== 'nieuw' && r.beoordeeld_door && (
+                      <div style={{ marginTop: 8, fontSize: 12, color: 'var(--ink-soft)' }}>
+                        {r.status === 'goedgekeurd' ? 'Afgevinkt' : 'Gearchiveerd'} door {r.beoordeeld_door}
+                        {r.beoordeeld_op ? ' · ' + tibLogWanneer(r.beoordeeld_op) : ''}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+/* De melding die opkomt zodra Margareth inlogt. Eén keer per keer dat ze het
+   beheerpaneel opent — niet bij elke keer verversen, want dan is het binnen
+   een dag een sta-in-de-weg. Komt alleen als er echt iets open staat. */
+function WijzigingenMelding({ aantal, laatste, onBekijken, onSluiten }) {
+  // Met Escape weg, zoals je van zo'n venster verwacht.
+  React.useEffect(() => {
+    function toets(e) { if (e.key === 'Escape') onSluiten(); }
+    window.addEventListener('keydown', toets);
+    return () => window.removeEventListener('keydown', toets);
+  }, [onSluiten]);
+
+  return (
+    <div
+      onClick={onSluiten}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'grid', placeItems: 'center', zIndex: 1000 }}
+    >
+      <div className="card card-pad" onClick={e => e.stopPropagation()} style={{ maxWidth: 520, width: '90%' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--cream)', display: 'grid', placeItems: 'center', flexShrink: 0, color: 'var(--accent-2)' }}>
+            <Icon name="refresh" size={18} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: '2px 0 4px', fontFamily: 'var(--serif)', fontSize: 17 }}>
+              {aantal === 1 ? 'Er is 1 wijziging sinds u hier voor het laatst was' : 'Er zijn ' + aantal + ' wijzigingen sinds u hier voor het laatst was'}
+            </h3>
+            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--ink-soft)' }}>
+              Alles staat al op de website. U kunt het nakijken en afvinken.
+            </p>
+          </div>
+          <button className="icon-btn" title="Sluiten" onClick={onSluiten}><Icon name="close" size={15} /></button>
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          {laatste.map(w => (
+            <div key={w.id} style={{ padding: '8px 0', borderTop: '1px solid var(--lijn, #ece9e2)' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{w.titel || '(zonder naam)'}</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+                {(TIB_SOORT_LABEL[w.soort] || w.soort) + ' · ' + (TIB_LOG_TABEL_LABEL[w.tabel] || w.tabel) +
+                 ' · door ' + (w.door_email || 'onbekend') + ' · ' + tibLogWanneer(w.aangemaakt_op)}
+              </div>
+            </div>
+          ))}
+          {aantal > laatste.length && (
+            <div style={{ paddingTop: 8, fontSize: 12.5, color: 'var(--ink-soft)' }}>
+              en nog {aantal - laatste.length} {aantal - laatste.length === 1 ? 'andere' : 'andere'}…
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+          <button className="btn btn-sm" onClick={onSluiten}>Later</button>
+          <button className="btn btn-sm btn-primary" onClick={onBekijken}>
+            <Icon name="arrow" size={13} /> Bekijken
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MediaScreen() {
   const [copiedLabel, setCopiedLabel] = React.useState(null);
   const [bezig, setBezig] = React.useState(false);
@@ -6244,7 +6647,7 @@ function MenuScreen() {
   // Elke wijziging gaat meteen naar de database; mislukt dat, dan zeggen we
   // dat en halen we de lijst opnieuw op, zodat het scherm niet iets toont wat
   // niet is opgeslagen.
-  async function schrijf(belofte, melding) {
+  async function schrijf(belofte, melding, logboek) {
     if (bezig) return;
     setBezig(true);
     const { error } = await belofte;
@@ -6253,6 +6656,17 @@ function MenuScreen() {
       toast('Niet opgeslagen: ' + error.message);
       await laad();
       return false;
+    }
+    // Voor het wijzigingenlogboek. De oude rij staat al in `items`, dus die
+    // hoeft niet apart opgehaald te worden.
+    if (logboek) {
+      window.__logWijziging({
+        tabel: 'site_navigatie',
+        rij_id: logboek.id,
+        titel: logboek.titel,
+        soort: logboek.soort,
+        velden: logboek.soort === 'verwijderd' ? [] : tibLogVerschillen(logboek.oud, logboek.nieuw),
+      });
     }
     if (melding) toast(melding);
     await laad();
@@ -6263,7 +6677,8 @@ function MenuScreen() {
     setItems(items.map(x => x.id === it.id ? { ...x, visible: v } : x));
     schrijf(
       window.supabase.from('site_navigatie').update({ visible: v }).eq('id', it.id),
-      (v ? 'Zichtbaar in het menu: ' : 'Verborgen in het menu: ') + it.label
+      (v ? 'Zichtbaar in het menu: ' : 'Verborgen in het menu: ') + it.label,
+      { id: it.id, titel: it.label, soort: 'aangepast', oud: it, nieuw: { ...it, visible: v } }
     );
   }
 
@@ -6275,11 +6690,14 @@ function MenuScreen() {
 
   function commitEdit() {
     if (!editLabel.trim()) { toast('Vul een naam in voor het menu-item.'); return; }
+    const vorige = items.find(x => x.id === editingId) || null;
     schrijf(
       window.supabase.from('site_navigatie')
         .update({ label: editLabel.trim(), target: editTarget })
         .eq('id', editingId),
-      'Menu-item bijgewerkt'
+      'Menu-item bijgewerkt',
+      { id: editingId, titel: editLabel.trim(), soort: 'aangepast',
+        oud: vorige, nieuw: { ...(vorige || {}), label: editLabel.trim(), target: editTarget } }
     ).then(gelukt => { if (gelukt) setEditingId(null); });
   }
 
@@ -6310,7 +6728,8 @@ function MenuScreen() {
     if (!window.confirm('Menu-item "' + it.label + '" uit het menu halen?\n\nDe pagina zelf blijft gewoon bestaan; hij staat alleen niet meer in het menu. Je kunt hem later opnieuw toevoegen.')) return;
     schrijf(
       window.supabase.from('site_navigatie').delete().eq('id', it.id),
-      'Uit het menu gehaald: ' + it.label
+      'Uit het menu gehaald: ' + it.label,
+      { id: it.id, titel: it.label, soort: 'verwijderd' }
     );
   }
 
@@ -6322,16 +6741,18 @@ function MenuScreen() {
       return;
     }
     const maxVolgorde = items.length > 0 ? Math.max(...items.map(volgordeVan)) : 0;
+    const nieuwItem = {
+      id: 'nav-' + Date.now(),
+      label: (addLabel.trim() || pagina.label),
+      target: addTarget,
+      visible: true,
+      level: 0,
+      volgorde: maxVolgorde + 1,
+    };
     schrijf(
-      window.supabase.from('site_navigatie').insert({
-        id: 'nav-' + Date.now(),
-        label: (addLabel.trim() || pagina.label),
-        target: addTarget,
-        visible: true,
-        level: 0,
-        volgorde: maxVolgorde + 1,
-      }),
-      'Toegevoegd aan het menu: ' + (addLabel.trim() || pagina.label)
+      window.supabase.from('site_navigatie').insert(nieuwItem),
+      'Toegevoegd aan het menu: ' + nieuwItem.label,
+      { id: nieuwItem.id, titel: nieuwItem.label, soort: 'nieuw', oud: null, nieuw: nieuwItem }
     ).then(gelukt => { if (gelukt) { setShowAdd(false); setAddLabel(''); } });
   }
 
@@ -8041,6 +8462,14 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Wie is er ingelogd — het wijzigingenlogboek schrijft dit bij elke
+  // opslagactie mee. De rol komt uit het profiel, hieronder.
+  React.useEffect(() => {
+    window._tibGebruiker = session
+      ? { id: session.user.id, email: session.user.email }
+      : null;
+  }, [session?.user?.id]);
+
   // Haal profiel (rol + club_id) op zodra de sessie bekend is
   React.useEffect(() => {
     if (!session) { setProfile(null); window._tibProfile = null; return; }
@@ -8072,6 +8501,7 @@ function App() {
       { id: 'meldingen',         tabel: 'meldingen',           ts: 'gemeld_op' },
       { id: 'berichten',         tabel: 'contact_berichten',   ts: 'ontvangen_op' },
       { id: 'bestellingen',      tabel: 'boek_bestellingen',   ts: 'besteld_op' },
+      { id: 'wijzigingen',       tabel: 'wijzigingen',         ts: 'aangemaakt_op' },
     ];
     const counts = {};
     await Promise.all(tables.map(async ({ id, tabel, filter }) => {
@@ -8084,6 +8514,26 @@ function App() {
   }
 
   React.useEffect(() => { loadBadges(); }, [profile]);
+
+  // De melding bij binnenkomst: wat is er aangepast sinds Margareth er voor
+  // het laatst was. Eén keer per keer dat ze het beheerpaneel opent — bij
+  // elke keer verversen zou het een sta-in-de-weg worden. sessionStorage
+  // onthoudt dat per tabblad en is bij de volgende aanmelding weer leeg.
+  const [melding, setMelding] = React.useState(null);
+  React.useEffect(() => {
+    if (!session || profile?.role !== 'superadmin') return;
+    let alGetoond = false;
+    try { alGetoond = sessionStorage.getItem('tib-wijzigingen-gemeld') === 'ja'; } catch (e) {}
+    if (alGetoond) return;
+    window.supabase.from('wijzigingen').select('*', { count: 'exact' })
+      .eq('status', 'nieuw').order('aangemaakt_op', { ascending: false }).limit(4)
+      .then(({ data, count, error }) => {
+        // Bestaat de tabel nog niet, of staat er niets open: dan geen melding.
+        if (error || !data || !data.length) return;
+        try { sessionStorage.setItem('tib-wijzigingen-gemeld', 'ja'); } catch (e) {}
+        setMelding({ aantal: count || data.length, laatste: data });
+      });
+  }, [session?.user?.id, profile?.role]);
 
   if (session === undefined) {
     return (
@@ -8234,7 +8684,8 @@ function App() {
 
   // Determine breadcrumbs and content based on route
   const screens = {
-    dashboard: { crumbs: ['Dashboard'], render: () => <Dashboard onNav={setRoute} onPreview={() => setPreviewOn(true)} /> },
+    dashboard: { crumbs: ['Dashboard'], render: () => <Dashboard onNav={setRoute} onPreview={() => setPreviewOn(true)} badges={badges} /> },
+    wijzigingen: { crumbs: ['Wijzigingen'], render: () => <WijzigingenScreen onNav={setRoute} onBadgeRefresh={loadBadges} /> },
     pages: { crumbs: ["Pagina's"], render: () => <PagesScreen /> },
     clubjes: { crumbs: ['Bewonersinitiatieven'], render: () => <ClubjesScreen onNav={setRoute} profile={profile} /> },
     activiteiten: { crumbs: ['Activiteiten'], render: () => <ActiviteitenScreen /> },
@@ -8261,7 +8712,7 @@ function App() {
   };
 
   const role = profile?.role || 'beheerder';
-  const REDACTIE_BLOCKED = ['gebruikers', 'huisstijl', 'domein'];
+  const REDACTIE_BLOCKED = ['gebruikers', 'huisstijl', 'domein', 'wijzigingen'];
   const isBlocked =
     (role === 'beheerder' && !BEHEERDER_ROUTES.has(route)) ||
     (role === 'redactie' && REDACTIE_BLOCKED.includes(route));
@@ -8270,6 +8721,14 @@ function App() {
 
   return (
     <div className={"app" + (previewOn ? " preview-on" : "")}>
+      {melding && (
+        <WijzigingenMelding
+          aantal={melding.aantal}
+          laatste={melding.laatste}
+          onSluiten={() => setMelding(null)}
+          onBekijken={() => { setMelding(null); setRoute('wijzigingen'); }}
+        />
+      )}
       <Sidebar active={route} onNav={setRoute} onLogout={handleLogout} profile={profile} userEmail={session?.user?.email} badges={badges} />
       <div className="main">
         <Topbar
@@ -8415,13 +8874,169 @@ function __mapNetwerkenToDb(item) {
 
 const __DB_VERTALING = { clubjes: __mapClubjesToDb, activiteiten: __mapActiviteitenToDb, partners: __mapPartnersToDb, netwerken: __mapNetwerkenToDb };
 
+/* ===== Wijzigingenlogboek (3-11) =====
+   Margareth wil na het inloggen zien wat er is aangepast en door wie. Alle
+   opslag in het CMS loopt door de drie functies hieronder, dus dit is de
+   enige plek waar het vastgelegd hoeft te worden.
+
+   Een wijziging gaat gewoon meteen live; dit is een logboek achteraf, geen
+   wachtkamer. Mislukt het wegschrijven van een regel, dan mag dat het
+   opslaan zelf nooit in de weg zitten — vandaar dat alles hier stil faalt.
+   Zie sql/wijzigingenlogboek.sql */
+
+const TIB_LOG_TABEL_LABEL = {
+  clubjes: 'Bewonersinitiatief',
+  activiteiten: 'Activiteit',
+  agenda: 'Agenda-item',
+  nieuws: 'Nieuwsbericht',
+  partners: 'Partner',
+  netwerken: 'Netwerk',
+  voorzieningen: 'Voorziening',
+  categorieen: 'Categorie',
+  site_navigatie: 'Menu-item',
+  pagina_teksten: 'Paginatekst',
+  contact_kaarten: 'Contactkaart',
+  weekagenda: 'Weekagenda',
+  terugkerende_activiteiten: 'Weekagenda',
+};
+
+// Veldnamen zoals ze in het CMS op het scherm staan.
+const TIB_LOG_VELD_LABEL = {
+  naam: 'Naam', titel: 'Titel', categorie: 'Categorie', wijk: 'Wijk',
+  omschrijving: 'Omschrijving', uitgebreide_omschrijving: 'Uitgebreide omschrijving',
+  voor_wie: 'Voor wie', wat: 'Wat', waar: 'Waar', wanneer: 'Wanneer',
+  kosten: 'Kosten', contact: 'Contactpersoon', email: 'E-mail',
+  telefoon: 'Telefoon', adres: 'Adres', website: 'Website',
+  status: 'Status', leden: 'Leden', uitgelicht: 'Uitgelicht',
+  lat: 'Breedtegraad', lng: 'Lengtegraad',
+  foto_url: 'Foto', logo_url: 'Logo', icoon_url: 'Icoon', icoon_label: 'Icoon',
+  contact_zichtbaar: 'Contactgegevens zichtbaar', actief: 'Zichtbaar op website',
+  zichtbaar: 'Zichtbaar', herhalend: 'Herhalend',
+  startdatum: 'Startdatum', frequentie: 'Frequentie', maand_weken: 'Welke weken',
+  tot_datum: 'Tot en met', begintijd: 'Begintijd', eindtijd: 'Eindtijd',
+  openingstijden: 'Openingstijden', soort: 'Soort', doelgroep: 'Doelgroep',
+  locatie: 'Locatie', bijeenkomsten: 'Bijeenkomsten', toegankelijk: 'Toegankelijk',
+  korte_naam: 'Korte naam', subtitel: 'Subtitel', kleur: 'Kleur', icoon: 'Icoon',
+  tekst: 'Tekst', lead: 'Intro', intro: 'Intro', label: 'Label',
+  betaald: 'Betaald', prijs: 'Prijs', max_personen: 'Maximum aantal personen',
+};
+
+// Deze velden zeggen Margareth niets, of veranderen buiten haar om.
+const TIB_LOG_NEGEER = ['id', 'aangemaakt_op', 'bijgewerkt_op', 'volgorde', 'slug'];
+
+function tibLogVeldLabel(veld) {
+  return TIB_LOG_VELD_LABEL[veld] || (String(veld).charAt(0).toUpperCase() + String(veld).slice(1)).replace(/_/g, ' ');
+}
+
+// Een waarde leesbaar maken voor in het logboek.
+function tibLogWaarde(v) {
+  if (v === null || v === undefined || v === '') return '';
+  if (v === true) return 'ja';
+  if (v === false) return 'nee';
+  if (Array.isArray(v)) return v.join(', ');
+  if (typeof v === 'object') { try { return JSON.stringify(v); } catch (e) { return String(v); } }
+  const t = String(v);
+  return t.length > 400 ? t.slice(0, 400) + '…' : t;
+}
+
+function tibLogGelijk(a, b) {
+  // 52.103 en "52.1030" zijn hetzelfde punt op de kaart; als tekst niet.
+  const leeg = (v) => v === null || v === undefined || v === '';
+  if (!leeg(a) && !leeg(b) && !isNaN(Number(a)) && !isNaN(Number(b))) return Number(a) === Number(b);
+  return tibLogWaarde(a) === tibLogWaarde(b);
+}
+
+function tibLogTitel(item) {
+  if (!item) return '';
+  return item.naam || item.titel || item.label || item.rol || '';
+}
+
+// Wat er veranderd is tussen de oude rij en wat er wordt weggeschreven.
+function tibLogVerschillen(oud, nieuw) {
+  const uit = [];
+  Object.keys(nieuw || {}).forEach(function(veld) {
+    if (TIB_LOG_NEGEER.indexOf(veld) !== -1) return;
+    const oudeWaarde = oud ? oud[veld] : undefined;
+    if (tibLogGelijk(oudeWaarde, nieuw[veld])) return;
+    uit.push({ veld: veld, oud: tibLogWaarde(oudeWaarde), nieuw: tibLogWaarde(nieuw[veld]) });
+  });
+  return uit;
+}
+
+// Niet elk scherm gaat door __supabaseUpsert; Voorzieningen, Categorieën,
+// Navigatie en de paginateksten schrijven rechtstreeks. Die halen hiermee
+// eerst de oude rij op en melden na afloop wat er veranderd is:
+//
+//   const klaar = await window.__logVooraf('voorzieningen', id);
+//   ... opslaan ...
+//   klaar(nieuweRij);                  // of klaar(null, 'verwijderd')
+window.__logVooraf = async function(tabel, id) {
+  let oud = null;
+  if (id !== null && id !== undefined) {
+    try {
+      const vorige = await window.supabase.from(tabel).select('*').eq('id', id).maybeSingle();
+      oud = vorige.data || null;
+    } catch (leesFout) {}
+  }
+  return function(nieuweRij, soort) {
+    const bepaald = soort || (oud ? 'aangepast' : 'nieuw');
+    const verschillen = bepaald === 'verwijderd' ? [] : tibLogVerschillen(oud, nieuweRij);
+    if (bepaald === 'aangepast' && !verschillen.length) return;
+    window.__logWijziging({
+      tabel: tabel,
+      rij_id: (nieuweRij && nieuweRij.id !== undefined && nieuweRij.id !== null) ? nieuweRij.id : id,
+      titel: tibLogTitel(nieuweRij) || tibLogTitel(oud),
+      soort: bepaald,
+      velden: verschillen
+    });
+  };
+};
+
+window.__logWijziging = async function(gegevens) {
+  try {
+    const wie = window._tibGebruiker || {};
+    await window.supabase.from('wijzigingen').insert({
+      tabel:      gegevens.tabel,
+      rij_id:     gegevens.rij_id == null ? null : String(gegevens.rij_id),
+      titel:      gegevens.titel || null,
+      soort:      gegevens.soort,
+      door_id:    wie.id || null,
+      door_email: wie.email || null,
+      door_rol:   (window._tibProfile && window._tibProfile.role) || null,
+      velden:     gegevens.velden && gegevens.velden.length ? gegevens.velden : null,
+    });
+  } catch (e) {
+    // Het logboek mag opslaan nooit in de weg zitten. Bestaat de tabel nog
+    // niet (sql/wijzigingenlogboek.sql), dan gebeurt er hier simpelweg niets.
+    console.warn('Wijziging niet in het logboek gezet:', e);
+  }
+};
+
 // Geeft true terug bij succes, false bij een fout (en toont dan zelf een melding).
 window.__supabaseUpsert = async function(tabel, item) {
   try {
     const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
     const dbItem = __DB_VERTALING[tabel] ? __DB_VERTALING[tabel](item) : item;
+    // Eerst de oude rij ophalen, anders is straks niet meer te zien wát er
+    // veranderd is. Lukt dat niet, dan gaat opslaan gewoon door.
+    let oudeRij = null;
+    if (dbItem && dbItem.id != null) {
+      try {
+        const vorige = await window.supabase.from(dbTabel).select('*').eq('id', dbItem.id).maybeSingle();
+        oudeRij = vorige.data || null;
+      } catch (leesFout) {}
+    }
     const { error } = await window.supabase.from(dbTabel).upsert(dbItem, { onConflict: 'id' });
     if (error) throw error;
+    const verschillen = tibLogVerschillen(oudeRij, dbItem);
+    if (!oudeRij || verschillen.length) {
+      window.__logWijziging({
+        tabel: tabel, rij_id: dbItem && dbItem.id,
+        titel: tibLogTitel(dbItem) || tibLogTitel(oudeRij),
+        soort: oudeRij ? 'aangepast' : 'nieuw',
+        velden: verschillen
+      });
+    }
     return true;
   } catch(e) {
     console.warn('Supabase upsert mislukt:', tabel, e);
@@ -8443,6 +9058,10 @@ window.__supabaseInsert = async function(tabel, item) {
     if (!zonderId.aangemaakt_op) delete zonderId.aangemaakt_op;
     const { data, error } = await window.supabase.from(dbTabel).insert(zonderId).select().single();
     if (error) throw error;
+    window.__logWijziging({
+      tabel: tabel, rij_id: data && data.id, titel: tibLogTitel(data) || tibLogTitel(bron),
+      soort: 'nieuw', velden: tibLogVerschillen(null, zonderId)
+    });
     return data;
   } catch(e) {
     console.warn('Supabase insert mislukt:', tabel, e);
@@ -8454,8 +9073,19 @@ window.__supabaseInsert = async function(tabel, item) {
 window.__supabaseDelete = async function(tabel, id) {
   try {
     const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
+    // De naam van het item opzoeken vóór het weg is, anders staat er straks
+    // alleen een nummer in het logboek.
+    let weggehaald = null;
+    try {
+      const vorige = await window.supabase.from(dbTabel).select('*').eq('id', id).maybeSingle();
+      weggehaald = vorige.data || null;
+    } catch (leesFout) {}
     const { error } = await window.supabase.from(dbTabel).delete().eq('id', id);
     if (error) throw error;
+    window.__logWijziging({
+      tabel: tabel, rij_id: id, titel: tibLogTitel(weggehaald),
+      soort: 'verwijderd', velden: []
+    });
   } catch(e) {
     console.warn('Supabase delete mislukt:', tabel, e);
     window.__showToast && window.__showToast('Verwijderen mislukt — controleer je verbinding en probeer het opnieuw.');

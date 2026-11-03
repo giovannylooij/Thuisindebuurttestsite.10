@@ -1939,6 +1939,79 @@ Nog na te kijken, los van haar lijst:
 
 ---
 
+## 📝 Wijzigingenlogboek — "wat is er veranderd, en door wie" *(3 november 2026)*
+
+**Vraag van Giovanny:** als Margareth inlogt wil ze zien wat er is aangepast en
+door wie — bijvoorbeeld door de redactie — zodat ze het kan nakijken en
+goedkeuren of archiveren.
+
+**Keuze:** een logboek achteraf, geen wachtkamer. Een wijziging van de redactie
+gaat gewoon meteen live; Margareth kijkt erna. Het alternatief (pas live na
+haar goedkeuring) viel af: dan kan werk van de redactie onzichtbaar blijven
+hangen als zij het vergeet, en het is veel zwaarder bouwwerk.
+
+**Gebouwd:**
+- Een nieuw scherm **Wijzigingen**, bovenin het menu onder Dashboard. Drie
+  tabbladen: Nog na te kijken, Nagekeken, Gearchiveerd. Per wijziging een
+  kaartje met de naam van het item, wat het is, wie het deed met welke rol,
+  wanneer, en per veld wat er stond en wat er nu staat. Knoppen Bekijken,
+  Goedkeuren en Archiveren, plus "Alles afvinken" voor een drukke week.
+  Afgevinkte regels blijven staan en zijn terug te zetten.
+- Een **melding die opkomt zodra ze inlogt**: "Er zijn 3 wijzigingen sinds u
+  hier voor het laatst was", met de laatste vier eronder (wat, wie, wanneer)
+  en de knoppen Later en Bekijken. Hij komt één keer per keer dat ze het
+  beheerpaneel opent — niet bij elke keer verversen, want dan is het binnen
+  een dag een sta-in-de-weg. Staat er niets open, dan komt hij niet. Weg met
+  Escape, het kruisje, Later, of door ernaast te klikken.
+- Een **rode teller** in het menu en een **balk bovenaan het dashboard**:
+  "Er zijn 4 wijzigingen die u nog niet hebt bekeken." Die balk verdwijnt
+  vanzelf als alles is afgevinkt, en blijft staan nadat de melding weg is.
+- Het kaartje **"Recente wijzigingen"** op het dashboard was een dode
+  plaatshouder die altijd "Nog geen wijzigingen geregistreerd" zei. Dat toont
+  nu de laatste zes echte wijzigingen.
+- Alleen de **Superadmin** ziet dit; redactie en initiatief-beheerders niet.
+  Afgeschermd op twee plekken: in het menu en op de route zelf.
+
+**Wat er gelogd wordt.** Zes schermen liepen al door drie centrale
+opslagfuncties — bewonersinitiatieven, activiteiten, agenda, nieuws, partners
+en netwerken. Vier andere schreven daar *buiten* om rechtstreeks naar de
+database en zouden stilletjes zijn gemist: Voorzieningen, Categorieën,
+Navigatie en de pagina- en contactteksten. Die zijn er apart aan gekoppeld.
+
+**Bewust niet gelogd:** het slepen van de volgorde (dat zou bij één
+sleepbeweging acht regels opleveren) en de binnenkomende post — aanmeldingen,
+meldingen, contactberichten en bestellingen. Dat is geen inhoudswijziging en
+heeft zijn eigen schermen.
+
+**Vroeg** `sql/wijzigingenlogboek.sql`: één nieuwe tabel `wijzigingen`, twee
+indexen en een regel dat alleen wie is ingelogd erbij kan. Geen enkele
+bestaande tabel aangeraakt.
+
+**Getest:** een aanpassing, een nieuw item en een verwijdering komen alle drie
+goed in het logboek, met alleen de velden die echt veranderden. Goedkeuren,
+archiveren en terugzetten werken en de kaart verhuist naar het juiste
+tabblad. De teller en de dashboardbalk kloppen en verdwijnen bij nul. Geen
+consolefouten. Alle proefgegevens weer opgeruimd en het logboek leeggemaakt.
+
+De melding is apart getest: hij komt bij binnenkomst, blijft weg bij
+verversen, komt weer bij een volgende aanmelding, verdwijnt met Escape, en de
+knop Bekijken brengt haar op het scherm Wijzigingen.
+
+**Niet getest:** of de redactie het scherm inderdaad niet ziet — er bestaat
+hier alleen een superadmin-account. De afscherming staat in de code op de
+twee plekken waar de andere rolbeperkingen ook staan.
+
+**Opgemerkt onderweg:** beheer.html is met dit werk over een grens gegaan.
+Het script erin is nu 490 KB en Babel meldt in de console dat het boven zijn
+drempel van 500 KB uitkomt en de uitvoer niet meer compact maakt. Dat is een
+waarschuwing, geen fout — het CMS laadt lokaal in ruim 0,9 seconde en werkt
+gewoon. Maar het CMS vertaalt zijn code nog bij elke keer laden in de browser,
+terwijl de website dat allang vooraf doet (tools/tib-bundle.mjs). Op termijn
+is het verstandig het CMS net zo te bouwen. Geen haast, wel een punt om in de
+gaten te houden.
+
+---
+
 ## 💾 Wekelijkse back-up van de database *(plan, 5 oktober 2026)*
 
 **Waarom:** nu bestaat er alleen een handmatige knop in het CMS. Gaat er iets
