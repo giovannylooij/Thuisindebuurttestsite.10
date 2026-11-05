@@ -1935,7 +1935,13 @@ Nog na te kijken, los van haar lijst:
 - Doneren & Boek en Nieuws zijn nog niet nagekeken op hetzelfde euvel als
   Partners en Netwerken (CMS-scherm schrijft naar een tabel die de site niet
   uitleest).
-- De testactiviteiten "testt" en "Test 12" staan nog in de database.
+- ~~De testactiviteiten "testt" en "Test 12" staan nog in de database.~~
+  **Opgeruimd op 4 november 2026.** Giovanny draaide
+  `sql/testactiviteiten_opruimen.sql`; de volledige inhoud van beide rijen
+  staat bewaard in `backups/activiteiten-29-31-verwijderd-2026-11-04.json`
+  met een terugzetscript ernaast. Nagekeken: 19 activiteiten over, de
+  volgorde sluit zonder gaten aan (29 en 31 stonden op 20 en 21, dus
+  achteraan), en op de site komt geen testactiviteit meer voor.
 
 ---
 
@@ -2009,6 +2015,74 @@ gewoon. Maar het CMS vertaalt zijn code nog bij elke keer laden in de browser,
 terwijl de website dat allang vooraf doet (tools/tib-bundle.mjs). Op termijn
 is het verstandig het CMS net zo te bouwen. Geen haast, wel een punt om in de
 gaten te houden.
+
+### Twee dingen rechtgezet na het natesten *(5 november 2026)*
+
+Bij het nalopen van het logboek in de praktijk kwamen twee dingen boven die
+niet deugden. Allebei verholpen.
+
+**1. "Bekijken" bracht haar niet bij het item.** De knop opende wel het juiste
+scherm, maar daar moest ze het item zelf uit de lijst zoeken. Nu opent hij
+meteen de bewerkpagina. Werkt bij bewonersinitiatieven, activiteiten, agenda,
+nieuws, partners, netwerken en voorzieningen. Categorieën, navigatie,
+paginateksten en contact zijn één formulier of één lijstje — daar valt niets
+apart te openen, dus daar springt de knop naar het scherm zoals eerst.
+
+Het mechanisme: `tibWilItemOpenen(tabel, id)` legt de wens neer, `useOpenWens`
+in het scherm pakt hem op zodra dat verschijnt. Na 15 seconden vervalt hij,
+zodat een item dat niet meer bestaat niet later alsnog openspringt. Staat de
+lijst nog te laden, dan wacht hij; bestaat het item niet meer, dan komt de
+lijst met een melding.
+
+**2. Een nieuw item gaf dertien regels.** Daar stonden waarden tussen die
+niemand had ingevuld — Servicekosten 0, Maximum aantal personen 1, Vraag adres
+nee, Betaalmethodes ideal/creditcard/banktransfer. De standaardstand van het
+formulier, geen keuze van een mens. `TIB_LOG_NIEUW_STANDAARD` houdt per tabel
+bij wat die standaard is; komt de waarde ermee overeen, dan blijft hij bij een
+*nieuw* item weg. Dezelfde proef gaf daarna drie regels: naam, categorie,
+locatie.
+
+Belangrijk is dat er niet te veel wegvalt. Zeven gevallen nagelopen: meteen op
+Gepubliceerd, betaald met een prijs, niet-herhalend, 20 plekken, alleen iDEAL —
+die komen er allemaal wél in. En bij een *aangepast* item verandert er niets;
+daar telt het verschil met de vorige waarde.
+
+Let op: die standaardwaarden zijn overgenomen uit de formulieren. Past iemand
+een formulier aan zonder deze lijst bij te werken, dan staat er hooguit één
+regel te veel in het logboek. In de code staat erbij waar ze vandaan komen.
+
+**Niet in de praktijk gedraaid:** een nieuw item is alleen echt aangemaakt bij
+activiteiten, en Bekijken alleen geklikt bij activiteiten en partners. De
+andere schermen hebben dezelfde aansluiting.
+
+### Nog niet vrijgegeven voor Margareth *(5 november 2026)*
+
+Giovanny wil het logboek eerst zelf kunnen bekijken; Margareth krijgt het
+later te zien. Zolang `TIB_LOGBOEK_VRIJ` op `false` staat is alles eromheen
+onzichtbaar: geen menu-item, geen scherm (ook niet via een bewaarde link),
+geen melding bij inloggen, geen balk op het dashboard en geen bolletje bij het
+menu. Het kaartje "Recente wijzigingen" staat dan weer op "Nog geen
+wijzigingen geregistreerd", precies zoals zij het kent.
+
+**Het vastleggen loopt wél door.** Zo staat er een echte geschiedenis klaar op
+het moment dat het wordt aangezet, in plaats van een leeg scherm.
+
+Zelf bekijken: het CMS één keer openen met `?logboek=aan` erachter —
+`https://app.thuisindebuurt.nl/beheer.html?logboek=aan`. Die browser onthoudt
+het daarna. Weer verbergen met `?logboek=uit`. Voor iedereen vrijgeven:
+`TIB_LOGBOEK_VRIJ` op `true` zetten.
+
+**Getest:** met een openstaande wijziging in de database ziet het dashboard er
+precies zo uit als vroeger — geen menu-item, geen pop-up, geen balk, kaartje
+leeg. Met `?logboek=aan` verschijnt alles, en zonder de parameter blijft het
+zichtbaar. Met `?logboek=uit` is het weer helemaal weg. Ondertussen bleef het
+registreren doorlopen: een aanpassing kwam gewoon in de tabel terwijl het
+scherm verborgen was.
+
+**Niet getest:** dat het scherm ook via de route zelf onbereikbaar is. Als het
+logboek verborgen is leidt er geen enkele knop meer naartoe, dus die
+afscherming was niet in de praktijk aan te slaan. Het is een extra slot voor
+het geval er ergens een link blijft staan.
 
 ---
 

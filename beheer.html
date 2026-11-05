@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.244', datum: '03-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.245', datum: '05-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1259,6 +1259,40 @@ window.addEventListener('message', function(evt) {
 /* === shared.jsx === */
 // Shared layout: Sidebar + Topbar + Page wrappers
 
+/* ===== Wijzigingenlogboek nog niet vrijgeven =====
+   Giovanny wil het logboek eerst zelf kunnen bekijken; Margareth en de
+   redactie krijgen het later te zien. Tot die tijd is alles eromheen
+   onzichtbaar: geen menu-item, geen scherm, geen melding bij inloggen, geen
+   balk of lijstje op het dashboard.
+
+   Het vastleggen zelf loopt gewoon door. Zo staat er een echte geschiedenis
+   klaar op het moment dat het wordt aangezet, in plaats van een leeg scherm.
+
+   Zichtbaar maken bij jezelf: open het CMS één keer met ?logboek=aan erachter,
+       https://app.thuisindebuurt.nl/beheer.html?logboek=aan
+   Deze browser onthoudt dat dan. Weer verbergen: ?logboek=uit.
+   Voor iedereen vrijgeven: zet hieronder TIB_LOGBOEK_VRIJ op true. */
+const TIB_LOGBOEK_VRIJ = false;
+
+let _tibLogboekAan = null;
+
+function tibLogboekZichtbaar() {
+  if (TIB_LOGBOEK_VRIJ) return true;
+  if (_tibLogboekAan !== null) return _tibLogboekAan;
+  let aan = false;
+  try {
+    const vraag = new URLSearchParams(window.location.search).get('logboek');
+    if (vraag === 'aan')  localStorage.setItem('tib-logboek', 'aan');
+    if (vraag === 'uit')  localStorage.removeItem('tib-logboek');
+    aan = localStorage.getItem('tib-logboek') === 'aan';
+  } catch (e) {
+    // Privévenster of geblokkeerde opslag: dan gewoon verborgen.
+    aan = false;
+  }
+  _tibLogboekAan = aan;
+  return aan;
+}
+
 const NAV = [
   { group: "Werkruimte", items: [
     { id: "dashboard", label: "Dashboard", icon: "dashboard" },
@@ -1314,7 +1348,8 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
                 'netwerken', 'buurtatlas', 'categorieen', 'media', 'menu',
                 'voorzieningen', 'gebruikers', 'huisstijl', 'domein', 'wijzigingen'],
   };
-  const hidden = HIDDEN[role] || [];
+  // Nog niet vrijgegeven? Dan voor iedereen uit het menu, ook voor Margareth.
+  const hidden = (HIDDEN[role] || []).concat(tibLogboekZichtbaar() ? [] : ['wijzigingen']);
   const visibleNav = NAV.map(group => ({
     ...group,
     items: group.items.filter(item => !hidden.includes(item.id)),
@@ -1541,6 +1576,8 @@ function Dashboard({ onNav, onPreview, badges }) {
   // kan het echt gevuld worden. Zie sql/wijzigingenlogboek.sql
   const [laatsteWijzigingen, setLaatsteWijzigingen] = React.useState(null);
   React.useEffect(() => {
+    // Nog niet vrijgegeven? Dan blijft het kaartje leeg, zoals het hiervoor was.
+    if (!tibLogboekZichtbaar()) { setLaatsteWijzigingen([]); return; }
     if (window._tibProfile?.role !== 'superadmin') { setLaatsteWijzigingen([]); return; }
     window.supabase.from('wijzigingen').select('*')
       .order('aangemaakt_op', { ascending: false }).limit(6)
@@ -1567,7 +1604,7 @@ function Dashboard({ onNav, onPreview, badges }) {
 
       {/* Wat de anderen hebben aangepast — het eerste wat Margareth moet zien
           als ze inlogt. Alleen zichtbaar als er iets te bekijken is. */}
-      {window._tibProfile?.role === 'superadmin' && badges && badges.wijzigingen > 0 && (
+      {tibLogboekZichtbaar() && window._tibProfile?.role === 'superadmin' && badges && badges.wijzigingen > 0 && (
         <HintCard icon="refresh" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 240 }}>
@@ -2044,6 +2081,39 @@ function SleepUitleg({ aan, redenUit }) {
 
 // Of de kolom `volgorde` al bestaat. null = nog niet gekeken, false = de
 // migratie sql/punt16_volgorde.sql is nog niet gedraaid.
+/* Bekijken vanuit het logboek.
+   Als Margareth in het scherm Wijzigingen op Bekijken klikt, moet niet alleen
+   het juiste scherm opengaan maar ook het item zelf. Dat scherm bestaat op het
+   moment van klikken nog niet, dus de wens wordt hier even neergelegd en door
+   het scherm opgepakt zodra het verschijnt. Na 15 seconden vervalt hij: anders
+   zou een item dat niet meer in de lijst staat later alsnog openspringen. */
+let _tibOpenWens = null;
+
+function tibWilItemOpenen(tabel, id) {
+  if (id === null || id === undefined || id === '') return;
+  _tibOpenWens = { tabel: tabel, id: String(id), tijd: Date.now() };
+}
+
+// In een scherm:  useOpenWens('activiteiten', DATA.activiteiten, rij => setEditing(rij.id));
+function useOpenWens(tabel, lijst, openen) {
+  const aantal = (lijst || []).length;
+  React.useEffect(() => {
+    const wens = _tibOpenWens;
+    if (!wens || wens.tabel !== tabel) return;
+    if (Date.now() - wens.tijd > 15000) { _tibOpenWens = null; return; }
+    const rij = (lijst || []).find(r => String(r.id) === wens.id);
+    if (!rij) {
+      // Nog niets in de lijst? Dan is hij waarschijnlijk nog aan het laden.
+      if (!aantal) return;
+      _tibOpenWens = null;
+      window.__showToast && window.__showToast('Dat item staat er niet meer.');
+      return;
+    }
+    _tibOpenWens = null;
+    openen(rij);
+  }, [tabel, aantal]);
+}
+
 function useVolgordeKolom(tabel) {
   const [bestaat, setBestaat] = React.useState(null);
   React.useEffect(() => {
@@ -2643,6 +2713,8 @@ function ClubjeEdit({ id, onBack }) {
 
 function ClubjesScreen({ onNav, profile }) {
   const [editing, setEditing] = React.useState(null);
+  // Bekijken vanuit het logboek opent meteen dit initiatief.
+  useOpenWens('clubjes', DATA.clubjes, rij => setEditing(rij.id));
   return editing == null
     ? <ClubjesList onNav={onNav} onEdit={setEditing} profile={profile} />
     : <ClubjeEdit id={editing === 'new' ? null : editing} onBack={() => setEditing(null)} />;
@@ -3536,6 +3608,8 @@ function ActiviteitenScreen() {
   const [search, setSearch] = React.useState('');
   const [filter, setFilter] = React.useState('Alle');
   const [editing, setEditing] = React.useState(null);
+  // Bekijken vanuit het logboek opent meteen deze activiteit.
+  useOpenWens('activiteiten', DATA.activiteiten, rij => setEditing(rij.id));
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
   // Punt 16: volgorde slepen — alleen op het tabblad Alle, zonder filter of
   // zoekterm, en pas nadat sql/punt16_volgorde.sql is gedraaid.
@@ -3745,6 +3819,8 @@ function AgendaScreen() {
   const [view, setView] = React.useState('lijst');
   const [search, setSearch] = React.useState('');
   const [editing, setEditing] = React.useState(null);
+  // Bekijken vanuit het logboek opent meteen dit agenda-item.
+  useOpenWens('agenda', DATA.agenda, rij => setEditing(rij.id));
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
 
   if (editing !== null) {
@@ -4027,6 +4103,8 @@ function NieuwsScreen() {
   const [search, setSearch] = React.useState('');
   const [catFilter, setCatFilter] = React.useState('alle');
   const [editing, setEditing] = React.useState(null);
+  // Bekijken vanuit het logboek opent meteen dit bericht.
+  useOpenWens('nieuws', DATA.nieuws, rij => setEditing(rij.id));
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
   const nieuwsChips = ['alle', 'Buurt', 'Ondernemers', 'Evenement', 'Vrijwillig'];
 
@@ -4934,6 +5012,9 @@ function VoorzieningenScreen() {
   const [bewerken, setBewerken] = React.useState(null); // 'nieuw' | rij | null
   // null = nog niet gekeken, false = sql/blok5_voorzieningen.sql is nog niet gedraaid
   const [tabelBestaat, setTabelBestaat] = React.useState(null);
+  // Bekijken vanuit het logboek opent meteen deze voorziening. Dit scherm
+  // bewerkt de rij zelf, niet het id.
+  useOpenWens('voorzieningen', rijen || [], rij => setBewerken(rij));
   // Punt 16: volgorde slepen. De kolom `volgorde` zit al in de tabel.
   const magSlepen = soortFilter === 'alle' && !zoek;
   const sleep = useSleepVolgorde({
@@ -5040,6 +5121,8 @@ function VoorzieningenScreen() {
 function PartnersScreen() {
   const [search, setSearch] = React.useState('');
   const [editing, setEditing] = React.useState(null);
+  // Bekijken vanuit het logboek opent meteen deze partner.
+  useOpenWens('partners', DATA.partners, rij => setEditing(rij.id));
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
   // Punt 16: volgorde slepen. De kolom `volgorde` bestaat hier al sinds
   // sql/blok3_partners.sql.
@@ -5234,6 +5317,8 @@ function NetwerkEdit({ item, onBack, onOpgeslagen }) {
 
 function NetwerkenScreen() {
   const [editing, setEditing] = React.useState(null);
+  // Bekijken vanuit het logboek opent meteen dit netwerk.
+  useOpenWens('netwerken', DATA.netwerken, rij => setEditing(rij.id));
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
 
   // De lijst vers uit de database halen, zodat het scherm laat zien wat er
@@ -6217,6 +6302,16 @@ const TIB_LOG_ROUTE = {
   weekagenda: 'agenda', terugkerende_activiteiten: 'agenda',
 };
 
+/* Welke schermen niet alleen opengaan maar ook meteen het juiste item tonen.
+   De andere (categorieën, navigatie, paginateksten, contact) zijn één
+   formulier of één lijstje; daar valt niets apart te openen. Weekagenda en
+   terugkerende activiteiten staan er bewust niet bij: die delen het scherm
+   Agenda, maar niet dezelfde rij-ids. */
+const TIB_LOG_OPENBAAR = [
+  'clubjes', 'activiteiten', 'agenda', 'nieuws',
+  'partners', 'netwerken', 'voorzieningen',
+];
+
 const TIB_ROL_LABEL = { superadmin: 'Superadmin', redactie: 'Redactie', beheerder: 'Initiatief-beheerder' };
 
 // "vandaag om 14:02", "gisteren om 9:30", anders de datum erbij.
@@ -6376,7 +6471,12 @@ function WijzigingenScreen({ onNav, onBadgeRefresh }) {
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {TIB_LOG_ROUTE[r.tabel] && r.soort !== 'verwijderd' && (
-                          <button className="btn btn-sm" onClick={() => onNav && onNav(TIB_LOG_ROUTE[r.tabel])}>
+                          <button className="btn btn-sm" onClick={() => {
+                            // Eerst de wens neerleggen, dan pas navigeren: het
+                            // scherm pakt hem op zodra het verschijnt.
+                            if (TIB_LOG_OPENBAAR.indexOf(r.tabel) !== -1) tibWilItemOpenen(r.tabel, r.rij_id);
+                            onNav && onNav(TIB_LOG_ROUTE[r.tabel]);
+                          }}>
                             <Icon name="eye" size={13} /> Bekijken
                           </button>
                         )}
@@ -6665,7 +6765,7 @@ function MenuScreen() {
         rij_id: logboek.id,
         titel: logboek.titel,
         soort: logboek.soort,
-        velden: logboek.soort === 'verwijderd' ? [] : tibLogVerschillen(logboek.oud, logboek.nieuw),
+        velden: logboek.soort === 'verwijderd' ? [] : tibLogVerschillen(logboek.oud, logboek.nieuw, 'site_navigatie'),
       });
     }
     if (melding) toast(melding);
@@ -8501,7 +8601,8 @@ function App() {
       { id: 'meldingen',         tabel: 'meldingen',           ts: 'gemeld_op' },
       { id: 'berichten',         tabel: 'contact_berichten',   ts: 'ontvangen_op' },
       { id: 'bestellingen',      tabel: 'boek_bestellingen',   ts: 'besteld_op' },
-      { id: 'wijzigingen',       tabel: 'wijzigingen',         ts: 'aangemaakt_op' },
+      // Nog niet vrijgegeven: dan ook geen bolletje bij het menu-item.
+      ...(tibLogboekZichtbaar() ? [{ id: 'wijzigingen', tabel: 'wijzigingen', ts: 'aangemaakt_op' }] : []),
     ];
     const counts = {};
     await Promise.all(tables.map(async ({ id, tabel, filter }) => {
@@ -8521,6 +8622,8 @@ function App() {
   // onthoudt dat per tabblad en is bij de volgende aanmelding weer leeg.
   const [melding, setMelding] = React.useState(null);
   React.useEffect(() => {
+    // Nog niet vrijgegeven? Dan geen melding bij het inloggen.
+    if (!tibLogboekZichtbaar()) return;
     if (!session || profile?.role !== 'superadmin') return;
     let alGetoond = false;
     try { alGetoond = sessionStorage.getItem('tib-wijzigingen-gemeld') === 'ja'; } catch (e) {}
@@ -8717,7 +8820,11 @@ function App() {
     (role === 'beheerder' && !BEHEERDER_ROUTES.has(route)) ||
     (role === 'redactie' && REDACTIE_BLOCKED.includes(route));
 
-  const current = screens[route] || screens.dashboard;
+  // Nog niet vrijgegeven? Dan is het scherm ook niet te bereiken, ook niet
+  // via een bewaarde link of een knop die ergens is blijven staan.
+  const current = (route === 'wijzigingen' && !tibLogboekZichtbaar())
+    ? screens.dashboard
+    : (screens[route] || screens.dashboard);
 
   return (
     <div className={"app" + (previewOn ? " preview-on" : "")}>
@@ -8924,6 +9031,36 @@ const TIB_LOG_VELD_LABEL = {
 // Deze velden zeggen Margareth niets, of veranderen buiten haar om.
 const TIB_LOG_NEGEER = ['id', 'aangemaakt_op', 'bijgewerkt_op', 'volgorde', 'slug'];
 
+/* Een nieuw item komt uit het formulier met een rij standaardwaarden die
+   niemand zelf heeft ingevuld: servicekosten 0, vraag adres nee, de
+   betaalmethodes, status Concept. In het logboek is dat ruis — Margareth wil
+   zien wat er is ingevuld, niet welk vinkje toevallig uit stond.
+
+   Staat een veld hieronder en heeft het precies die waarde, dan blijft het bij
+   een NIEUW item weg. Wijkt het af — status Gepubliceerd, betaald ja — dan was
+   het wél een keuze en komt het er gewoon bij. Bij een AANGEPAST item verandert
+   er niets: daar telt het verschil met de vorige waarde.
+
+   De waarden komen uit de `leeg`-objecten in ClubjeEdit en ActiviteitEdit en
+   uit de nieuwe-item-regels in AgendaScreen, NieuwsScreen, PartnersScreen en
+   NetwerkenScreen. Verandert daar een standaard, pas hem hier dan ook aan;
+   loopt het uit de pas, dan staat er hooguit een regel te veel in het logboek. */
+const TIB_LOG_NIEUW_STANDAARD = {
+  activiteiten: {
+    status: 'Concept', herhalend: 'ja', contact_zichtbaar: 'nee', betaald: 'nee',
+    servicekosten: '0', max_personen: '1', vraag_adres: 'nee', vraag_telefoon: 'nee',
+    vraag_opmerking: 'ja', betaalmethodes: 'ideal,creditcard,banktransfer',
+    // Het formulier kent geen veld Type meer; __mapActiviteitenToDb vult hier
+    // altijd 'Ontmoeting' in. Een restwaarde, geen keuze.
+    type: 'Ontmoeting',
+  },
+  clubjes:   { status: 'Concept', contact_zichtbaar: 'nee' },
+  agenda:    { status: 'Concept', aanmelden: 'nee', uitgelicht: 'nee' },
+  nieuws:    { status: 'Concept', uitgelicht: 'nee', auteur: 'Webredactie' },
+  partners:  { type: 'Overig', actief: 'ja' },
+  netwerken: { actief: 'ja' },
+};
+
 function tibLogVeldLabel(veld) {
   return TIB_LOG_VELD_LABEL[veld] || (String(veld).charAt(0).toUpperCase() + String(veld).slice(1)).replace(/_/g, ' ');
 }
@@ -8952,13 +9089,17 @@ function tibLogTitel(item) {
 }
 
 // Wat er veranderd is tussen de oude rij en wat er wordt weggeschreven.
-function tibLogVerschillen(oud, nieuw) {
+function tibLogVerschillen(oud, nieuw, tabel) {
   const uit = [];
+  // Alleen bij een nieuw item de standaardwaarden van het formulier overslaan.
+  const standaard = (!oud && tabel && TIB_LOG_NIEUW_STANDAARD[tabel]) || null;
   Object.keys(nieuw || {}).forEach(function(veld) {
     if (TIB_LOG_NEGEER.indexOf(veld) !== -1) return;
     const oudeWaarde = oud ? oud[veld] : undefined;
     if (tibLogGelijk(oudeWaarde, nieuw[veld])) return;
-    uit.push({ veld: veld, oud: tibLogWaarde(oudeWaarde), nieuw: tibLogWaarde(nieuw[veld]) });
+    const waarde = tibLogWaarde(nieuw[veld]);
+    if (standaard && standaard[veld] === waarde) return;
+    uit.push({ veld: veld, oud: tibLogWaarde(oudeWaarde), nieuw: waarde });
   });
   return uit;
 }
@@ -8980,7 +9121,7 @@ window.__logVooraf = async function(tabel, id) {
   }
   return function(nieuweRij, soort) {
     const bepaald = soort || (oud ? 'aangepast' : 'nieuw');
-    const verschillen = bepaald === 'verwijderd' ? [] : tibLogVerschillen(oud, nieuweRij);
+    const verschillen = bepaald === 'verwijderd' ? [] : tibLogVerschillen(oud, nieuweRij, tabel);
     if (bepaald === 'aangepast' && !verschillen.length) return;
     window.__logWijziging({
       tabel: tabel,
@@ -9028,7 +9169,7 @@ window.__supabaseUpsert = async function(tabel, item) {
     }
     const { error } = await window.supabase.from(dbTabel).upsert(dbItem, { onConflict: 'id' });
     if (error) throw error;
-    const verschillen = tibLogVerschillen(oudeRij, dbItem);
+    const verschillen = tibLogVerschillen(oudeRij, dbItem, tabel);
     if (!oudeRij || verschillen.length) {
       window.__logWijziging({
         tabel: tabel, rij_id: dbItem && dbItem.id,
@@ -9060,7 +9201,7 @@ window.__supabaseInsert = async function(tabel, item) {
     if (error) throw error;
     window.__logWijziging({
       tabel: tabel, rij_id: data && data.id, titel: tibLogTitel(data) || tibLogTitel(bron),
-      soort: 'nieuw', velden: tibLogVerschillen(null, zonderId)
+      soort: 'nieuw', velden: tibLogVerschillen(null, zonderId, tabel)
     });
     return data;
   } catch(e) {
