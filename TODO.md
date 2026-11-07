@@ -1485,7 +1485,171 @@ uit haar mail.
     pushen.
   - Nog te doen: Mollie (sleutel via Armando, webhook als Supabase Edge
     Function), bevestigingsmail, en de schakelaar aanzetten.
-- **Besluit 7:** doneerpagina snel oplossen met de bestaande Donorbox-link, en
+  - **Mollie gebouwd en getest (6-11).** Giovanny maakte een Mollie-account en
+    een testsleutel; die staat als secret `MOLLIE_API_KEY` in Supabase. Niet in
+    de code, niet in git — de functies lezen hem daar op.
+    - `supabase/functions/betaling/index.ts` — twee acties. `start` maakt de
+      aanmelding aan en opent de betaling; `status` vertelt de bedankpagina hoe
+      het is afgelopen, zonder persoonsgegevens terug te geven.
+      *Waarom op de server:* de sleutel mag niet in de browser, het bedrag moet
+      opnieuw worden uitgerekend (anders meldt iemand zich aan voor een cent),
+      en een bezoeker mag `aanmeldingen` niet teruglezen.
+    - `supabase/functions/betaling-webhook/index.ts` — hier belt Mollie naartoe.
+      Het binnenkomende bericht wordt niet geloofd: de status wordt zelf bij
+      Mollie opgehaald. Gedeployed met `--no-verify-jwt`, anders komt Mollie er
+      niet in.
+    - `supabase/functions/_shared/mollie.ts` — sleutel, statusvertaling, euro's.
+    - Site: bij een betaalde activiteit loopt het aanmelden nu via de server en
+      gaat de bezoeker door naar de bank. Terug komt hij op
+      `?betaling=TIB-XXXX`; `BetaalTerug` in `detail.jsx` toont wat er is
+      gebeurd en vraagt bij "nog bezig" een paar keer na.
+    - **Samen getest op 6-11 met de testsleutel.** Betaling van € 25,50 voor
+      2 personen: Mollie-pagina goed, iDEAL testbank op "betaald", terug op de
+      site met "Je betaling is binnen", en in de database `betaald` met tijd,
+      kenmerk en mollie_id. De webhook apart bewezen met een tweede betaling
+      die naar de echte site terugkeerde (die kent het bedankscherm niet, dus
+      alleen de webhook kon het geschreven hebben) — stond op betaald.
+      Serverkant nagelopen: te veel personen, vol, nog één plek vrij, geen
+      geldig e-mailadres en een gratis activiteit worden allemaal netjes
+      geweigerd. Het CMS-tabblad Deelnemers toonde 4 aanmeldingen, 5 van 5
+      personen, € 38,50 binnen, met filters en kenmerk per regel.
+      Hiervoor stonden tijdelijk betaalvelden op activiteit 13 (Walking Dinner);
+      backup in `backups/activiteiten-voor-betaaltest-2026-11-06.json`, naderhand
+      veld voor veld teruggezet en gecontroleerd: identiek. Alle vier de
+      proefaanmeldingen verwijderd, `aanmeldingen` weer leeg.
+    - *Niet bewezen:* afgebroken, mislukt en verlopen. Bij Mollie blijft de
+      betaling in die gevallen gewoon open staan — de bezoeker mag een andere
+      methode kiezen — tot hij vanzelf verloopt. De vertaling staat in de code
+      (`canceled`/`expired` → afgebroken, `failed` → mislukt) maar is niet met
+      een echte betaling nagelopen.
+    - **Nog te doen voor het live kan:**
+      1. *Het Mollie-profiel staat op naam van een ander bedrijf.* Op de
+         betaalpagina stond "Nexa Onderhoudsbedrijf" boven het bedrag. Er moet
+         een eigen websiteprofiel voor thuisindebuurt.nl komen, met een eigen
+         sleutel. Zo mag dit niet naar bezoekers.
+      2. Bevestigingsmail na een geslaagde betaling. De e-mailkoppeling
+         (Resend) is nergens in de code terug te vinden en moet eerst
+         nagekeken worden.
+      3. Besluit: betaalt de deelnemer de transactiekosten (veld
+         `servicekosten`) of draagt TIB ze zelf?
+      4. Live sleutel in de secret, en de drie schakelaars om:
+         `TIB_BETALEN_AAN` in `beheer.html` én `bundle-src/detail.jsx`, plus
+         `TIB_MOLLIE_AAN` in `detail.jsx`. Daarna
+         `node tools/tib-bundle.mjs encode` en pushen.
+    - **Drie knoppen op het scherm Betalen rechtgezet (6-11).** Gevonden
+      doordat Giovanny het scherm zelf bekeek: in de database stond
+      `max_personen = 3`, maar het scherm toonde "1 persoon".
+      1. *Maximaal per aanmelding* had alleen de keuzes 1, 2 en 4 — de 3
+         ontbrak, dus viel het lijstje stil terug op de eerste keuze en was 3
+         niet eens in te stellen. Nu 1 tot en met 8, en staat er een ander
+         getal in de database, dan wordt dat er alsnog bij gezet zodat het
+         scherm nooit iets anders toont dan wat is opgeslagen.
+      2. *Betaalmethodes* werden opgeslagen maar nergens gebruikt; Mollie
+         toonde gewoon alles. De gekozen methodes gaan nu mee naar Mollie.
+         Staat er niets aangevinkt, dan laten we de keuze weg — nul methodes
+         zou betekenen dat er helemaal niet betaald kan worden.
+      3. *Straatnaam en huisnummer* beloofde "wordt ná het betalen gevraagd"
+         maar werd nergens gevraagd. Het bedankscherm stelt die vraag nu, en
+         de nieuwe actie `adres` in de Edge Function bewaart hem. Alleen bij
+         een betaling die rond is, en alleen met het kenmerk — dat heeft
+         niemand anders dan degene die betaald heeft.
+      *Getest op 6-11:* met alleen iDEAL aangevinkt stuurde Mollie de bezoeker
+      meteen naar de bankenlijst in plaats van naar de methodekeuze; na het
+      betalen verscheen de adresvraag, "Gentsestraat 22A" kwam goed in de
+      database; het keuzelijstje toont nu 1 t/m 8 met 3 geselecteerd. De
+      weigeringen nagelopen: onbekend kenmerk, te kort adres, rare invoer en
+      een onbekende actie worden allemaal netjes afgewezen.
+    - *Nog even over dit scherm:* de hintkaart onderaan zegt "De koppeling met
+      Mollie zit er nog niet in. Tot die tijd zet je onder Deelnemers met de
+      hand wie er betaald heeft." Die tekst klopt zolang de schakelaars uit
+      staan, maar moet weg op het moment dat de betaling live gaat.
+    - *Om over na te denken vóór het live gaat:* een openstaande betaling houdt
+      een plek bezet. Bij iDEAL is dat een kwartier, maar een overboeking staat
+      bij Mollie twaalf tot veertien dagen open. Eén afhaker blokkeert dan twee
+      weken een plek. Overweging: overboeking niet aanbieden bij activiteiten
+      met een beperkt aantal plekken.
+    - **Staat nu online (7-11).** `index.html` is opnieuw gebouwd en gepusht,
+      dus de betaalcode uit `bundle-src/app.jsx` en `detail.jsx` staat mee op
+      de site. Hij doet niets zolang de drie schakelaars uit staan; bezoekers
+      zien precies hetzelfde als eerst.
+- **Nog te doen voor de betaling live kan (stand 7-11):**
+  - [ ] **Eigen Mollie-profiel voor thuisindebuurt.nl** met een eigen sleutel.
+        Nu hangt de testsleutel onder een bestaand profiel en staat er
+        "Nexa Onderhoudsbedrijf" boven het bedrag op de betaalpagina. Wacht
+        op de KVK-controle bij Mollie.
+  - [ ] **Bevestigingsmail** na een geslaagde betaling. De e-mailkoppeling
+        (Resend) is nergens in de code terug te vinden en moet eerst
+        nagekeken worden.
+  - [ ] **Besluit overboeking.** Een openstaande betaling houdt een plek
+        bezet; bij een overboeking staat die bij Mollie twaalf tot veertien
+        dagen open. Overweging: overboeking niet aanbieden bij activiteiten
+        met een beperkt aantal plekken.
+  - [ ] **Hintkaart weghalen** onder het scherm Betalen ("De koppeling met
+        Mollie zit er nog niet in") op het moment dat het live gaat.
+  - [x] ~~Besluit servicekosten~~ — **de deelnemer betaalt ze** (7-11,
+        Giovanny). Zo was het al gebouwd: één opslag per aanmelding, niet per
+        persoon. iDEAL kost via Mollie ongeveer € 0,29, dus € 0,50 is ruim.
+  - Daarna: drie schakelaars om (`TIB_BETALEN_AAN` in `beheer.html` én in
+    `bundle-src/detail.jsx`, `TIB_MOLLIE_AAN` in `detail.jsx`),
+    `node tools/tib-bundle.mjs encode`, pushen, live controleren op beide
+    adressen.
+
+- **Doneerpagina opnieuw gemaakt en gepusht (7-11).** Giovanny
+  stuurde een schermafdruk van het oude Donorbox-formulier: nagemaakt, maar in
+  onze eigen stijl en met € 25 als voorkeur.
+  - Drie frequenties (eenmalig, maandelijks, jaarlijks), bedragen 5, 10, 25,
+    50, 100 en 500 in een raster, met **€ 25 vooraf gekozen** en een merkje
+    "meest gekozen". Daaronder een eigen bedrag en de doneerknop.
+  - Donorbox doet de rest: betaling, bevestiging en de terugkerende
+    afschrijvingen. Wij geven alleen bedrag en frequentie mee in de link. De
+    oude demopagina toonde alleen een melding; er gebeurde niets.
+  - Alles wat met Donorbox te maken heeft staat in één blok bovenaan
+    `bundle-src/other.jsx` (`TIB_DONORBOX`), zodat er maar één plek is om aan
+    te passen.
+  - **Twee dingen nog nakijken bij Donorbox zelf:**
+    1. De campagnenaam `thuis-in-de-buurt-donaties` komt uit de oude
+       demopagina en is nooit gecontroleerd.
+    2. Donorbox documenteert de namen van de link-parameters (`amount` en
+       `default_interval`) niet openbaar. De zekere bron is de knop "Link to
+       Donation Page" in het Donorbox-dashboard: die maakt een kant-en-klare
+       link. Komt die niet overeen, dan hoeft alleen dat ene blok aangepast.
+  - *Getest op 7-11:* knop en link lopen mee met de keuze — eenmalig/maandelijks/
+    jaarlijks geven `default_interval` o/m/y, een eigen bedrag van 7,50 wordt
+    `amount=7.5`, bij 0 of een leeg bedrag wordt de knop uitgeschakeld met de
+    melding "Vul eerst een geldig bedrag in" en een rode rand.
+  - *Fout gevonden die er al langer in zat:* de doneerpagina stond in twee
+    vaste kolommen en liep op een telefoon van het scherm af. Nu zakt de
+    zijkolom er vanzelf onder. Ook paste "Jaarlijks" niet naast de andere twee
+    knoppen op een smal scherm; die mag nu afbreken naar een tweede regel.
+    Nagemeten op 375 breed: geen horizontaal schuiven meer, alle drie de
+    knoppen binnen de kaart.
+
+- **Doneren blijft voorlopig via Donorbox (besloten 7-11, Giovanny).**
+  Giovanny vroeg of het ook via Mollie kon. Nagekeken en besloten het zo te
+  laten. Wat de afweging was, zodat we het later niet opnieuw hoeven uit te
+  zoeken:
+  - **Eenmalig doneren via Mollie zou kunnen** en is geen groot werk: dezelfde
+    opzet als de aanmeldingen, maar eenvoudiger (geen plekken, geen personen).
+    Nodig: een tabel `donaties`, een actie erbij in de betaalfunctie, de
+    webhook in twee tabellen laten kijken in plaats van alleen `aanmeldingen`,
+    een bedanktscherm en een CMS-scherm voor Margareth.
+  - **Maandelijks en jaarlijks is iets heel anders.** Mollie herhaalt geen
+    iDEAL-betaling; de eerste betaling is een machtiging voor automatische
+    incasso, daarna loopt het via SEPA-incasso. Daarvoor moet SEPA-incasso aan
+    staan op het Mollie-profiel (dat er nog niet is), mag de donateur acht
+    weken lang elke afschrijving terugdraaien — en tot dertien maanden bij een
+    vermoeden van onterechte incasso — en duurt het negen werkdagen voor het
+    geld binnen is. Plus een opzegknop en het intrekken van de machtiging.
+    Bronnen: docs.mollie.com/docs/sepa-direct-debit en /docs/recurring.
+  - **Het echte gat:** er zit nergens e-mail in dit project. Nagezocht op
+    Resend, SendGrid, Postmark, Mailgun, SMTP — niets. Zelf innen betekent dus
+    geen bevestiging voor de donateur. Donorbox regelt dat, en ook de
+    donateursadministratie en terugkerende afschrijvingen.
+  - **Nog uit te zoeken als we het ooit wel zelf doen:** is TIB een ANBI? Dan
+    willen donateurs een bewijs voor de belasting.
+
+- **Besluit 7** *(beantwoord 7-11: doneerpagina blijft op Donorbox, zie
+  hierboven)*: doneerpagina snel oplossen met de bestaande Donorbox-link, en
   iDEAL pas bouwen als Armando's kant rond is? Dan heeft Margareth volgende
   week al een werkende doneerknop.
 - **Let op:** een betaalkoppeling kan niet alleen in de browser; daar hoort een
@@ -1921,8 +2085,8 @@ die tekst.
     verschuift geen pixel bij het openen.
 
 ### Stand van deze lijst
-Klaar en live: 3, 5, 6, 8, 9, 10, 11, 13, 14, 15, 17, 18, 19, 20, 22.
-Klaar, wacht op pushen: **16**.
+Klaar en live: 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, **16**, 17, 18, 19,
+20, 22. Punt 16 ging live op 4 november (commit 7f523ac).
 Punt 12 was een compliment, geen werk.
 
 Wat er nog ligt:
