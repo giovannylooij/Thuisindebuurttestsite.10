@@ -33,6 +33,54 @@ probleem nog.
 
 ---
 
+## Doneren & Boek werkt nu echt (8-11, lokaal — nog niet gepusht)
+
+Uit de testronde van 7-11 kwam: het scherm **Doneren & Boek** meldde
+"opgeslagen!" maar schreef niets naar de database. Dat is nu omgebouwd.
+
+**Waar het staat:** alles gaat naar de bestaande tabel `pagina_teksten`
+(pagina `doneren` en pagina `boek`). Geen nieuwe tabel, geen SQL-migratie.
+Hetzelfde patroon als het Contact-scherm: een veld leegmaken betekent "terug
+naar de tekst uit de code", en dan wordt de rij verwijderd.
+
+**Wat Margareth nu kan aanpassen, en wat er op de website mee verandert:**
+
+| Scherm | Veld | Op de website |
+|---|---|---|
+| Paginateksten | klein kopje, titel, intro | de kop van de doneerpagina |
+| Paginateksten | kopje + de punten van "Waar gaat uw hulp naartoe?" | het groene blok (één punt per regel) |
+| Paginateksten | kopje boven de boekaanbieding | de witte kaart ernaast |
+| Boek | titel, auteur, prijs, ISBN, korte omschrijving | doneerpagina én boekpagina (prijs ook in het bestelformulier en het totaal) |
+| Boek | omslag (upload of webadres) | de twee plekken waar nu een grijs vlak staat |
+| Boek | knoptekst | de knop op de doneerpagina |
+| Boek | bestellen mogelijk (aan/uit) | uit = geen bestelformulier, wel een nette uitleg |
+| Donaties | de bedragen, het meest gekozen bedrag | de knoppen op de doneerpagina |
+| Donaties | vrije donatie aan/uit | het veld "Liever een ander bedrag?" |
+| Donaties | naam van de Donorbox-campagne | waar de doneerknop naartoe gaat |
+
+**Wat bewust niet is nagebouwd**, omdat het niet kan werken zolang Mollie en de
+bevestigingsmail er niet zijn: het veld "API-sleutel", de keuze
+Mollie/Stripe/geen, en het veld "Bevestigingsmail". Die deden niets en wekten
+de indruk van wel. Daar staat nu uitleg: hoe een bestelling nu echt loopt
+(formulier → tabel `boek_bestellingen` → scherm Bestellingen → handmatig
+contact). De tab Bestellingen laat het echte aantal zien in plaats van altijd
+"nog geen bestellingen".
+
+**Ook meegenomen:** dit scherm schrijft nu wél in het wijzigingenlogboek
+(één regel per keer opslaan, met oude en nieuwe tekst per veld).
+
+**Getest** (8-11, lokaal, zonder de echte database aan te raken): opslaan,
+leegmaken, een rommelige bedragenlijst ("3, 7, 7, nonsens, 0" wordt 3/7/12),
+een prijs met komma, een onleesbare prijs (opslaan wordt geweigerd), uploaden
+van een omslag, bestellen uit, en de website met en zonder ingevulde teksten.
+De controle `node tools/tib-check.mjs` is erbij gekomen: die zag een dubbele
+functienaam die anders de hele site had platgelegd.
+
+**Nog te doen:** pushen (pas als Giovanny het zegt), en daarna live nakijken op
+thuisindebuurt.nl én app.thuisindebuurt.nl.
+
+---
+
 ## ✅ Afgerond
 
 - [x] Detailpagina toont nu de naam ("Over Happy Feet" i.p.v. "Over deze clubje")

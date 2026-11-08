@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.246', datum: '07-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.247', datum: '08-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -5391,66 +5391,276 @@ function NetwerkenScreen() {
   );
 }
 
+// Doneren & Boek — alle teksten en instellingen van de doneerpagina en de
+// boekpagina staan in de tabel pagina_teksten (pagina "doneren" en pagina
+// "boek"). Dat is dezelfde tabel die het scherm Pagina's gebruikt, dus alles
+// wat hier wordt opgeslagen, komt op de website. Een veld leegmaken betekent:
+// terug naar de tekst uit de code.
+//
+// "standaard" is exact de tekst of waarde die de website toont als hier niets
+// is ingevuld — die loopt gelijk met bundle-src/ui.jsx (TIB_BOEK),
+// bundle-src/other.jsx (Doneren) en bundle-src/boek.jsx.
+const TIB_DONEREN_VELDEN = [
+  { pagina: 'doneren', sleutel: 'eyebrow',           label: 'Klein kopje',              standaard: 'Doneren' },
+  { pagina: 'doneren', sleutel: 'titel',             label: 'Paginatitel',              standaard: 'De buurt mogelijk maken.' },
+  { pagina: 'doneren', sleutel: 'intro1',            label: 'Intro-tekst',              standaard: 'TIB draait op vrijwilligers en kleine bijdragen. Met een donatie maakt u alle sociale activiteiten zoals de jaarlijkse Walking Dinner mogelijk.' },
+  { pagina: 'doneren', sleutel: 'sectie_waar',       label: 'Kopje: besteding',         standaard: 'Waar gaat uw hulp naartoe?' },
+  { pagina: 'doneren', sleutel: 'besteding',         label: 'Besteding — de punten',    standaard: 'Koffie, soep en huur voor wekelijkse activiteiten\nDrukwerk: posters, flyers, Walking Dinner-routekaarten\nMaterialen voor clubjes (bingoballen, schaakborden…)\nOnkostenvergoeding vrijwilligers' },
+  { pagina: 'doneren', sleutel: 'sectie_boek',       label: 'Kopje: boek',              standaard: 'Of bied steun door het boek te kopen' },
+  { pagina: 'doneren', sleutel: 'bedragen',          label: 'Donatiebedragen',          standaard: '5, 10, 25, 50, 100, 500' },
+  { pagina: 'doneren', sleutel: 'bedrag_voorkeur',   label: 'Meest gekozen bedrag',     standaard: '25' },
+  { pagina: 'doneren', sleutel: 'vrije_donatie',     label: 'Vrije donatie toestaan',   standaard: 'ja' },
+  { pagina: 'doneren', sleutel: 'donorbox_campagne', label: 'Donorbox-campagne',        standaard: 'thuis-in-de-buurt-donaties' },
+  { pagina: 'boek',    sleutel: 'boek_naam',         label: 'Boektitel',                standaard: 'Leven is spelen' },
+  { pagina: 'boek',    sleutel: 'auteur',            label: 'Auteur',                   standaard: 'Margreet Jonkers' },
+  { pagina: 'boek',    sleutel: 'prijs',             label: 'Prijs',                    standaard: '20' },
+  { pagina: 'boek',    sleutel: 'isbn',              label: 'ISBN',                     standaard: '' },
+  { pagina: 'boek',    sleutel: 'omschrijving',      label: 'Korte omschrijving',       standaard: 'De opbrengst gaat volledig naar TIB.' },
+  { pagina: 'boek',    sleutel: 'omslag',            label: 'Boekomslag',               standaard: '' },
+  { pagina: 'boek',    sleutel: 'knoptekst',         label: 'Knoptekst',                standaard: 'Meer info & bestellen →' },
+  { pagina: 'boek',    sleutel: 'bestellen_aan',     label: 'Bestellen mogelijk',       standaard: 'ja' },
+];
+
+function tibDoneerLeeg() {
+  const w = {};
+  TIB_DONEREN_VELDEN.forEach(veld => { w[veld.pagina + '.' + veld.sleutel] = veld.standaard; });
+  return w;
+}
+// "5, 10, 25" wordt [5, 10, 25]: alleen hele getallen boven nul, dubbele
+// eruit, van klein naar groot. Precies wat de website er ook van maakt.
+function tibDoneerBedragen(tekst) {
+  const lijst = String(tekst || '').split(/[^0-9]+/).map(d => parseInt(d, 10)).filter(n => !isNaN(n) && n > 0);
+  const uniek = lijst.filter((n, i) => lijst.indexOf(n) === i);
+  uniek.sort((a, b) => a - b);
+  return uniek;
+}
+function tibDoneerRegels(tekst) {
+  return String(tekst || '').split('\n').map(r => r.trim()).filter(Boolean);
+}
+function tibDoneerJa(tekst) {
+  return String(tekst === undefined || tekst === null ? 'ja' : tekst).trim().toLowerCase() !== 'nee';
+}
+
 function DonerenScreen() {
   const [tab, setTab] = React.useState('paginateksten');
-  const [paginaZichtbaar, setPaginaZichtbaar] = React.useState(true);
-  const [bestellenMogelijk, setBestellenMogelijk] = React.useState(true);
-  const [voorbestelling, setVoorbestelling] = React.useState(false);
-  const [vrijeDonatie, setVrijeDonatie] = React.useState(true);
-  const [bedragen, setBedragen] = React.useState(() => (DATA.doneren && DATA.doneren.bedragen) || [5, 10, 25, 50, 100]);
+  const [w, setW] = React.useState(tibDoneerLeeg);          // zoals het nu in het scherm staat
+  const [bewaard, setBewaard] = React.useState(tibDoneerLeeg); // zoals het in de database staat
+  const [eigen, setEigen] = React.useState({});             // staat er een eigen rij in de database?
+  const [laden, setLaden] = React.useState(true);
+  const [fout, setFout] = React.useState(null);
+  const [bezig, setBezig] = React.useState(false);
+  const [uploadBezig, setUploadBezig] = React.useState(false);
   const [nieuwBedrag, setNieuwBedrag] = React.useState('');
   const [addingBedrag, setAddingBedrag] = React.useState(false);
-  const [doText, setDoText] = React.useState(() => ({
-    paginaTitel: (DATA.doneren && DATA.doneren.paginaTitel) || 'De buurt mogelijk maken.',
-    paginaIntro: (DATA.doneren && DATA.doneren.paginaIntro) || 'TIB draait op vrijwilligers en kleine bijdragen.',
-    sectieWaar:  (DATA.doneren && DATA.doneren.sectieWaar)  || 'Waar gaat uw hulp naartoe?',
-    sectieBoek:  (DATA.doneren && DATA.doneren.sectieBoek)  || 'Of bied steun door het kopen van het boek',
-  }));
+  const [bestellingen, setBestellingen] = React.useState(null);
 
-  function saveBedragen(lijst) {
-    if (!DATA.doneren) DATA.doneren = {};
-    DATA.doneren.bedragen = lijst;
+  const toast = (t) => window.__showToast && window.__showToast(t);
+  const zet = (sleutel, waarde) => setW(vorig => ({ ...vorig, [sleutel]: waarde }));
+  const standaardVan = (sleutel) => {
+    const veld = TIB_DONEREN_VELDEN.find(v => v.pagina + '.' + v.sleutel === sleutel);
+    return veld ? veld.standaard : '';
+  };
+
+  const bedragen = tibDoneerBedragen(w['doneren.bedragen']);
+  const voorkeurOpgeslagen = parseInt(w['doneren.bedrag_voorkeur'], 10) || 0;
+  // Staat het voorkeursbedrag niet (meer) tussen de knoppen, dan geldt het
+  // eerste bedrag — net als op de website.
+  const voorkeur = bedragen.includes(voorkeurOpgeslagen) ? voorkeurOpgeslagen : (bedragen[0] || 0);
+  const prijs = Number(String(w['boek.prijs'] || '').replace(',', '.')) || 0;
+
+  // Wat er nu in de database staat ophalen. De teksten die hier niet bij horen
+  // (andere pagina's) blijven buiten beeld.
+  async function laad() {
+    setLaden(true);
+    const res = await window.supabase.from('pagina_teksten').select('*').in('pagina', ['doneren', 'boek']);
+    if (res.error) { setFout(res.error.message); setLaden(false); return; }
+    const waarden = tibDoneerLeeg();
+    const eigenRijen = {};
+    (res.data || []).forEach(r => {
+      const sleutel = r.pagina + '.' + r.sleutel;
+      if (waarden[sleutel] === undefined) return;
+      if (r.tekst === null || r.tekst === undefined || String(r.tekst).trim() === '') return;
+      waarden[sleutel] = r.tekst;
+      eigenRijen[sleutel] = true;
+    });
+    setW(waarden);
+    setBewaard({ ...waarden });
+    setEigen(eigenRijen);
+    setFout(null);
+    setLaden(false);
+  }
+  React.useEffect(() => { laad(); }, []);
+
+  // De bestellingen van het boek staan in boek_bestellingen; hier alleen het
+  // aantal, want afhandelen gebeurt bij het menu-item Bestellingen.
+  React.useEffect(() => {
+    let levend = true;
+    (async () => {
+      const res = await window.supabase.from('boek_bestellingen').select('id');
+      if (!levend) return;
+      setBestellingen(res.error ? null : (res.data || []).length);
+    })();
+    return () => { levend = false; };
+  }, []);
+
+  const gewijzigd = TIB_DONEREN_VELDEN.some(veld => {
+    const sleutel = veld.pagina + '.' + veld.sleutel;
+    return (w[sleutel] || '').trim() !== (bewaard[sleutel] || '').trim();
+  });
+
+  // Opslaan schrijft alles in één keer weg. Een veld dat leeg is of weer
+  // precies de standaardtekst bevat, krijgt geen eigen rij: dan toont de
+  // website de tekst uit de code.
+  async function opslaan() {
+    if (bezig) return;
+    // Een onleesbare prijs niet wegschrijven: dan zou de website stilletjes
+    // terugvallen op het bedrag uit de code.
+    if ((w['boek.prijs'] || '').trim() !== '' && !(prijs > 0)) {
+      setTab('boek');
+      toast('De prijs van het boek is geen geldig bedrag — pas die eerst aan.');
+      return;
+    }
+    setBezig(true);
+    // Opgeruimd wegschrijven: de bedragen op volgorde zonder dubbele, en een
+    // voorkeursbedrag dat echt tussen die bedragen staat.
+    const huidig = {
+      ...w,
+      'doneren.bedragen': bedragen.join(', '),
+      'doneren.bedrag_voorkeur': voorkeur ? String(voorkeur) : '',
+    };
+    const teBewaren = [];
+    const teVerwijderen = [];
+    const logVelden = [];
+    TIB_DONEREN_VELDEN.forEach(veld => {
+      const sleutel = veld.pagina + '.' + veld.sleutel;
+      const nieuw = (huidig[sleutel] || '').trim();
+      const oud = (bewaard[sleutel] || '').trim();
+      if (nieuw === oud) return;
+      logVelden.push({ veld: veld.label, oud: tibLogWaarde(oud), nieuw: tibLogWaarde(nieuw) });
+      const standaard = (veld.standaard || '').trim();
+      if (nieuw === '' || nieuw === standaard) {
+        if (eigen[sleutel]) teVerwijderen.push(veld);
+        return;
+      }
+      teBewaren.push({ pagina: veld.pagina, sleutel: veld.sleutel, tekst: nieuw, bijgewerkt_op: new Date().toISOString() });
+    });
+
+    let foutmelding = null;
+    if (teBewaren.length > 0) {
+      const res = await window.supabase.from('pagina_teksten').upsert(teBewaren, { onConflict: 'pagina,sleutel' });
+      if (res.error) foutmelding = res.error.message;
+    }
+    for (const veld of teVerwijderen) {
+      const res = await window.supabase.from('pagina_teksten').delete()
+        .eq('pagina', veld.pagina).eq('sleutel', veld.sleutel);
+      if (res.error && !foutmelding) foutmelding = res.error.message;
+    }
+    setBezig(false);
+    if (foutmelding) {
+      setFout(foutmelding);
+      toast('Niet opgeslagen: ' + foutmelding + ' (is sql/blokA_pagina_teksten.sql al uitgevoerd?)');
+      return;
+    }
+
+    // De voorbeeldweergave in het CMS laat hetzelfde zien als de website.
+    window.DATA.doneren = {
+      eyebrow:     huidig['doneren.eyebrow'],
+      paginaTitel: huidig['doneren.titel'],
+      paginaIntro: huidig['doneren.intro1'],
+      sectieWaar:  huidig['doneren.sectie_waar'],
+      sectieBoek:  huidig['doneren.sectie_boek'],
+      besteding:   tibDoneerRegels(huidig['doneren.besteding']),
+      bedragen:    bedragen,
+      bedragVoorkeur: voorkeur,
+      vrijeDonatie: tibDoneerJa(huidig['doneren.vrije_donatie']),
+      donorboxCampagne: (huidig['doneren.donorbox_campagne'] || '').trim(),
+      boek: {
+        naam:         huidig['boek.boek_naam'],
+        auteur:       huidig['boek.auteur'],
+        prijs:        prijs,
+        isbn:         huidig['boek.isbn'],
+        omschrijving: huidig['boek.omschrijving'],
+        omslag:       (huidig['boek.omslag'] || '').trim(),
+        knoptekst:    huidig['boek.knoptekst'],
+        bestellenAan: tibDoneerJa(huidig['boek.bestellen_aan']),
+      },
+    };
+    window.__syncToSite && window.__syncToSite();
+    // Eén logboekregel voor de hele opslagactie.
+    if (logVelden.length) {
+      window.__logWijziging({
+        tabel: 'pagina_teksten', rij_id: 'doneren', titel: 'Doneren & Boek',
+        soort: 'aangepast', velden: logVelden
+      });
+    }
+    toast('Doneren & Boek opgeslagen — staat nu op de website.');
+    await laad();
   }
 
   function verwijderBedrag(b) {
-    const nieuw = bedragen.filter(x => x !== b);
-    setBedragen(nieuw);
-    saveBedragen(nieuw);
-    window.__showToast && window.__showToast('Bedrag €' + b + ' verwijderd');
+    const over = bedragen.filter(x => x !== b);
+    if (over.length === 0) { toast('Er moet minstens één bedrag overblijven'); return; }
+    zet('doneren.bedragen', over.join(', '));
+    if (voorkeur === b) zet('doneren.bedrag_voorkeur', String(over[0]));
+    toast('Bedrag €' + b + ' weggehaald — klik op Opslaan');
   }
 
   function voegBedragToe() {
     const val = parseInt(nieuwBedrag, 10);
     if (!val || val <= 0) return;
-    if (bedragen.includes(val)) { window.__showToast && window.__showToast('Bedrag bestaat al'); return; }
-    const nieuw = [...bedragen, val].sort((a, b) => a - b);
-    setBedragen(nieuw);
-    saveBedragen(nieuw);
+    if (bedragen.includes(val)) { toast('Dat bedrag staat er al'); return; }
+    zet('doneren.bedragen', bedragen.concat([val]).sort((a, b) => a - b).join(', '));
     setNieuwBedrag('');
     setAddingBedrag(false);
-    window.__showToast && window.__showToast('Bedrag €' + val + ' toegevoegd');
+    toast('Bedrag €' + val + ' erbij — klik op Opslaan');
   }
 
-  function saveDoneren() {
-    DATA.doneren = { ...doText };
-    window.__syncToSite && window.__syncToSite();
-    window.__showToast && window.__showToast('Doneren-pagina opgeslagen!');
+  // De omslag gaat naar de opslagmap van de Mediabibliotheek; in de database
+  // komt alleen het webadres te staan.
+  async function uploadOmslag(e) {
+    const bestand = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!bestand) return;
+    if (!/\.(png|jpe?g|webp)$/i.test(bestand.name)) { toast('Alleen png, jpg of webp'); return; }
+    if (bestand.size > 1024 * 1024) { toast('De afbeelding is groter dan 1 MB — kies een kleinere.'); return; }
+    setUploadBezig(true);
+    const extensie = (bestand.name.split('.').pop() || 'jpg').toLowerCase();
+    const naam = 'boek-omslag-' + Date.now() + '.' + extensie;
+    const res = await window.supabase.storage.from('icons')
+      .upload(naam, bestand, { upsert: false, contentType: bestand.type || undefined });
+    setUploadBezig(false);
+    if (res.error) { toast('Uploaden mislukt: ' + res.error.message); return; }
+    zet('boek.omslag', CMS_ICOON_BASE_URL + naam);
+    toast('Omslag geüpload — klik op Opslaan om hem op de website te zetten.');
   }
+
+  const omslag = (w['boek.omslag'] || '').trim();
+  const campagne = (w['doneren.donorbox_campagne'] || '').trim() || standaardVan('doneren.donorbox_campagne');
+  const bestellenAan = tibDoneerJa(w['boek.bestellen_aan']);
 
   return (
     <>
       <PageHead
         title="Doneren & Boek"
-        sub="Beheer de paginateksten, het boek 'Leven is spelen', donatiebedragen en betaalkoppeling."
+        sub="De teksten en instellingen van de doneerpagina en de boekpagina. Wat u hier opslaat, staat op de website."
         actions={<>
           <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="eye" size={14} /> Bekijk pagina</button>
-          <button className="btn btn-primary" onClick={saveDoneren}><Icon name="save" size={14} /> Opslaan</button>
+          <button className="btn btn-primary" onClick={opslaan} disabled={bezig || laden || !gewijzigd}>
+            <Icon name="save" size={14} /> {bezig ? 'Bezig…' : (gewijzigd ? 'Opslaan' : 'Opgeslagen')}
+          </button>
         </>}
       />
 
+      {fout && (
+        <HintCard variant="warn" icon="warn">
+          De teksten konden niet geladen of opgeslagen worden: {fout} — is <strong>sql/blokA_pagina_teksten.sql</strong> al uitgevoerd in Supabase?
+        </HintCard>
+      )}
+      {laden && <HintCard icon="info">Bezig met laden…</HintCard>}
+
       <div className="tabs">
         <div className={"tab" + (tab==='paginateksten'?' active':'')} onClick={() => setTab('paginateksten')}>Paginateksten</div>
-        <div className={"tab" + (tab==='boek'?' active':'')} onClick={() => setTab('boek')}>Boek "Leven is spelen"</div>
+        <div className={"tab" + (tab==='boek'?' active':'')} onClick={() => setTab('boek')}>Boek "{w['boek.boek_naam'] || 'Leven is spelen'}"</div>
         <div className={"tab" + (tab==='donatie'?' active':'')} onClick={() => setTab('donatie')}>Donaties</div>
         <div className={"tab" + (tab==='bestellingen'?' active':'')} onClick={() => setTab('bestellingen')}>Bestellingen</div>
       </div>
@@ -5460,24 +5670,47 @@ function DonerenScreen() {
           <div>
             <div className="form-section">
               <h3>Paginateksten</h3>
+              <Field label="Klein kopje" hint="Het kleine kopje boven de titel.">
+                <input type="text" value={w['doneren.eyebrow']} placeholder={standaardVan('doneren.eyebrow')}
+                  onChange={e => zet('doneren.eyebrow', e.target.value)} />
+              </Field>
               <Field label="Paginatitel" hint="Grote kop bovenaan de donatiepagina.">
-                <input type="text" value={doText.paginaTitel} onChange={e => setDoText(t => ({ ...t, paginaTitel: e.target.value }))} />
+                <input type="text" value={w['doneren.titel']} placeholder={standaardVan('doneren.titel')}
+                  onChange={e => zet('doneren.titel', e.target.value)} />
               </Field>
-              <Field label="Intro-tekst" hint="Zichtbaar direct onder de paginatitel.">
-                <textarea rows={3} value={doText.paginaIntro} onChange={e => setDoText(t => ({ ...t, paginaIntro: e.target.value }))} />
+              <Field label="Intro-tekst" hint="Zichtbaar direct onder de paginatitel. Dit zijn dezelfde teksten als bij Pagina's → Doneren.">
+                <textarea rows={3} value={w['doneren.intro1']} placeholder={standaardVan('doneren.intro1')}
+                  onChange={e => zet('doneren.intro1', e.target.value)} />
               </Field>
-              <Field label="Sectietitel: Besteding" hint="Koptekst boven de bullet-lijst met besteding van donaties.">
-                <input type="text" value={doText.sectieWaar} onChange={e => setDoText(t => ({ ...t, sectieWaar: e.target.value }))} />
+            </div>
+
+            <div className="form-section" style={{ marginTop: 20 }}>
+              <h3>Waar gaat de hulp naartoe?</h3>
+              <Field label="Kopje" hint="Koptekst boven het groene blok met de punten.">
+                <input type="text" value={w['doneren.sectie_waar']} placeholder={standaardVan('doneren.sectie_waar')}
+                  onChange={e => zet('doneren.sectie_waar', e.target.value)} />
               </Field>
-              <Field label="Sectietitel: Boek" hint="Koptekst boven de boekaanbieding op de donatiepagina.">
-                <input type="text" value={doText.sectieBoek} onChange={e => setDoText(t => ({ ...t, sectieBoek: e.target.value }))} />
+              <Field label="De punten" hint="Eén punt per regel. Een lege regel wordt overgeslagen.">
+                <textarea rows={5} value={w['doneren.besteding']} placeholder={standaardVan('doneren.besteding')}
+                  onChange={e => zet('doneren.besteding', e.target.value)} />
+              </Field>
+              <Field label="Kopje boven de boekaanbieding">
+                <input type="text" value={w['doneren.sectie_boek']} placeholder={standaardVan('doneren.sectie_boek')}
+                  onChange={e => zet('doneren.sectie_boek', e.target.value)} />
               </Field>
             </div>
           </div>
           <div>
             <HintCard variant="info" icon="info">
-              Klik <strong>Opslaan</strong> om de teksten direct door te sturen naar de live preview.
+              Klik op <strong>Opslaan</strong> en de teksten staan op de website. Maakt u een veld leeg,
+              dan komt de standaardtekst terug — die staat als grijze tekst in het veld.
             </HintCard>
+            <div className="side-card">
+              <h4>Zo ziet het eruit</h4>
+              <ul style={{ paddingLeft: 16, margin: 0, fontSize: 13, color: 'var(--ink-soft)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {tibDoneerRegels(w['doneren.besteding']).map((regel, i) => <li key={i}>{regel}</li>)}
+              </ul>
+            </div>
           </div>
         </div>
       )}
@@ -5488,70 +5721,88 @@ function DonerenScreen() {
             <div className="form-section">
               <h3>Boekgegevens</h3>
               <div className="row-2">
-                <Field label="Titel"><input type="text" defaultValue="Leven is spelen" /></Field>
-                <Field label="Auteur"><input type="text" defaultValue="Margreet Jonkers" /></Field>
+                <Field label="Titel">
+                  <input type="text" value={w['boek.boek_naam']} placeholder={standaardVan('boek.boek_naam')}
+                    onChange={e => zet('boek.boek_naam', e.target.value)} />
+                </Field>
+                <Field label="Auteur">
+                  <input type="text" value={w['boek.auteur']} placeholder={standaardVan('boek.auteur')}
+                    onChange={e => zet('boek.auteur', e.target.value)} />
+                </Field>
               </div>
               <div className="row-2">
-                <Field label="Prijs (€)"><input type="number" defaultValue="19.95" step="0.05" /></Field>
-                <Field label="ISBN (optioneel)"><input type="text" defaultValue="" /></Field>
+                <Field label="Prijs (€)" hint="Inclusief verzending. Dit bedrag staat ook op het bestelformulier. Een komma of een punt mag allebei.">
+                  <input type="text" inputMode="decimal" value={w['boek.prijs']} placeholder={standaardVan('boek.prijs')}
+                    onChange={e => zet('boek.prijs', e.target.value)} />
+                  <div style={{ fontSize: 12, color: prijs > 0 ? 'var(--ink-soft)' : '#b3261e', marginTop: 4 }}>
+                    {prijs > 0
+                      ? 'Op de website: € ' + prijs.toFixed(2).replace('.', ',')
+                      : 'Geen geldig bedrag — de website toont dan € ' + Number(standaardVan('boek.prijs')).toFixed(2).replace('.', ',')}
+                  </div>
+                </Field>
+                <Field label="ISBN (optioneel)" hint="Staat bij de specificaties op de boekpagina.">
+                  <input type="text" value={w['boek.isbn']} placeholder="niet ingevuld"
+                    onChange={e => zet('boek.isbn', e.target.value)} />
+                </Field>
               </div>
-              <Field label="Korte omschrijving"><textarea defaultValue="Een boek vol buurtverhalen, herinneringen en spelletjes uit Thuis in de Buurt. Een eerbetoon aan onze gemeenschap."></textarea></Field>
-              <Field label="Boekomslag">
-                {(() => {
-                  const [boekOmslagUrl, setBoekOmslagUrl] = React.useState((DATA.doneren && DATA.doneren.boekOmslag) || null);
-                  function handleBoekUpload(e) {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = ev => {
-                      const url = ev.target.result;
-                      setBoekOmslagUrl(url);
-                      if (!DATA.doneren) DATA.doneren = {};
-                      DATA.doneren.boekOmslag = url;
-                      window.__showToast && window.__showToast('Boekomslag opgeslagen');
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                  return (
-                    <>
-                      <div className="image-prev" style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        {boekOmslagUrl
-                          ? <img src={boekOmslagUrl} alt="Boekomslag" style={{ maxHeight: 192, maxWidth: '100%', objectFit: 'contain' }} />
-                          : <span style={{ color: 'var(--ink-mute)', fontSize: 12 }}>Nog geen omslag geüpload</span>}
-                      </div>
-                      <label className="btn btn-sm" style={{ marginTop: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                        <Icon name="upload" size={12} /> Upload
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleBoekUpload} />
-                      </label>
-                    </>
-                  );
-                })()}
+              <Field label="Korte omschrijving" hint="Eén of twee regels, onder de boektitel op de doneerpagina.">
+                <textarea rows={2} value={w['boek.omschrijving']} placeholder={standaardVan('boek.omschrijving')}
+                  onChange={e => zet('boek.omschrijving', e.target.value)} />
+              </Field>
+              <Field label="Boekomslag" hint="png, jpg of webp, maximaal 1 MB. Komt ook in de Mediabibliotheek te staan.">
+                <div className="image-prev" style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  {omslag
+                    ? <img src={omslag} alt="Boekomslag" style={{ maxHeight: 192, maxWidth: '100%', objectFit: 'contain' }} />
+                    : <span style={{ color: 'var(--ink-mute)', fontSize: 12 }}>Nog geen omslag — de website toont dan een grijs vlak</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                  <label className="btn btn-sm" style={{ cursor: uploadBezig ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <Icon name="upload" size={12} /> {uploadBezig ? 'Bezig…' : 'Upload'}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={uploadOmslag} disabled={uploadBezig} />
+                  </label>
+                  {omslag && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => zet('boek.omslag', '')}>
+                      <Icon name="trash" size={12} /> Omslag weghalen
+                    </button>
+                  )}
+                </div>
+                <input type="url" style={{ marginTop: 8 }} placeholder="Of plak hier een webadres van een afbeelding"
+                  value={omslag} onChange={e => zet('boek.omslag', e.target.value)} />
               </Field>
             </div>
 
-            <div className="form-section">
-              <h3>Bestelknop</h3>
-              <Field label="Knoptekst"><input type="text" defaultValue="Bestel het boek (€19,95)" /></Field>
-              <Field label="Bestelmethode">
-                <select><option>Bestelformulier (verzendt naar doneren@)</option><option>Externe link</option><option>Mollie iDEAL koppeling</option></select>
+            <div className="form-section" style={{ marginTop: 20 }}>
+              <h3>Bestellen</h3>
+              <Field label="Knoptekst op de doneerpagina" hint="De knop die naar de boekpagina gaat.">
+                <input type="text" value={w['boek.knoptekst']} placeholder={standaardVan('boek.knoptekst')}
+                  onChange={e => zet('boek.knoptekst', e.target.value)} />
               </Field>
-              <Field label="Bevestigingsmail">
-                <textarea defaultValue="Bedankt voor je bestelling! We nemen binnen 2 werkdagen contact op."></textarea>
-              </Field>
+              <HintCard icon="info">
+                <strong>Zo loopt een bestelling nu:</strong> de bezoeker vult het formulier op de boekpagina in,
+                de bestelling komt in dit CMS bij <strong>Bestellingen</strong> te staan, en daar neemt u contact
+                op over de betaling. Er gaat nog geen bevestigingsmail automatisch de deur uit en de
+                Mollie-betaling staat nog uit — dat is apart werk dat nog moet gebeuren.
+              </HintCard>
             </div>
           </div>
 
           <div>
             <div className="side-card">
               <h4>Publicatie</h4>
-              <Toggle on={paginaZichtbaar} label="Pagina zichtbaar" onChange={setPaginaZichtbaar} />
+              <Toggle on={bestellenAan} label="Bestellen mogelijk"
+                sub={bestellenAan ? 'Het bestelformulier staat op de website' : 'De website meldt dat het boek nu niet te bestellen is'}
+                onChange={aan => zet('boek.bestellen_aan', aan ? 'ja' : 'nee')} />
               <div className="divider"></div>
-              <Toggle on={bestellenMogelijk} label="Bestellen mogelijk" onChange={setBestellenMogelijk} />
-              <Toggle on={voorbestelling} label="Voorbestelling" onChange={setVoorbestelling} />
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
+                De titel en de introtekst van de boekpagina zelf staan bij <strong>Pagina's → Boek</strong>.
+                Of de pagina in het menu staat, regelt u bij <strong>Menu</strong>.
+              </p>
             </div>
             <div className="side-card">
-              <h4>Statistieken</h4>
-              <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>Statistieken beschikbaar zodra Mollie is gekoppeld</p>
+              <h4>Bestellingen</h4>
+              <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>
+                {bestellingen === null ? 'Aantal onbekend' : bestellingen === 0 ? 'Nog geen bestellingen ontvangen' : bestellingen + ' bestelling' + (bestellingen === 1 ? '' : 'en') + ' in het systeem'}
+              </p>
             </div>
           </div>
         </div>
@@ -5565,7 +5816,7 @@ function DonerenScreen() {
               <div className="sec-sub">Bezoekers kiezen één van deze bedragen of vullen een eigen bedrag in.</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
                 {bedragen.map(b => (
-                  <div key={b} style={{ background: 'var(--cream-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div key={b} style={{ background: 'var(--cream-2)', border: '1px solid ' + (b === voorkeur ? 'var(--green)' : 'var(--line)'), borderRadius: 8, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontFamily: 'var(--serif)', fontWeight: 600 }}>€{b}</span>
                     <button className="btn-ghost btn-sm" style={{ color: 'var(--ink-mute)' }} onClick={() => verwijderBedrag(b)}><Icon name="trash" size={11} /></button>
                   </div>
@@ -5586,31 +5837,62 @@ function DonerenScreen() {
                   <button className="btn btn-sm" onClick={() => setAddingBedrag(true)}><Icon name="plus" size={12} /> Bedrag</button>
                 )}
               </div>
-              <Toggle on={vrijeDonatie} label="Vrije donatie toestaan" sub="Bezoeker kan eigen bedrag invullen" onChange={setVrijeDonatie} />
-            </div>
-            <div className="form-section">
-              <h3>Betaalkoppeling</h3>
-              <Field label="Betaalmethode">
-                <select><option>Mollie (iDEAL, bancontact, creditcard)</option><option>Stripe</option><option>Geen — alleen e-mail/bankoverschrijving</option></select>
+              <Field label="Meest gekozen bedrag" hint="Dit bedrag staat klaar als de pagina opent en krijgt het label “meest gekozen”.">
+                <select value={String(voorkeur)} onChange={e => zet('doneren.bedrag_voorkeur', e.target.value)}>
+                  {bedragen.map(b => <option key={b} value={String(b)}>€ {b}</option>)}
+                </select>
               </Field>
-              <Field label="API-sleutel" hint="Beheerd door je developer."><input type="text" defaultValue="" placeholder="Wordt ingesteld door de developer" /></Field>
-              <Field label="Bevestigingsmail naar"><input type="email" defaultValue="doneren@thuisindebuurt.org" /></Field>
+              <Toggle on={tibDoneerJa(w['doneren.vrije_donatie'])} label="Vrije donatie toestaan"
+                sub="Bezoeker kan een eigen bedrag invullen"
+                onChange={aan => zet('doneren.vrije_donatie', aan ? 'ja' : 'nee')} />
+            </div>
+
+            <div className="form-section" style={{ marginTop: 20 }}>
+              <h3>Betaling via Donorbox</h3>
+              <div className="sec-sub">
+                De betaling, de bevestigingsmail en maandelijkse donaties regelt Donorbox. De bezoeker kiest op
+                onze pagina het bedrag en gaat daarna door naar Donorbox.
+              </div>
+              <Field label="Naam van de campagne" hint="Het laatste stuk van het webadres van uw Donorbox-pagina.">
+                <input type="text" value={w['doneren.donorbox_campagne']} placeholder={standaardVan('doneren.donorbox_campagne')}
+                  onChange={e => zet('doneren.donorbox_campagne', e.target.value)} />
+              </Field>
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>
+                De doneerknop gaat naar:{' '}
+                <a href={'https://donorbox.org/' + campagne} target="_blank" rel="noopener noreferrer">
+                  donorbox.org/{campagne}
+                </a>{' '}
+                — klik erop om te controleren of dat de juiste pagina is.
+              </p>
+              <HintCard icon="info">
+                Een eigen Mollie-koppeling (iDEAL vanaf onze eigen pagina) zit er nog niet in. Zolang dat zo is,
+                loopt elke donatie via Donorbox.
+              </HintCard>
             </div>
           </div>
           <div>
             <div className="side-card">
               <h4>Statistieken</h4>
-              <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>Statistieken beschikbaar zodra Mollie is gekoppeld</p>
+              <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>
+                Wat er binnenkomt, ziet u in uw eigen Donorbox-dashboard. Die cijfers komen niet in dit CMS.
+              </p>
             </div>
           </div>
         </div>
       )}
 
       {tab === 'bestellingen' && (
-        <div className="empty-state">
-          <Icon name="inbox" size={32} style={{ opacity: 0.3, marginBottom: 10 }} />
-          <div>Nog geen bestellingen ontvangen</div>
-        </div>
+        bestellingen ? (
+          <HintCard icon="info">
+            Er {bestellingen === 1 ? 'staat 1 bestelling' : 'staan ' + bestellingen + ' bestellingen'} in het systeem.
+            U handelt ze af bij het menu-item <strong>Bestellingen</strong> — daar staan de naam, het adres en het aantal boeken.
+          </HintCard>
+        ) : (
+          <div className="empty-state">
+            <Icon name="inbox" size={32} style={{ opacity: 0.3, marginBottom: 10 }} />
+            <div>Nog geen bestellingen ontvangen</div>
+          </div>
+        )
       )}
     </>
   );
