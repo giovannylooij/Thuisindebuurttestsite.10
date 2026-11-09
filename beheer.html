@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.247', datum: '08-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.248', datum: '09-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1308,7 +1308,8 @@ const NAV = [
     { id: "voorzieningen", label: "Voorzieningen", icon: "map" },
     { id: "netwerken", label: "Netwerken", icon: "network" },
     { id: "doneren", label: "Doneren & Boek", icon: "heart" },
-    { id: "contact", label: "Contact", icon: "mail" },
+    // Contact stond hier ook; sinds 9-11 staan de teksten én de kaartjes
+    // bij Pagina's → Contact. Het scherm zelf leeft verder als ingebed blok.
   ]},
   { group: "Beheer", items: [
     { id: "buurtatlas", label: "Buurtatlas", icon: "map" },
@@ -1337,6 +1338,136 @@ NAV.forEach(g => g.items.forEach(i => { NAV_LOOKUP[i.id] = i; }));
 // Welke menu-items mogen een beheerder zien
 const BEHEERDER_ROUTES = new Set(['dashboard', 'clubjes']);
 
+/* ===== Rollen =====
+   superadmin        Margareth: ziet alles, beheert de gebruikers.
+   redactie          Werkt mee aan de hele site.
+   redactie_assistent Voegt eigen bewonersinitiatieven, activiteiten,
+                     voorzieningen en nieuws toe. Wat hij aanmaakt is van hém:
+                     andere assistenten zien het niet, Margareth ziet het wel
+                     maar kan het niet aanpassen — tenzij de assistent het aan
+                     haar overdraagt.
+   beheerder         Beheert één bewonersinitiatief (oude rol). */
+const TIB_ROLLEN = {
+  superadmin:         'Superadmin',
+  redactie:           'Redactie',
+  redactie_assistent: 'Redactie-assistent',
+  beheerder:          'Initiatief-beheerder',
+};
+// Waar mag een redactie-assistent bij?
+const ASSISTENT_ROUTES = new Set(['dashboard', 'clubjes', 'activiteiten', 'voorzieningen', 'nieuws']);
+// In deze tabellen houden we bij wie het heeft aangemaakt (kolom eigenaar_id,
+// zie sql/redactie_assistent.sql).
+const TIB_EIGENAAR_TABELLEN = ['clubjes', 'activiteiten', 'voorzieningen', 'nieuws'];
+
+// Wie hoort bij welk gebruikers-id? Alleen de superadmin mag dit opvragen;
+// een assistent heeft het niet nodig, die ziet alleen zijn eigen werk.
+window._tibGebruikersNamen = window._tibGebruikersNamen || {};
+async function tibLaadGebruikersNamen(token) {
+  try {
+    const res = await fetch('https://bxklumejqczcmhrpzstt.supabase.co/functions/v1/manage-users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action: 'list' }),
+    });
+    const data = await res.json();
+    const kaart = {};
+    (data.users || []).forEach(u => { if (u && u.id) kaart[u.id] = u.email || ''; });
+    // Alleen overnemen als er echt iets terugkwam; anders houden we wat er al was.
+    if (Object.keys(kaart).length) window._tibGebruikersNamen = kaart;
+  } catch (e) {
+    // Lukt niet? Dan staat er straks "een redactie-assistent" in plaats van een naam.
+  }
+}
+
+// Klein labeltje in een lijst: van wie is dit item?
+function EigenaarLabel({ rij }) {
+  if (!rij || !rij.eigenaar_id) return null;
+  const vanMij = rij.eigenaar_id === tibMijnGebruikerId();
+  return (
+    <span
+      title={vanMij
+        ? 'U hebt dit aangemaakt, dus u kunt het aanpassen'
+        : tibEigenaarTekst(rij) + ' — alleen die persoon kan dit aanpassen'}
+      style={{
+        marginLeft: 6, fontSize: 11, fontWeight: 600, borderRadius: 999,
+        padding: '1px 7px', whiteSpace: 'nowrap',
+        background: vanMij ? 'var(--accent-soft, #e8f1ec)' : 'var(--cream-2, #f3f1ea)',
+        color: vanMij ? 'var(--accent, #2d6a4f)' : 'var(--ink-mute, #777)',
+      }}>
+      {vanMij ? 'van uzelf' : tibEigenaarTekst(rij)}
+    </span>
+  );
+}
+
+// Een assistent kan zijn item overdragen. Daarna heeft het geen eigenaar
+// meer: het is van de redactie, en Margareth kan er weer bij.
+async function tibDraagOver(tabel, rij, titel) {
+  if (!rij || rij.id == null) return false;
+  const vraag = '"' + (titel || 'Dit item') + '" overdragen aan Margareth?\n\n'
+    + 'Daarna staat het op naam van de redactie. U kunt het dan zelf niet meer aanpassen.';
+  if (!window.confirm(vraag)) return false;
+  const res = await window.supabase.from(tabel).update({ eigenaar_id: null }).eq('id', rij.id);
+  if (res.error) {
+    window.__showToast && window.__showToast('Overdragen mislukt: ' + res.error.message);
+    return false;
+  }
+  rij.eigenaar_id = null;
+  const lijst = window.DATA && window.DATA[tabel];
+  if (Array.isArray(lijst)) {
+    const gevonden = lijst.find(r => r && r.id === rij.id);
+    if (gevonden) gevonden.eigenaar_id = null;
+  }
+  window.__logWijziging && window.__logWijziging({
+    tabel: tabel, rij_id: rij.id, titel: titel, soort: 'aangepast',
+    velden: [{ veld: 'Eigenaar', oud: 'Redactie-assistent', nieuw: 'De redactie' }],
+  });
+  window.__showToast && window.__showToast('Overgedragen aan de redactie');
+  return true;
+}
+
+// Een link naar de website, desgewenst rechtstreeks naar één item.
+// De website leest ?pagina= en ?id= bij het laden (zie bundle-src/ui.jsx).
+const TIB_SITE_URL = 'https://www.thuisindebuurt.nl';
+function tibSiteLink(pagina, id) {
+  if (!pagina) return TIB_SITE_URL + '/';
+  let adres = TIB_SITE_URL + '/?pagina=' + encodeURIComponent(pagina);
+  if (id !== undefined && id !== null && id !== '') adres += '&id=' + encodeURIComponent(id);
+  return adres;
+}
+
+function tibMijnRol() { return (window._tibProfile && window._tibProfile.role) || 'beheerder'; }
+function tibIsAssistent() { return tibMijnRol() === 'redactie_assistent'; }
+function tibMijnGebruikerId() { return window._tibGebruikerId || null; }
+
+// Mag ik deze rij aanpassen? Een rij zonder eigenaar is van de redactie: daar
+// komt een assistent niet aan. Een rij mét eigenaar is alleen van die persoon.
+function tibMagBewerken(rij) {
+  // Een nieuw item bestaat nog niet en is dus van niemand: aanmaken mag altijd.
+  if (!rij || rij.id == null) return true;
+  const eigenaar = rij.eigenaar_id;
+  if (!eigenaar) return !tibIsAssistent();
+  return eigenaar === tibMijnGebruikerId();
+}
+// Welke rijen krijg ik te zien? Een assistent ziet alleen zijn eigen werk.
+function tibZichtbaarVoorMij(lijst) {
+  if (!Array.isArray(lijst)) return lijst;
+  if (!tibIsAssistent()) return lijst;
+  const mij = tibMijnGebruikerId();
+  return lijst.filter(r => r && r.eigenaar_id === mij);
+}
+// Korte uitleg bij een rij die van iemand anders is.
+function tibEigenaarTekst(rij) {
+  if (!rij || !rij.eigenaar_id) return '';
+  if (rij.eigenaar_id === tibMijnGebruikerId()) return 'Van uzelf';
+  const naam = (window._tibGebruikersNamen || {})[rij.eigenaar_id];
+  return 'Van ' + (naam || 'een redactie-assistent');
+}
+
+// De wijk die bij een nieuw bewonersinitiatief of een nieuwe activiteit al
+// ingevuld staat. Bijna alles ligt in Noordelijk Scheveningen; wie ergens
+// anders zit, past het veld aan.
+const TIB_STANDAARD_WIJK = 'Scheveningen - Noord';
+
 function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
   const role = profile?.role || 'beheerder';
   const HIDDEN = {
@@ -1344,6 +1475,8 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
     // Het wijzigingenlogboek is er voor Margareth: zij kijkt na wat de
     // anderen hebben gedaan, dus zij alleen ziet dit scherm.
     redactie: ['gebruikers', 'huisstijl', 'domein', 'wijzigingen'],
+    // De assistent ziet alleen de vier schermen waar hij iets mag toevoegen.
+    redactie_assistent: NAV.flatMap(g => g.items.map(i => i.id)).filter(id => !ASSISTENT_ROUTES.has(id)),
     beheerder: ['clubjes', 'activiteiten', 'agenda', 'nieuws', 'partners',
                 'netwerken', 'buurtatlas', 'categorieen', 'media', 'menu',
                 'voorzieningen', 'gebruikers', 'huisstijl', 'domein', 'wijzigingen'],
@@ -1356,7 +1489,7 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
   })).filter(group => group.items.length > 0);
 
   const initials = (userEmail || 'TB').slice(0, 2).toUpperCase();
-  const roleLabel = role === 'superadmin' ? 'Superadmin' : role === 'redactie' ? 'Redactie' : 'Initiatief-beheerder';
+  const roleLabel = TIB_ROLLEN[role] || TIB_ROLLEN.beheerder;
 
   return (
     <aside className="sidebar">
@@ -1383,6 +1516,7 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
             <div
               key={item.id}
               className={"nav-item" + (active === item.id ? " active" : "")}
+              title={'Open ' + item.label}
               onClick={() => onNav(item.id)}
             >
               <Icon name={item.icon} size={15} />
@@ -1452,7 +1586,7 @@ function Topbar({ crumbs, previewOn, onTogglePreview }) {
           <Icon name="external" size={14} />
           Open site
         </a>
-        <button
+        <button title="Download alle gegevens uit de database als één bestand"
           id="btn-backup-json"
           onClick={() => window.downloadBackupJSON && window.downloadBackupJSON()}
           style={{ background: '#2d6a4f', color: 'white', border: 'none', padding: '8px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
@@ -1521,7 +1655,7 @@ function IntroBanner({ onPreview, onDismiss }) {
         <h2>Welkom in het beheerpanel van Thuis in de Buurt</h2>
         <p>Hier beheert u de inhoud van de website.</p>
       </div>
-      <button className="close" onClick={() => setDismissed(true)}>×</button>
+      <button title="Dit uitlegblok wegklikken" className="close" onClick={() => setDismissed(true)}>×</button>
     </div>
   );
 }
@@ -1541,9 +1675,9 @@ function PreviewPane({ onClose }) {
         </div>
         <div className="preview-actions">
           <button onClick={handleSync} title="Stuur CMS-inhoud naar de site en vernieuw"><Icon name="save" size={11} /> Sync</button>
-          <button onClick={() => window.frames['site-preview']?.location?.reload()}><Icon name="refresh" size={11} /> Vernieuw</button>
-          <button onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="external" size={11} /> Open</button>
-          <button onClick={onClose}>×</button>
+          <button title="Laad de voorvertoning opnieuw" onClick={() => window.frames['site-preview']?.location?.reload()}><Icon name="refresh" size={11} /> Vernieuw</button>
+          <button title="Open de website in een nieuw tabblad" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="external" size={11} /> Open</button>
+          <button title="Voorvertoning sluiten" onClick={onClose}>×</button>
         </div>
       </div>
       <iframe
@@ -1594,11 +1728,11 @@ function Dashboard({ onNav, onPreview, badges }) {
     <>
       <IntroBanner onPreview={onPreview} />
       <PageHead
-        title={`Goedemorgen, ${window._tibProfile?.role === 'superadmin' ? 'superadmin' : window._tibProfile?.role === 'redactie' ? 'redactie' : 'beheerder'}`}
+        title={`Goedemorgen, ${(TIB_ROLLEN[window._tibProfile?.role] || TIB_ROLLEN.beheerder).toLowerCase()}`}
         sub="Welkom in het beheerpanel van Thuis in de Buurt. Hier beheert u de inhoud van de website."
         actions={<>
           <a className="btn" href="https://www.thuisindebuurt.nl" target="_blank" rel="noopener noreferrer"><Icon name="eye" size={14} /> Bekijk site</a>
-          <button className="btn btn-primary" onClick={() => onNav('clubjes')}><Icon name="plus" size={14} /> Snel toevoegen</button>
+          <button title="Ga naar Bewonersinitiatieven om er een toe te voegen" className="btn btn-primary" onClick={() => onNav('clubjes')}><Icon name="plus" size={14} /> Snel toevoegen</button>
         </>}
       />
 
@@ -1617,7 +1751,7 @@ function Dashboard({ onNav, onPreview, badges }) {
                 Wat er is aangepast en door wie. Alles staat al op de website.
               </div>
             </div>
-            <button className="btn btn-primary" onClick={() => onNav('wijzigingen')}>
+            <button title="Open het wijzigingenlogboek" className="btn btn-primary" onClick={() => onNav('wijzigingen')}>
               <Icon name="arrow" size={14} /> Bekijken
             </button>
           </div>
@@ -1627,7 +1761,7 @@ function Dashboard({ onNav, onPreview, badges }) {
       {/* Quick actions */}
       <div className="quick" style={{ marginBottom: 24 }}>
         {quickActions.map(q => (
-          <button key={q.id} className="quick-btn" onClick={() => onNav(q.id)}>
+          <button title="Ga naar dit scherm" key={q.id} className="quick-btn" onClick={() => onNav(q.id)}>
             <div className="quick-icon"><Icon name={q.icon} size={18} /></div>
             <div>
               <div className="quick-title">{q.title}</div>
@@ -1711,10 +1845,11 @@ function Dashboard({ onNav, onPreview, badges }) {
         {/* Right column */}
         <div>
           {(() => {
+            // Een redactie-assistent ziet hier alleen zijn eigen concepten.
             const concepten = [
-              ...DATA.clubjes.filter(c => c.status === 'Concept').map(c => ({ t: c.naam, k: 'Bewonersinitiatief', id: 'clubjes' })),
-              ...DATA.activiteiten.filter(a => a.status === 'Concept').map(a => ({ t: a.naam, k: 'Activiteit', id: 'activiteiten' })),
-              ...DATA.nieuws.filter(n => n.status === 'Concept').map(n => ({ t: n.titel, k: 'Nieuws', id: 'nieuws' })),
+              ...tibZichtbaarVoorMij(DATA.clubjes).filter(c => c.status === 'Concept').map(c => ({ t: c.naam, k: 'Bewonersinitiatief', id: 'clubjes' })),
+              ...tibZichtbaarVoorMij(DATA.activiteiten).filter(a => a.status === 'Concept').map(a => ({ t: a.naam, k: 'Activiteit', id: 'activiteiten' })),
+              ...tibZichtbaarVoorMij(DATA.nieuws).filter(n => n.status === 'Concept').map(n => ({ t: n.titel, k: 'Nieuws', id: 'nieuws' })),
             ];
             return (
               <div className="card" style={{ marginBottom: 18 }}>
@@ -2162,7 +2297,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
   const cats = ['Alle'].concat(
     Array.from(new Set(DATA.clubjes.map(c => c.categorie).filter(Boolean))).sort()
   );
-  const rows = volleLijst
+  const rows = tibZichtbaarVoorMij(volleLijst)
     .filter(c => !isBeheerder || c.id === profile.club_id)
     .filter(c => filter === 'Alle' || c.categorie === filter)
     .filter(c => !search || [c.naam, c.wijk, c.contact, c.omschrijving].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
@@ -2172,7 +2307,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
         title="Bewonersinitiatieven"
         sub="Beheer de bewonersinitiatieven die op de website staan. Klik op een rij om aan te passen."
         actions={<>
-          <button className="btn btn-primary" onClick={() => onEdit('new')}><Icon name="plus" size={14} /> Nieuw bewonersinitiatief</button>
+          <button title="Maak een nieuw bewonersinitiatief aan" className="btn btn-primary" onClick={() => onEdit('new')}><Icon name="plus" size={14} /> Nieuw bewonersinitiatief</button>
         </>}
       />
 
@@ -2182,7 +2317,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
           <input placeholder="Zoek op naam, wijk of contactpersoon…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         {cats.map(c => (
-          <button key={c} className={"chip" + (filter === c ? " active" : "")} onClick={() => setFilter(c)}>{c}</button>
+          <button title="Toon alleen deze categorie" key={c} className={"chip" + (filter === c ? " active" : "")} onClick={() => setFilter(c)}>{c}</button>
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', color: 'var(--ink-soft)', fontSize: 12.5 }}>
           {rows.length} bewonersinitiatieven
@@ -2228,6 +2363,7 @@ function ClubjesList({ onNav, onEdit, profile }) {
                     <div>
                       <div className="strong">
                         {c.naam}
+                        <EigenaarLabel rij={c} />
                       </div>
                       <div className="sub">{c.omschrijving}</div>
                     </div>
@@ -2240,8 +2376,16 @@ function ClubjesList({ onNav, onEdit, profile }) {
                 <td>{c.leden}</td>
                 <td><Pill variant={c.status === 'Gepubliceerd' ? 'published' : 'draft'}>{c.status}</Pill></td>
                 <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
-                  <button className="icon-btn" title="Bewerken" onClick={() => onEdit(c.id)}><Icon name="edit" size={15} /></button>
-                  <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => handleDelete(c.id, c.naam)}><Icon name="trash" size={15} /></button>
+                  {tibMagBewerken(c) ? (
+                    <>
+                      <button className="icon-btn" title="Bewerken" onClick={() => onEdit(c.id)}><Icon name="edit" size={15} /></button>
+                      <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => handleDelete(c.id, c.naam)}><Icon name="trash" size={15} /></button>
+                    </>
+                  ) : (
+                    <button className="icon-btn" title={tibEigenaarTekst(c) + ' — u kunt het bekijken, niet aanpassen'} onClick={() => onEdit(c.id)}>
+                      <Icon name="eye" size={15} />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -2424,7 +2568,7 @@ function WanneerBlok({ fd, up, kolommen, soort }) {
             {TIB_MAAND_KEUZES.map(k => {
               const aan = welke.indexOf(k.n) !== -1;
               return (
-                <button key={k.n} type="button" onClick={() => wissel(k.n)}
+                <button title="Kies in welke week van de maand het is" key={k.n} type="button" onClick={() => wissel(k.n)}
                   className={'btn btn-sm' + (aan ? ' btn-primary' : '')}>
                   {k.label} {start ? TIB_DAG_LANG[start.getDay()] : 'keer'}
                 </button>
@@ -2451,7 +2595,7 @@ function WanneerBlok({ fd, up, kolommen, soort }) {
         <input type="text" value={fd.wanneer || ''} placeholder={voorbeeld || ''} onChange={e => up('wanneer', e.target.value)} />
       </Field>
       {voorbeeld && !fd.wanneer && (
-        <button className="btn btn-sm" style={{ marginTop: -4, marginBottom: 10 }} onClick={() => up('wanneer', voorbeeld)}>
+        <button title="Zet deze tekst in het veld hierboven" className="btn btn-sm" style={{ marginTop: -4, marginBottom: 10 }} onClick={() => up('wanneer', voorbeeld)}>
           Neem deze tekst over en pas hem aan
         </button>
       )}
@@ -2483,8 +2627,14 @@ function WanneerBlok({ fd, up, kolommen, soort }) {
 function ClubjeEdit({ id, onBack }) {
   const iconenLijst = useIconen(); // G13: lijst uit de opslagmap, incl. nieuw geüploade
   const item = id != null ? (DATA.clubjes.find(c => c.id === id) || null) : null;
+  // Van wie is dit item? Alleen de eigenaar mag het aanpassen.
+  const magBewerken = tibMagBewerken(item);
+  // Alleen de assistent die dit zelf heeft aangemaakt, kan het overdragen.
+  const bestaatEigen = tibIsAssistent() && item && item.id != null && item.eigenaar_id === tibMijnGebruikerId();
+  const eigenaarTekst = (item && item.eigenaar_id && window._tibGebruikersNamen && window._tibGebruikersNamen[item.eigenaar_id])
+    ? ' (' + window._tibGebruikersNamen[item.eigenaar_id] + ')' : '';
   const leeg = {
-    naam: 'Nieuw bewonersinitiatief', categorie: 'Ontmoeting/Sociaal', wijk: '',
+    naam: 'Nieuw bewonersinitiatief', categorie: 'Ontmoeting/Sociaal', wijk: TIB_STANDAARD_WIJK,
     omschrijving: '', uitgebreide_omschrijving: '',
     voor_wie: '', wat: '', waar: '', wanneer: '', kosten: '',
     // Blok 4 — zie sql/blok4_startdatum_frequentie.sql
@@ -2561,11 +2711,29 @@ function ClubjeEdit({ id, onBack }) {
         title={fd.naam}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar bewonersinitiatieven</a></>}
         actions={<>
-          {bestaat && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
-          <button className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>
+          {magBewerken && bestaat && <button title="Verwijder dit bewonersinitiatief definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
+          <button className="btn" disabled={!bestaat || !published}
+            title={!bestaat ? 'Eerst opslaan, dan kunt u het op de website bekijken'
+              : !published ? 'Staat nog niet op de website — eerst publiceren'
+              : 'Open dit bewonersinitiatief op de website'}
+            onClick={() => window.open(tibSiteLink('clubje', fd.id), '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
+          {magBewerken && <button title="Bewaar dit bewonersinitiatief" className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>}
+          {magBewerken && bestaatEigen && (
+            <button title="Geef dit item aan Margareth; daarna kunt u het zelf niet meer aanpassen"
+              className="btn" onClick={async () => { if (await tibDraagOver('clubjes', item, fd.naam)) onBack(); }}>
+              <Icon name="users" size={14} /> Overdragen aan Margareth
+            </button>
+          )}
+
         </>}
       />
+      {!magBewerken && (
+        <HintCard icon="info">
+          Dit item is aangemaakt door een redactie-assistent{eigenaarTekst}. U kunt het bekijken,
+          maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
+        </HintCard>
+      )}
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
 
       <div className="form-grid">
         {/* Main */}
@@ -2580,8 +2748,8 @@ function ClubjeEdit({ id, onBack }) {
               <Field label="Categorie">
                 <CategorieSelect value={fd.categorie} onChange={v => up('categorie', v)} />
               </Field>
-              <Field label="Wijk / gebied">
-                <input type="text" value={fd.wijk || ''} onChange={e => up('wijk', e.target.value)} placeholder="bijv. Centrum, Noord, Strand" />
+              <Field label="Wijk / gebied" hint={'Staat standaard op ' + TIB_STANDAARD_WIJK + '. Aanpassen mag, bijvoorbeeld Belgisch Park of Renbaankwartier.'}>
+                <input type="text" value={fd.wijk || ''} onChange={e => up('wijk', e.target.value)} placeholder={TIB_STANDAARD_WIJK} />
               </Field>
             </div>
             <Field label="Korte omschrijving" hint="1 zin, gebruikt op kaarten en in zoekresultaten.">
@@ -2660,7 +2828,7 @@ function ClubjeEdit({ id, onBack }) {
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase' }}>Huidig icoon</div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#166534' }}>{fd.icoon_label}</div>
                 </div>
-                <button className="btn btn-ghost btn-danger" style={{ marginLeft: 'auto' }} onClick={() => { up('icoon_url', null); up('icoon_label', null); }}>
+                <button title="Haal het gekozen icoon weg" className="btn btn-ghost btn-danger" style={{ marginLeft: 'auto' }} onClick={() => { up('icoon_url', null); up('icoon_label', null); }}>
                   <Icon name="trash" size={13} /> Verwijderen
                 </button>
               </div>
@@ -2692,11 +2860,23 @@ function ClubjeEdit({ id, onBack }) {
             <div className="row"><span>Status</span><strong>{published ? 'Gepubliceerd' : 'Concept'}</strong></div>
             <div className="row"><span>Zichtbaarheid</span><strong>{published ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
             <div className="divider"></div>
-            <Toggle on={published} label="Publiceren" sub="Zichtbaar op de website na opslaan" onChange={setPublished} />
-            <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-              <button className="btn btn-sm" style={{ flex: 1 }} disabled={bezig} onClick={async () => { if (await handleSave(false)) { setPublished(false); toast('Opgeslagen als concept'); } }}>Opslaan als concept</button>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={bezig} onClick={async () => { if (await handleSave(true)) { setPublished(true); toast('Gepubliceerd!'); } }}>Publiceer</button>
-            </div>
+            {published ? (
+              <button className="btn btn-sm" style={{ width: '100%' }} disabled={bezig}
+                title="Haal dit van de website; het blijft als concept in het CMS staan"
+                onClick={async () => { if (await handleSave(false)) { setPublished(false); toast('Van de website gehaald — staat nu als concept in het CMS'); } }}>
+                <Icon name="eye" size={13} /> Van de website halen
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-sm" style={{ width: '100%' }} disabled={bezig}
+                title="Zet dit bewonersinitiatief op de website"
+                onClick={async () => { if (await handleSave(true)) { setPublished(true); toast('Gepubliceerd — staat nu op de website'); } }}>
+                <Icon name="check" size={13} /> Publiceren
+              </button>
+            )}
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '10px 0 0' }}>
+              Met <strong>Opslaan</strong> bewaart u tussendoor, zonder de status te veranderen —
+              zo kunt u later verder waar u gebleven was.
+            </p>
           </div>
 
           <div className="side-card" style={{ background: 'var(--cream-2)' }}>
@@ -2707,6 +2887,7 @@ function ClubjeEdit({ id, onBack }) {
           </div>
         </div>
       </div>
+      </fieldset>
     </>
   );
 }
@@ -2920,10 +3101,10 @@ function ExtraVragenEditor({ vragen, onChange }) {
       ))}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <button className="btn btn-sm" onClick={() => voegToe({ id: tibNieuwVraagId(), label: '', soort: 'meerkeuze', opties: [], per_persoon: true })}>
+        <button title="Zet er een eigen vraag bij voor wie zich aanmeldt" className="btn btn-sm" onClick={() => voegToe({ id: tibNieuwVraagId(), label: '', soort: 'meerkeuze', opties: [], per_persoon: true })}>
           <Icon name="plus" size={12} /> Vraag toevoegen
         </button>
-        <button className="btn btn-sm" onClick={() => voegToe({ id: tibNieuwVraagId(), label: 'Eet je iets niet?', soort: 'meerkeuze', opties: ['geen vis', 'geen vlees'], per_persoon: true })}>
+        <button title="Zet de kant-en-klare vraag over dieetwensen erbij" className="btn btn-sm" onClick={() => voegToe({ id: tibNieuwVraagId(), label: 'Eet je iets niet?', soort: 'meerkeuze', opties: ['geen vis', 'geen vlees'], per_persoon: true })}>
           <Icon name="plus" size={12} /> Voorbeeld: de dieetvraag
         </button>
       </div>
@@ -3056,7 +3237,7 @@ function BetaalDeelnemers({ activiteit }) {
   }
 
   const chip = (id, tekst, aantal) => (
-    <button key={id} className="btn btn-sm" onClick={() => setFilter(id)}
+    <button title="Toon alleen deze aanmeldingen" key={id} className="btn btn-sm" onClick={() => setFilter(id)}
       style={filter === id
         ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
         : undefined}>
@@ -3093,7 +3274,7 @@ function BetaalDeelnemers({ activiteit }) {
         {chip('wacht', 'Wacht op betaling', groepen.wacht.length)}
         {chip('open', 'Niet afgerond', groepen.open.length)}
         <span style={{ flex: '1 1 auto' }}></span>
-        <button className="btn btn-primary btn-sm" onClick={exporteer}><Icon name="download" size={13} /> Download als Excel</button>
+        <button title="Download deze lijst als Excel-bestand" className="btn btn-primary btn-sm" onClick={exporteer}><Icon name="download" size={13} /> Download als Excel</button>
       </div>
 
       <div className="card">
@@ -3258,10 +3439,16 @@ function BetaalChecklist({ activiteit }) {
 }
 
 function ActiviteitEdit({ item: itemProp, onBack }) {
+  // Van wie is dit item? Alleen de eigenaar mag het aanpassen.
+  const magBewerken = tibMagBewerken(itemProp);
+  // Alleen de assistent die dit zelf heeft aangemaakt, kan het overdragen.
+  const bestaatEigen = tibIsAssistent() && itemProp && itemProp.id != null && itemProp.eigenaar_id === tibMijnGebruikerId();
+  const eigenaarTekst = (itemProp && itemProp.eigenaar_id && window._tibGebruikersNamen && window._tibGebruikersNamen[itemProp.eigenaar_id])
+    ? ' (' + window._tibGebruikersNamen[itemProp.eigenaar_id] + ')' : '';
   const iconenLijst = useIconen(); // G13: lijst uit de opslagmap, incl. nieuw geüploade
   const item = itemProp && itemProp.id != null ? itemProp : null;
   const leeg = {
-    naam: 'Nieuwe activiteit', categorie: 'Ontmoeting/Sociaal', wijk: '',
+    naam: 'Nieuwe activiteit', categorie: 'Ontmoeting/Sociaal', wijk: TIB_STANDAARD_WIJK,
     omschrijving: '', uitgebreide_omschrijving: '',
     voor_wie: '', wat: '', waar: '', wanneer: '', kosten: '',
     // Blok 4 — zie sql/blok4_startdatum_frequentie.sql
@@ -3352,16 +3539,34 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
         title={fd.naam}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar activiteiten</a></>}
         actions={<>
-          {bestaat && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
-          <button className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>
+          {magBewerken && bestaat && <button title="Verwijder deze activiteit definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
+          <button className="btn" disabled={!bestaat || !published}
+            title={!bestaat ? 'Eerst opslaan, dan kunt u het op de website bekijken'
+              : !published ? 'Staat nog niet op de website — eerst publiceren'
+              : 'Open deze activiteit op de website'}
+            onClick={() => window.open(tibSiteLink('activiteit', fd.id), '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
+          {magBewerken && <button title="Bewaar deze activiteit" className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>}
+          {magBewerken && bestaatEigen && (
+            <button title="Geef dit item aan Margareth; daarna kunt u het zelf niet meer aanpassen"
+              className="btn" onClick={async () => { if (await tibDraagOver('activiteiten', itemProp, fd.naam)) onBack(); }}>
+              <Icon name="users" size={14} /> Overdragen aan Margareth
+            </button>
+          )}
+
         </>}
       />
+      {!magBewerken && (
+        <HintCard icon="info">
+          Dit item is aangemaakt door een redactie-assistent{eigenaarTekst}. U kunt het bekijken,
+          maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
+        </HintCard>
+      )}
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
 
       {TIB_BETALEN_AAN && bestaat && fd.betaald && betaalKolommen !== false && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
           {[['gegevens', 'Gegevens'], ['deelnemers', 'Deelnemers'], ['checklist', 'Checklist']].map(([id, label]) => (
-            <button key={id} className="btn btn-sm" onClick={() => setTab(id)}
+            <button title="Open dit tabblad" key={id} className="btn btn-sm" onClick={() => setTab(id)}
               style={tab === id ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' } : undefined}>
               {label}
             </button>
@@ -3386,8 +3591,8 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
               <Field label="Categorie">
                 <CategorieSelect value={fd.categorie} onChange={v => up('categorie', v)} />
               </Field>
-              <Field label="Wijk / gebied">
-                <input type="text" value={fd.wijk || ''} onChange={e => up('wijk', e.target.value)} placeholder="bijv. Centrum, Noord, Strand" />
+              <Field label="Wijk / gebied" hint={'Staat standaard op ' + TIB_STANDAARD_WIJK + '. Aanpassen mag, bijvoorbeeld Belgisch Park of Renbaankwartier.'}>
+                <input type="text" value={fd.wijk || ''} onChange={e => up('wijk', e.target.value)} placeholder={TIB_STANDAARD_WIJK} />
               </Field>
             </div>
             <Field label="Korte omschrijving" hint="1 zin, gebruikt op kaarten en in zoekresultaten.">
@@ -3560,7 +3765,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase' }}>Huidig icoon</div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#166534' }}>{fd.icoon_label}</div>
                 </div>
-                <button className="btn btn-ghost btn-danger" style={{ marginLeft: 'auto' }} onClick={() => { up('icoon_url', null); up('icoon_label', null); }}>
+                <button title="Haal het gekozen icoon weg" className="btn btn-ghost btn-danger" style={{ marginLeft: 'auto' }} onClick={() => { up('icoon_url', null); up('icoon_label', null); }}>
                   <Icon name="trash" size={13} /> Verwijderen
                 </button>
               </div>
@@ -3592,11 +3797,23 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
             <div className="row"><span>Status</span><strong>{published ? 'Gepubliceerd' : 'Concept'}</strong></div>
             <div className="row"><span>Zichtbaarheid</span><strong>{published ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
             <div className="divider"></div>
-            <Toggle on={published} label="Publiceren" sub="Zichtbaar op de website na opslaan" onChange={setPublished} />
-            <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-              <button className="btn btn-sm" style={{ flex: 1 }} disabled={bezig} onClick={async () => { if (await handleSave(false)) { setPublished(false); toast('Opgeslagen als concept'); } }}>Opslaan als concept</button>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={bezig} onClick={async () => { if (await handleSave(true)) { setPublished(true); toast('Gepubliceerd!'); } }}>Publiceer</button>
-            </div>
+            {published ? (
+              <button className="btn btn-sm" style={{ width: '100%' }} disabled={bezig}
+                title="Haal dit van de website; het blijft als concept in het CMS staan"
+                onClick={async () => { if (await handleSave(false)) { setPublished(false); toast('Van de website gehaald — staat nu als concept in het CMS'); } }}>
+                <Icon name="eye" size={13} /> Van de website halen
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-sm" style={{ width: '100%' }} disabled={bezig}
+                title="Zet deze activiteit op de website"
+                onClick={async () => { if (await handleSave(true)) { setPublished(true); toast('Gepubliceerd — staat nu op de website'); } }}>
+                <Icon name="check" size={13} /> Publiceren
+              </button>
+            )}
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '10px 0 0' }}>
+              Met <strong>Opslaan</strong> bewaart u tussendoor, zonder de status te veranderen —
+              zo kunt u later verder waar u gebleven was.
+            </p>
           </div>
 
           <div className="side-card" style={{ background: 'var(--cream-2)' }}>
@@ -3608,6 +3825,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
         </div>
       </div>
       )}
+      </fieldset>
     </>
   );
 }
@@ -3649,7 +3867,7 @@ function ActiviteitenScreen() {
   const cats = ['Alle'].concat(
     Array.from(new Set(DATA.activiteiten.map(a => a.categorie).filter(Boolean))).sort()
   );
-  const rows = volleLijst
+  const rows = tibZichtbaarVoorMij(volleLijst)
     .filter(a => tab === 'alle' ? true : tab === 'concept' ? a.status === 'Concept' : a.status === 'Gepubliceerd')
     .filter(a => filter === 'Alle' || a.categorie === filter)
     .filter(a => !search || [a.naam, a.categorie, a.waar, a.contact].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
@@ -3665,14 +3883,14 @@ function ActiviteitenScreen() {
         title="Activiteiten"
         sub="Wekelijkse, terugkerende of eenmalige activiteiten. Klik een activiteit om te bewerken."
         actions={<>
-          <button className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuwe activiteit</button>
+          <button title="Maak een nieuwe activiteit aan" className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuwe activiteit</button>
         </>}
       />
 
       <div className="tabs">
-        <div className={"tab" + (tab==='alle'?' active':'')} onClick={() => setTab('alle')}>Alle <span style={{ opacity: 0.5, marginLeft: 4 }}>{DATA.activiteiten.length}</span></div>
-        <div className={"tab" + (tab==='gepubliceerd'?' active':'')} onClick={() => setTab('gepubliceerd')}>Gepubliceerd</div>
-        <div className={"tab" + (tab==='concept'?' active':'')} onClick={() => setTab('concept')}>Concepten</div>
+        <div className={"tab" + (tab==='alle'?' active':'')} title="Open dit tabblad" onClick={() => setTab('alle')}>Alle <span style={{ opacity: 0.5, marginLeft: 4 }}>{tibZichtbaarVoorMij(DATA.activiteiten).length}</span></div>
+        <div className={"tab" + (tab==='gepubliceerd'?' active':'')} title="Open dit tabblad" onClick={() => setTab('gepubliceerd')}>Gepubliceerd</div>
+        <div className={"tab" + (tab==='concept'?' active':'')} title="Open dit tabblad" onClick={() => setTab('concept')}>Concepten</div>
       </div>
 
       <div className="toolbar">
@@ -3681,7 +3899,7 @@ function ActiviteitenScreen() {
           <input placeholder="Zoek activiteit…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         {cats.map(c => (
-          <button key={c} className={"chip" + (filter === c ? ' active' : '')} onClick={() => setFilter(c)}>{c}</button>
+          <button title="Toon alleen deze categorie" key={c} className={"chip" + (filter === c ? ' active' : '')} onClick={() => setFilter(c)}>{c}</button>
         ))}
       </div>
 
@@ -3719,7 +3937,7 @@ function ActiviteitenScreen() {
                   <div className="activity-icon-badge" title={a.icoon_label || a.naam}>
                     {a.icoon_url && <img src={a.icoon_url} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />}
                   </div>
-                  <div className="strong">{a.naam}</div>
+                  <div className="strong">{a.naam}<EigenaarLabel rij={a} /></div>
                 </div></td>
                 <td>{a.categorie}</td>
                 <td>{a.wanneer || tibWanneerTekst(a)}</td>
@@ -3727,8 +3945,16 @@ function ActiviteitenScreen() {
                 <td>{a.herhalend ? <Icon name="check" size={14} style={{ color: 'var(--accent-2)' }} /> : '—'}</td>
                 <td><Pill variant={a.status === 'Gepubliceerd' ? 'published' : 'draft'}>{a.status}</Pill></td>
                 <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
-                  <button className="icon-btn" title="Bewerken" onClick={() => setEditing(a.id)}><Icon name="edit" size={15} /></button>
-                  <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => handleDelete(a.id, a.naam)}><Icon name="trash" size={15} /></button>
+                  {tibMagBewerken(a) ? (
+                    <>
+                      <button className="icon-btn" title="Bewerken" onClick={() => setEditing(a.id)}><Icon name="edit" size={15} /></button>
+                      <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => handleDelete(a.id, a.naam)}><Icon name="trash" size={15} /></button>
+                    </>
+                  ) : (
+                    <button className="icon-btn" title={tibEigenaarTekst(a) + ' — u kunt het bekijken, niet aanpassen'} onClick={() => setEditing(a.id)}>
+                      <Icon name="eye" size={15} />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -3779,8 +4005,8 @@ function AgendaEdit({ item, onBack }) {
         title={fd.titel || 'Nieuw agenda-item'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar agenda</a></>}
         actions={<>
-          {item.id != null && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn btn-primary" onClick={() => { handleSave(); onBack(); }}><Icon name="save" size={14} /> Opslaan</button>
+          {item.id != null && <button title="Verwijder dit agenda-item definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
+          <button title="Bewaar dit agenda-item" className="btn btn-primary" onClick={() => { handleSave(); onBack(); }}><Icon name="save" size={14} /> Opslaan</button>
         </>}
       />
       <div className="form-grid">
@@ -3811,12 +4037,27 @@ function AgendaEdit({ item, onBack }) {
         <div>
           <div className="side-card">
             <h4>Publicatie</h4>
-            <Toggle on={gepubliceerd} label="Gepubliceerd" sub="Zichtbaar op de website" onChange={setGepubliceerd} />
             <Toggle on={uitgelicht} label="Uitgelicht" sub="Gemarkeerd als uitgelicht evenement" onChange={setUitgelicht} />
-            <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-              <button className="btn btn-sm" style={{ flex: 1 }} onClick={() => setGepubliceerd(false)}>Concept</button>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => { setGepubliceerd(true); handleSave(true); window.__showToast && window.__showToast('Agenda-item gepubliceerd!'); }}>Publiceer</button>
-            </div>
+            <div className="row" style={{ marginTop: 4 }}><span>Status</span><strong>{gepubliceerd ? 'Gepubliceerd' : 'Concept'}</strong></div>
+            <div className="row"><span>Zichtbaarheid</span><strong>{gepubliceerd ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
+            <div className="divider"></div>
+            {gepubliceerd ? (
+              <button className="btn btn-sm" style={{ width: '100%' }}
+                title="Haal dit van de website; het blijft als concept in het CMS staan"
+                onClick={() => { setGepubliceerd(false); handleSave(false); window.__showToast && window.__showToast('Van de website gehaald — staat nu als concept in het CMS'); }}>
+                <Icon name="eye" size={13} /> Van de website halen
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-sm" style={{ width: '100%' }}
+                title="Zet dit agenda-item op de website"
+                onClick={() => { setGepubliceerd(true); handleSave(true); window.__showToast && window.__showToast('Gepubliceerd — staat nu op de website'); }}>
+                <Icon name="check" size={13} /> Publiceren
+              </button>
+            )}
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '10px 0 0' }}>
+              Met <strong>Opslaan</strong> bewaart u tussendoor, zonder de status te veranderen —
+              zo kunt u later verder waar u gebleven was.
+            </p>
           </div>
         </div>
       </div>
@@ -3856,7 +4097,7 @@ function AgendaScreen() {
         title="Agenda"
         sub="Eenmalige evenementen met datum en tijd. Verlopen items worden automatisch verborgen."
         actions={<>
-          <button className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuw agenda-item</button>
+          <button title="Maak een nieuw agenda-item aan" className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuw agenda-item</button>
         </>}
       />
 
@@ -3865,8 +4106,8 @@ function AgendaScreen() {
           <Icon name="search" size={14} />
           <input placeholder="Zoek op titel of locatie…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <button className={"chip" + (view==='lijst'?' active':'')} onClick={() => setView('lijst')}>Lijst</button>
-        <button className={"chip" + (view==='maand'?' active':'')} onClick={() => setView('maand')}>Maand</button>
+        <button title="Toon de agenda als lijst" className={"chip" + (view==='lijst'?' active':'')} onClick={() => setView('lijst')}>Lijst</button>
+        <button title="Toon de agenda als maandkalender" className={"chip" + (view==='maand'?' active':'')} onClick={() => setView('maand')}>Maand</button>
         <div style={{ marginLeft: 'auto', color: 'var(--ink-soft)', fontSize: 12.5 }}>{agendaRows.length} items</div>
       </div>
 
@@ -3976,6 +4217,12 @@ function AgendaScreen() {
 }
 
 function NieuwsEdit({ item, onBack }) {
+  // Van wie is dit item? Alleen de eigenaar mag het aanpassen.
+  const magBewerken = tibMagBewerken(item);
+  // Alleen de assistent die dit zelf heeft aangemaakt, kan het overdragen.
+  const bestaatEigen = tibIsAssistent() && item && item.id != null && item.eigenaar_id === tibMijnGebruikerId();
+  const eigenaarTekst = (item && item.eigenaar_id && window._tibGebruikersNamen && window._tibGebruikersNamen[item.eigenaar_id])
+    ? ' (' + window._tibGebruikersNamen[item.eigenaar_id] + ')' : '';
   const [fd, setFd] = React.useState({ ...item });
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [gepubliceerd, setGepubliceerd] = React.useState(item.status === 'Gepubliceerd');
@@ -4015,11 +4262,29 @@ function NieuwsEdit({ item, onBack }) {
         title={fd.titel || 'Nieuw bericht'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar nieuws</a></>}
         actions={<>
-          {item.id != null && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
-          <button className="btn btn-primary" onClick={() => { handleSave(); onBack(); }}><Icon name="save" size={14} /> Opslaan</button>
+          {magBewerken && item.id != null && <button title="Verwijder dit nieuwsbericht definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
+          <button className="btn" disabled={item.id == null || !gepubliceerd}
+            title={item.id == null ? 'Eerst opslaan, dan kunt u het op de website bekijken'
+              : !gepubliceerd ? 'Staat nog niet op de website — eerst publiceren'
+              : 'Open dit nieuwsbericht op de website'}
+            onClick={() => window.open(tibSiteLink('nieuws', fd.id), '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
+          {magBewerken && <button title="Bewaar dit nieuwsbericht" className="btn btn-primary" onClick={() => { handleSave(); onBack(); }}><Icon name="save" size={14} /> Opslaan</button>}
+          {magBewerken && bestaatEigen && (
+            <button title="Geef dit item aan Margareth; daarna kunt u het zelf niet meer aanpassen"
+              className="btn" onClick={async () => { if (await tibDraagOver('nieuws', item, fd.titel)) onBack(); }}>
+              <Icon name="users" size={14} /> Overdragen aan Margareth
+            </button>
+          )}
+
         </>}
       />
+      {!magBewerken && (
+        <HintCard icon="info">
+          Dit item is aangemaakt door een redactie-assistent{eigenaarTekst}. U kunt het bekijken,
+          maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
+        </HintCard>
+      )}
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <div className="form-grid">
         <div>
           <div className="form-section">
@@ -4067,7 +4332,7 @@ function NieuwsEdit({ item, onBack }) {
                 }} />
               </label>
               {fd.photo && (
-                <button className="btn btn-ghost btn-danger" onClick={() => { up('photo', null); up('photoAlt', ''); }}>
+                <button title="Haal de foto weg" className="btn btn-ghost btn-danger" onClick={() => { up('photo', null); up('photoAlt', ''); }}>
                   <Icon name="trash" size={13} /> Verwijderen
                 </button>
               )}
@@ -4092,11 +4357,26 @@ function NieuwsEdit({ item, onBack }) {
         <div>
           <div className="side-card">
             <h4>Publicatie</h4>
-            <Toggle on={gepubliceerd} label="Gepubliceerd" sub="Zichtbaar op de website" onChange={setGepubliceerd} />
-            <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-              <button className="btn btn-sm" style={{ flex: 1 }} onClick={() => setGepubliceerd(false)}>Concept</button>
-              <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => { setGepubliceerd(true); handleSave(true); window.__showToast && window.__showToast('Bericht gepubliceerd!'); }}>Publiceer</button>
-            </div>
+            <div className="row" style={{ marginTop: 4 }}><span>Status</span><strong>{gepubliceerd ? 'Gepubliceerd' : 'Concept'}</strong></div>
+            <div className="row"><span>Zichtbaarheid</span><strong>{gepubliceerd ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
+            <div className="divider"></div>
+            {gepubliceerd ? (
+              <button className="btn btn-sm" style={{ width: '100%' }}
+                title="Haal dit van de website; het blijft als concept in het CMS staan"
+                onClick={() => { setGepubliceerd(false); handleSave(false); window.__showToast && window.__showToast('Van de website gehaald — staat nu als concept in het CMS'); }}>
+                <Icon name="eye" size={13} /> Van de website halen
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-sm" style={{ width: '100%' }}
+                title="Zet dit nieuwsbericht op de website"
+                onClick={() => { setGepubliceerd(true); handleSave(true); window.__showToast && window.__showToast('Gepubliceerd — staat nu op de website'); }}>
+                <Icon name="check" size={13} /> Publiceren
+              </button>
+            )}
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '10px 0 0' }}>
+              Met <strong>Opslaan</strong> bewaart u tussendoor, zonder de status te veranderen —
+              zo kunt u later verder waar u gebleven was.
+            </p>
           </div>
           <div className="side-card">
             <h4>Uitlichten</h4>
@@ -4104,6 +4384,7 @@ function NieuwsEdit({ item, onBack }) {
           </div>
         </div>
       </div>
+      </fieldset>
     </>
   );
 }
@@ -4125,7 +4406,7 @@ function NieuwsScreen() {
     window.__showToast && window.__showToast('Nieuwsbericht verwijderd');
     forceUpdate();
   }
-  const rows = DATA.nieuws
+  const rows = tibZichtbaarVoorMij(DATA.nieuws)
     .filter(n => catFilter === 'alle' || n.cat === catFilter)
     .filter(n => !search || [n.titel, n.auteur, n.cat].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
 
@@ -4140,7 +4421,7 @@ function NieuwsScreen() {
         title="Nieuws"
         sub="Berichten over de buurt, ondernemers, evenementen en vrijwilligers."
         actions={<>
-          <button className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuw bericht</button>
+          <button title="Maak een nieuw nieuwsbericht aan" className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuw bericht</button>
         </>}
       />
 
@@ -4150,7 +4431,7 @@ function NieuwsScreen() {
           <input placeholder="Zoek op titel of auteur…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         {nieuwsChips.map(c => (
-          <button key={c} className={"chip" + (catFilter === c ? ' active' : '')} onClick={() => setCatFilter(c)}>
+          <button title="Toon alleen deze categorie" key={c} className={"chip" + (catFilter === c ? ' active' : '')} onClick={() => setCatFilter(c)}>
             {c === 'alle' ? 'Alle' : c}
           </button>
         ))}
@@ -4178,7 +4459,7 @@ function NieuwsScreen() {
                   <div className="cell-flex">
                     <div className="row-thumb"></div>
                     <div>
-                      <div className="strong">{n.titel}</div>
+                      <div className="strong">{n.titel}<EigenaarLabel rij={n} /></div>
                       <div className="sub">{n.titel.length > 30 ? '/' + n.titel.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 36) : '—'}</div>
                     </div>
                   </div>
@@ -4189,8 +4470,16 @@ function NieuwsScreen() {
                 <td>{n.uitgelicht ? <Icon name="star" size={14} style={{ color: 'var(--warn)' }} /> : '—'}</td>
                 <td><Pill variant={n.status === 'Gepubliceerd' ? 'published' : 'draft'}>{n.status}</Pill></td>
                 <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
-                  <button className="icon-btn" title="Bewerken" onClick={() => setEditing(n.id)}><Icon name="edit" size={15} /></button>
-                  <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => handleDelete(n.id, n.titel)}><Icon name="trash" size={15} /></button>
+                  {tibMagBewerken(n) ? (
+                    <>
+                      <button className="icon-btn" title="Bewerken" onClick={() => setEditing(n.id)}><Icon name="edit" size={15} /></button>
+                      <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => handleDelete(n.id, n.titel)}><Icon name="trash" size={15} /></button>
+                    </>
+                  ) : (
+                    <button className="icon-btn" title={tibEigenaarTekst(n) + ' — u kunt het bekijken, niet aanpassen'} onClick={() => setEditing(n.id)}>
+                      <Icon name="eye" size={15} />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -4295,7 +4584,7 @@ function BuurtatlasScreen() {
           <button className="btn" onClick={handleZoomOut} title="Zoom uit"><Icon name="minus" size={14} /> −</button>
           <span style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: '34px', minWidth: 56, textAlign: 'center' }}>Zoom {zoomLevel}</span>
           <button className="btn" onClick={handleZoomIn} title="Zoom in"><Icon name="plus" size={14} /> +</button>
-          <button className="btn" onClick={() => { if (leafletMap.current) { leafletMap.current.setView([52.103, 4.282], DATA.atlasZoom || 14); } }}><Icon name="refresh" size={14} /> Centreren</button>
+          <button title="Zet de kaart terug op het midden van de wijk" className="btn" onClick={() => { if (leafletMap.current) { leafletMap.current.setView([52.103, 4.282], DATA.atlasZoom || 14); } }}><Icon name="refresh" size={14} /> Centreren</button>
         </>}
       />
 
@@ -4304,7 +4593,7 @@ function BuurtatlasScreen() {
           <div className="toolbar" style={{ borderRadius: 'var(--radius) var(--radius) 0 0', borderBottom: '1px solid var(--line)' }}>
             <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginRight: 6 }}>Tonen:</div>
             {Object.entries({ clubjes: 'Bewonersinitiatieven', activiteiten: 'Activiteiten', partners: 'Partners' }).map(([k, v]) => (
-              <button key={k} className={"chip" + (layers[k] ? " active" : "")} onClick={() => setLayers(s => ({ ...s, [k]: !s[k] }))}>
+              <button title="Zet deze laag aan of uit op de kaart" key={k} className={"chip" + (layers[k] ? " active" : "")} onClick={() => setLayers(s => ({ ...s, [k]: !s[k] }))}>
                 {layers[k] && <Icon name="check" size={11} />} {v}
               </button>
             ))}
@@ -4329,7 +4618,7 @@ function BuurtatlasScreen() {
             <div className="card">
               <div className="card-head">
                 <h3 className="card-title">Pin-detail</h3>
-                <button className="icon-btn" onClick={() => setSelected(null)}><Icon name="close" size={14} /></button>
+                <button title="Sluit dit detailvenster" className="icon-btn" onClick={() => setSelected(null)}><Icon name="close" size={14} /></button>
               </div>
               <div className="card-pad">
                 <div style={{ fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 600, marginBottom: 2 }}>{sel.naam}</div>
@@ -4460,9 +4749,9 @@ const TIB_TEKST_PAGINAS = [
   ]},
 ];
 
-function PagesScreen() {
+function PagesScreen({ startPagina }) {
   const isSuperadmin = window._tibProfile?.role === 'superadmin';
-  const [paginaId, setPaginaId] = React.useState('home');
+  const [paginaId, setPaginaId] = React.useState(startPagina || 'home');
   const [opgeslagen, setOpgeslagen] = React.useState({});   // "pagina.sleutel" -> tekst uit de database
   const [waarden, setWaarden] = React.useState({});          // "pagina.sleutel" -> tekst in het scherm
   const [laden, setLaden] = React.useState(true);
@@ -4579,10 +4868,20 @@ function PagesScreen() {
   }
 
   if (!isSuperadmin) {
+    // De paginateksten blijven voor de superadmin. De contactkaartjes stonden
+    // vroeger in een eigen scherm waar de redactie wél bij kon, dus die
+    // houden ze hier.
+    const isRedactie = window._tibProfile?.role === 'redactie';
     return (
       <>
         <PageHead title="Pagina's" sub="De teksten op de pagina's van de website." />
         <HintCard icon="info">Alleen een superadmin kan de paginateksten aanpassen.</HintCard>
+        {isRedactie && (
+          <div className="card" style={{ marginTop: 14 }}>
+            <div className="card-head"><h3 className="card-title">Contactkaartjes</h3></div>
+            <div className="card-pad"><ContactScreen ingebed /></div>
+          </div>
+        )}
       </>
     );
   }
@@ -4593,7 +4892,7 @@ function PagesScreen() {
         title="Pagina's"
         sub="De teksten bovenaan elke pagina, plus het contactblok onderaan de site."
         actions={
-          <button className="btn btn-primary" onClick={opslaan} disabled={bezig || laden || !gewijzigd}>
+          <button title="Bewaar de teksten van deze pagina" className="btn btn-primary" onClick={opslaan} disabled={bezig || laden || !gewijzigd}>
             <Icon name="save" size={14} /> {bezig ? 'Bezig…' : 'Opslaan'}
           </button>
         }
@@ -4621,7 +4920,7 @@ function PagesScreen() {
                 const aantal = p.velden.filter(v => (opgeslagen[p.id + '.' + v.sleutel] || '').trim() !== '').length;
                 const actief = p.id === paginaId;
                 return (
-                  <button
+                  <button title="Open de teksten van deze pagina"
                     key={p.id}
                     onClick={() => setPaginaId(p.id)}
                     style={{
@@ -4656,7 +4955,7 @@ function PagesScreen() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
                       <label style={{ fontSize: 12.5, fontWeight: 600 }}>{veld.label}</label>
                       {eigen && (
-                        <button className="btn btn-sm" onClick={() => terugNaarStandaard(veld)} disabled={bezig}>
+                        <button title="Zet de standaardtekst terug" className="btn btn-sm" onClick={() => terugNaarStandaard(veld)} disabled={bezig}>
                           <Icon name="refresh" size={12} /> Terug naar standaard
                         </button>
                       )}
@@ -4685,15 +4984,25 @@ function PagesScreen() {
                 );
               })}
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <button className="btn btn-primary" onClick={opslaan} disabled={bezig || laden || !gewijzigd}>
+                <button title="Bewaar de teksten van deze pagina" className="btn btn-primary" onClick={opslaan} disabled={bezig || laden || !gewijzigd}>
                   <Icon name="save" size={14} /> {bezig ? 'Bezig…' : 'Opslaan'}
                 </button>
-                <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}>
-                  <Icon name="eye" size={14} /> Bekijk de website
+                <button className="btn"
+                  title={pagina.id === 'footer' ? 'Open de website in een nieuw tabblad' : 'Open deze pagina op de website'}
+                  onClick={() => window.open(tibSiteLink(pagina.id === 'footer' ? 'home' : pagina.id), '_blank')}>
+                  <Icon name="eye" size={14} /> Bekijk deze pagina
                 </button>
               </div>
             </div>
           </div>
+          {pagina.id === 'contact' && (
+            <div className="card" style={{ marginTop: 14 }}>
+              <div className="card-head"><h3 className="card-title">Contactkaartjes</h3></div>
+              <div className="card-pad">
+                <ContactScreen ingebed />
+              </div>
+            </div>
+          )}
           <HintCard icon="info" style={{ marginTop: 14 }}>
             Het menu van de website beheer je in het scherm Navigatie, niet hier.
           </HintCard>
@@ -4754,8 +5063,8 @@ function PartnerEdit({ item, onBack }) {
         title={fd.naam || 'Nieuwe partner'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar partners</a></>}
         actions={<>
-          {item.id != null && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn btn-primary" onClick={async () => { if (await handleSave()) onBack(); }}><Icon name="save" size={14} /> Opslaan</button>
+          {item.id != null && <button title="Verwijder deze partner definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
+          <button title="Bewaar deze partner" className="btn btn-primary" onClick={async () => { if (await handleSave()) onBack(); }}><Icon name="save" size={14} /> Opslaan</button>
         </>}
       />
       <div className="form-grid">
@@ -4838,6 +5147,12 @@ function tibSoortKleur(soort) {
 }
 
 function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
+  // Van wie is dit item? Alleen de eigenaar mag het aanpassen.
+  const magBewerken = tibMagBewerken(item);
+  // Alleen de assistent die dit zelf heeft aangemaakt, kan het overdragen.
+  const bestaatEigen = tibIsAssistent() && item && item.id != null && item.eigenaar_id === tibMijnGebruikerId();
+  const eigenaarTekst = (item && item.eigenaar_id && window._tibGebruikersNamen && window._tibGebruikersNamen[item.eigenaar_id])
+    ? ' (' + window._tibGebruikersNamen[item.eigenaar_id] + ')' : '';
   const iconenLijst = useIconen(); // zelfde lijst als bij bewonersinitiatieven
   const leeg = {
     naam: '', soort: 'Overig', omschrijving: '', adres: '', lat: null, lng: null,
@@ -4874,6 +5189,9 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
       volgorde: fd.volgorde || 0,
       bijgewerkt_op: new Date().toISOString(),
     };
+    // Maakt een redactie-assistent deze voorziening aan, dan is hij van hem.
+    // (De andere schermen regelen dit in __supabaseInsert.)
+    if (!bestaat && tibIsAssistent() && tibMijnGebruikerId()) rij.eigenaar_id = tibMijnGebruikerId();
     // Zolang de icoonkolommen niet bestaan, gaan ze niet mee.
     if (icoonKolommen === true) {
       rij.icoon_url = fd.icoon_url || null;
@@ -4908,10 +5226,26 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
         title={fd.naam || 'Nieuwe voorziening'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar voorzieningen</a></>}
         actions={<>
-          {bestaat && <button className="btn btn-ghost btn-danger" onClick={verwijder}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>
+          {magBewerken && bestaat && <button title="Verwijder deze voorziening definitief" className="btn btn-ghost btn-danger" onClick={verwijder}><Icon name="trash" size={14} /> Verwijderen</button>}
+          <button className="btn" title="Open de pagina Voorzieningen op de website"
+            onClick={() => window.open(tibSiteLink('voorzieningen'), '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
+          {magBewerken && <button title="Bewaar deze voorziening" className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>}
+          {magBewerken && bestaatEigen && (
+            <button title="Geef dit item aan Margareth; daarna kunt u het zelf niet meer aanpassen"
+              className="btn" onClick={async () => { if (await tibDraagOver('voorzieningen', item, fd.naam)) onBack(); }}>
+              <Icon name="users" size={14} /> Overdragen aan Margareth
+            </button>
+          )}
+
         </>}
       />
+      {!magBewerken && (
+        <HintCard icon="info">
+          Dit item is aangemaakt door een redactie-assistent{eigenaarTekst}. U kunt het bekijken,
+          maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
+        </HintCard>
+      )}
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <div className="form-grid">
         <div>
           <div className="form-section">
@@ -4977,7 +5311,7 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
                       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase' }}>Huidig icoon</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#166534' }}>{fd.icoon_label}</div>
                     </div>
-                    <button className="btn btn-ghost btn-danger" style={{ marginLeft: 'auto' }} onClick={() => { up('icoon_url', null); up('icoon_label', null); }}>
+                    <button title="Haal het gekozen icoon weg" className="btn btn-ghost btn-danger" style={{ marginLeft: 'auto' }} onClick={() => { up('icoon_url', null); up('icoon_label', null); }}>
                       <Icon name="trash" size={13} /> Verwijderen
                     </button>
                   </div>
@@ -5010,6 +5344,7 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
           </div>
         </div>
       </div>
+      </fieldset>
     </>
   );
 }
@@ -5050,7 +5385,7 @@ function VoorzieningenScreen() {
     />;
   }
 
-  const lijst = (rijen || [])
+  const lijst = tibZichtbaarVoorMij(rijen || [])
     .filter(v => soortFilter === 'alle' || v.soort === soortFilter)
     .filter(v => !zoek || [v.naam, v.adres, v.omschrijving].some(x => x && x.toLowerCase().includes(zoek.toLowerCase())));
 
@@ -5059,7 +5394,7 @@ function VoorzieningenScreen() {
       <PageHead
         title="Voorzieningen"
         sub="Wat er in de wijk is: de huisarts, de apotheek, het buurthuis. Ze komen op een eigen pagina en als stip op de Buurtatlas."
-        actions={tabelBestaat !== false && <button className="btn btn-primary" onClick={() => setBewerken('nieuw')}><Icon name="plus" size={14} /> Nieuwe voorziening</button>}
+        actions={tabelBestaat !== false && <button title="Maak een nieuwe voorziening aan" className="btn btn-primary" onClick={() => setBewerken('nieuw')}><Icon name="plus" size={14} /> Nieuwe voorziening</button>}
       />
 
       {tabelBestaat === false && (
@@ -5072,9 +5407,9 @@ function VoorzieningenScreen() {
         <>
           <div className="chip-row" style={{ marginBottom: 14, gap: 8, alignItems: 'center', flexWrap: 'wrap', display: 'flex' }}>
             <input type="text" value={zoek} onChange={e => setZoek(e.target.value)} placeholder="Zoeken op naam of adres…" style={{ maxWidth: 260 }} />
-            <button className={'btn btn-sm' + (soortFilter === 'alle' ? ' btn-primary' : '')} onClick={() => setSoortFilter('alle')}>Alle</button>
+            <button title="Toon alle soorten voorzieningen" className={'btn btn-sm' + (soortFilter === 'alle' ? ' btn-primary' : '')} onClick={() => setSoortFilter('alle')}>Alle</button>
             {TIB_VOORZIENING_SOORTEN.map(s => (
-              <button key={s.id} className={'btn btn-sm' + (soortFilter === s.id ? ' btn-primary' : '')} onClick={() => setSoortFilter(s.id)}>{s.id}</button>
+              <button title="Toon alleen deze soort" key={s.id} className={'btn btn-sm' + (soortFilter === s.id ? ' btn-primary' : '')} onClick={() => setSoortFilter(s.id)}>{s.id}</button>
             ))}
           </div>
 
@@ -5101,7 +5436,7 @@ function VoorzieningenScreen() {
                     {lijst.map((v, index) => (
                       <tr key={v.id} onClick={() => setBewerken(v)} {...sleep.rijProps(index)}>
                         <td>{sleep.greepCel(index)}</td>
-                        <td style={{ fontWeight: 600 }}>{v.naam}</td>
+                        <td style={{ fontWeight: 600 }}>{v.naam}<EigenaarLabel rij={v} /></td>
                         <td><span className="badge" style={{ background: tibSoortKleur(v.soort), color: 'white' }}>{v.soort}</span></td>
                         <td>{v.adres || '—'}</td>
                         <td>{v.lat != null && v.lng != null
@@ -5171,7 +5506,7 @@ function PartnersScreen() {
       <PageHead
         title="Partners"
         sub="Bedrijven, instellingen en overheden die TIB ondersteunen."
-        actions={<button className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuwe partner</button>}
+        actions={<button title="Maak een nieuwe partner aan" className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuwe partner</button>}
       />
 
       <div className="toolbar">
@@ -5266,8 +5601,8 @@ function NetwerkEdit({ item, onBack, onOpgeslagen }) {
         title={fd.naam || 'Nieuw netwerk'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar netwerken</a></>}
         actions={<>
-          {item.id != null && <button className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn btn-primary" disabled={bezig} onClick={async () => { if (await handleSave()) onBack(); }}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>
+          {item.id != null && <button title="Verwijder dit netwerk definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
+          <button title="Bewaar dit netwerk" className="btn btn-primary" disabled={bezig} onClick={async () => { if (await handleSave()) onBack(); }}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>
         </>}
       />
       <div className="form-grid">
@@ -5363,7 +5698,7 @@ function NetwerkenScreen() {
       <PageHead
         title="Netwerken"
         sub="Organisaties en samenwerkingsverbanden waar TIB onderdeel van is."
-        actions={<button className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuw netwerk</button>}
+        actions={<button title="Maak een nieuw netwerk aan" className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuw netwerk</button>}
       />
       <div className="grid grid-2">
         {DATA.netwerken.map(n => (
@@ -5378,8 +5713,8 @@ function NetwerkenScreen() {
                   <Pill variant={n.actief !== false ? 'published' : 'draft'}>{n.actief !== false ? 'Zichtbaar' : 'Verborgen'}</Pill>
                 </div>
                 <div style={{ marginTop: 12, display: 'flex', gap: 6 }}>
-                  <button className="btn btn-sm" onClick={() => setEditing(n.id)}><Icon name="edit" size={12} /> Bewerk</button>
-                  <button className="btn btn-sm btn-ghost btn-danger" onClick={() => handleDelete(n.id, n.naam)}><Icon name="trash" size={12} /></button>
+                  <button title="Pas dit netwerk aan" className="btn btn-sm" onClick={() => setEditing(n.id)}><Icon name="edit" size={12} /> Bewerk</button>
+                  <button title="Verwijder dit netwerk definitief" className="btn btn-sm btn-ghost btn-danger" onClick={() => handleDelete(n.id, n.naam)}><Icon name="trash" size={12} /></button>
                 </div>
               </div>
             </div>
@@ -5644,8 +5979,8 @@ function DonerenScreen() {
         title="Doneren & Boek"
         sub="De teksten en instellingen van de doneerpagina en de boekpagina. Wat u hier opslaat, staat op de website."
         actions={<>
-          <button className="btn" onClick={() => window.open('https://www.thuisindebuurt.nl', '_blank')}><Icon name="eye" size={14} /> Bekijk pagina</button>
-          <button className="btn btn-primary" onClick={opslaan} disabled={bezig || laden || !gewijzigd}>
+          <button title="Open de doneerpagina op de website" className="btn" onClick={() => window.open(tibSiteLink(tab === 'boek' ? 'boek' : 'doneren'), '_blank')}><Icon name="eye" size={14} /> Bekijk pagina</button>
+          <button title="Bewaar de doneerpagina en de boekgegevens" className="btn btn-primary" onClick={opslaan} disabled={bezig || laden || !gewijzigd}>
             <Icon name="save" size={14} /> {bezig ? 'Bezig…' : (gewijzigd ? 'Opslaan' : 'Opgeslagen')}
           </button>
         </>}
@@ -5659,10 +5994,10 @@ function DonerenScreen() {
       {laden && <HintCard icon="info">Bezig met laden…</HintCard>}
 
       <div className="tabs">
-        <div className={"tab" + (tab==='paginateksten'?' active':'')} onClick={() => setTab('paginateksten')}>Paginateksten</div>
-        <div className={"tab" + (tab==='boek'?' active':'')} onClick={() => setTab('boek')}>Boek "{w['boek.boek_naam'] || 'Leven is spelen'}"</div>
-        <div className={"tab" + (tab==='donatie'?' active':'')} onClick={() => setTab('donatie')}>Donaties</div>
-        <div className={"tab" + (tab==='bestellingen'?' active':'')} onClick={() => setTab('bestellingen')}>Bestellingen</div>
+        <div className={"tab" + (tab==='paginateksten'?' active':'')} title="Open dit tabblad" onClick={() => setTab('paginateksten')}>Paginateksten</div>
+        <div className={"tab" + (tab==='boek'?' active':'')} title="Open dit tabblad" onClick={() => setTab('boek')}>Boek "{w['boek.boek_naam'] || 'Leven is spelen'}"</div>
+        <div className={"tab" + (tab==='donatie'?' active':'')} title="Open dit tabblad" onClick={() => setTab('donatie')}>Donaties</div>
+        <div className={"tab" + (tab==='bestellingen'?' active':'')} title="Open dit tabblad" onClick={() => setTab('bestellingen')}>Bestellingen</div>
       </div>
 
       {tab === 'paginateksten' && (
@@ -5761,7 +6096,7 @@ function DonerenScreen() {
                     <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={uploadOmslag} disabled={uploadBezig} />
                   </label>
                   {omslag && (
-                    <button className="btn btn-ghost btn-sm" onClick={() => zet('boek.omslag', '')}>
+                    <button title="Haal de omslag weg" className="btn btn-ghost btn-sm" onClick={() => zet('boek.omslag', '')}>
                       <Icon name="trash" size={12} /> Omslag weghalen
                     </button>
                   )}
@@ -5818,7 +6153,7 @@ function DonerenScreen() {
                 {bedragen.map(b => (
                   <div key={b} style={{ background: 'var(--cream-2)', border: '1px solid ' + (b === voorkeur ? 'var(--green)' : 'var(--line)'), borderRadius: 8, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontFamily: 'var(--serif)', fontWeight: 600 }}>€{b}</span>
-                    <button className="btn-ghost btn-sm" style={{ color: 'var(--ink-mute)' }} onClick={() => verwijderBedrag(b)}><Icon name="trash" size={11} /></button>
+                    <button title="Haal dit bedrag weg" className="btn-ghost btn-sm" style={{ color: 'var(--ink-mute)' }} onClick={() => verwijderBedrag(b)}><Icon name="trash" size={11} /></button>
                   </div>
                 ))}
                 {addingBedrag ? (
@@ -5830,11 +6165,11 @@ function DonerenScreen() {
                       autoFocus
                       style={{ width: 90, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--line)', fontFamily: 'var(--serif)', fontWeight: 600 }}
                     />
-                    <button className="btn btn-sm btn-primary" onClick={voegBedragToe}><Icon name="check" size={12} /></button>
-                    <button className="btn btn-sm" onClick={() => { setAddingBedrag(false); setNieuwBedrag(''); }}>×</button>
+                    <button title="Zet dit bedrag erbij" className="btn btn-sm btn-primary" onClick={voegBedragToe}><Icon name="check" size={12} /></button>
+                    <button title="Annuleren" className="btn btn-sm" onClick={() => { setAddingBedrag(false); setNieuwBedrag(''); }}>×</button>
                   </div>
                 ) : (
-                  <button className="btn btn-sm" onClick={() => setAddingBedrag(true)}><Icon name="plus" size={12} /> Bedrag</button>
+                  <button title="Zet er een donatiebedrag bij" className="btn btn-sm" onClick={() => setAddingBedrag(true)}><Icon name="plus" size={12} /> Bedrag</button>
                 )}
               </div>
               <Field label="Meest gekozen bedrag" hint="Dit bedrag staat klaar als de pagina opent en krijgt het label “meest gekozen”.">
@@ -5906,7 +6241,11 @@ const TIB_CONTACT_STANDAARD = {
   intro1: 'Heb je een vraag, suggestie of zin om iets bij te dragen? Stuur ons een bericht — we reageren binnen drie werkdagen.',
 };
 
-function ContactScreen() {
+// Dit scherm staat sinds 9-11 niet meer los in het menu: de kaartjes zijn
+// verhuisd naar Pagina's → Contact, waar de titel en de intro al stonden.
+// Met ingebed={true} vervallen de eigen paginakop en de tekstvelden, want
+// die staan dan al boven in Pagina's.
+function ContactScreen({ ingebed }) {
   const [kaarten, setKaarten] = React.useState([]);              // zoals ze nu in het scherm staan
   const [bewaardeKaarten, setBewaardeKaarten] = React.useState([]); // zoals ze in de database staan
   const [verwijderd, setVerwijderd] = React.useState([]);        // id's die bij Opslaan weg moeten
@@ -6097,15 +6436,17 @@ function ContactScreen() {
 
   return (
     <>
-      <PageHead
-        title="Contact"
-        sub="Contactpagina — paginatitel, intro-tekst en contactkaarten. Wat u hier opslaat, staat op de website."
-        actions={
-          <button className="btn btn-primary" disabled={bezig || laden || !gewijzigd} onClick={opslaan}>
-            <Icon name="save" size={14} /> {bezig ? 'Bezig…' : (gewijzigd ? 'Opslaan' : 'Opgeslagen')}
-          </button>
-        }
-      />
+      {!ingebed && (
+        <PageHead
+          title="Contact"
+          sub="Contactpagina — paginatitel, intro-tekst en contactkaarten. Wat u hier opslaat, staat op de website."
+          actions={
+            <button className="btn btn-primary" disabled={bezig || laden || !gewijzigd} onClick={opslaan} title="Bewaar de contactpagina en zet hem op de website">
+              <Icon name="save" size={14} /> {bezig ? 'Bezig…' : (gewijzigd ? 'Opslaan' : 'Opgeslagen')}
+            </button>
+          }
+        />
+      )}
 
       {fout && (
         <HintCard variant="warn" icon="warn">
@@ -6115,6 +6456,7 @@ function ContactScreen() {
 
       <div className="form-grid">
         <div>
+          {!ingebed && (
           <div className="form-section">
             <h3>Paginatitel &amp; intro</h3>
             <Field label="Paginatitel" hint="De tekst die nu op de website staat; aanpassen mag. Leegmaken = terug naar de standaardtekst.">
@@ -6126,8 +6468,9 @@ function ContactScreen() {
                 onChange={e => setTekst({ ...tekst, intro1: e.target.value })} />
             </Field>
           </div>
+          )}
 
-          <div className="form-section" style={{ marginTop: 20 }}>
+          <div className="form-section" style={ingebed ? null : { marginTop: 20 }}>
             <h3>Contactkaarten</h3>
             <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginBottom: 12 }}>
               Elke kaart verschijnt als tegeltje op de contactpagina met icoon, naam, omschrijving en klikbaar e-mailadres.
@@ -6147,8 +6490,8 @@ function ContactScreen() {
                     <Field label="E-mailadres"><input type="email" value={tekstVan(editCard, 'email')} onChange={e => setEditCard({ ...editCard, email: e.target.value })} /></Field>
                     <Field label="Icoon (emoji)" hint="Bijv. ✉ ✎ ♥ ☎"><input value={tekstVan(editCard, 'icoon')} onChange={e => setEditCard({ ...editCard, icoon: e.target.value })} style={{ width: 80 }} /></Field>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn-sm btn-primary" onClick={commitEditCard}><Icon name="check" size={12} /> Klaar</button>
-                      <button className="btn btn-sm" onClick={() => setEditIdx(null)}>Annuleren</button>
+                      <button title="Klaar met dit kaartje" className="btn btn-sm btn-primary" onClick={commitEditCard}><Icon name="check" size={12} /> Klaar</button>
+                      <button title="Laat dit kaartje zoals het was" className="btn btn-sm" onClick={() => setEditIdx(null)}>Annuleren</button>
                     </div>
                   </div>
                 ) : (
@@ -6181,15 +6524,23 @@ function ContactScreen() {
                   <Field label="E-mailadres"><input type="email" placeholder="mailbox@thuisindebuurt.org" value={newCard.email} onChange={e => setNewCard({ ...newCard, email: e.target.value })} /></Field>
                   <Field label="Icoon (emoji)" hint="Bijv. ✉ ✎ ♥ ☎"><input value={newCard.icoon} onChange={e => setNewCard({ ...newCard, icoon: e.target.value })} style={{ width: 80 }} /></Field>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-sm btn-primary" onClick={addCard}><Icon name="plus" size={12} /> Kaart toevoegen</button>
-                    <button className="btn btn-sm" onClick={() => setAddingNew(false)}>Annuleren</button>
+                    <button title="Zet dit kaartje erbij" className="btn btn-sm btn-primary" onClick={addCard}><Icon name="plus" size={12} /> Kaart toevoegen</button>
+                    <button title="Toch geen kaartje toevoegen" className="btn btn-sm" onClick={() => setAddingNew(false)}>Annuleren</button>
                   </div>
                 </div>
               </div>
             ) : (
-              <button className="btn" style={{ marginTop: 4 }} disabled={laden} onClick={() => setAddingNew(true)}>
+              <button className="btn" style={{ marginTop: 4 }} disabled={laden} onClick={() => setAddingNew(true)} title="Zet er een contactkaartje bij">
                 <Icon name="plus" size={13} /> Kaart toevoegen
               </button>
+            )}
+            {ingebed && (
+              <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+                <button className="btn btn-primary" disabled={bezig || laden || !gewijzigd} onClick={opslaan}
+                  title="Bewaar de contactkaartjes en zet ze op de website">
+                  <Icon name="save" size={14} /> {bezig ? 'Bezig…' : (gewijzigd ? 'Kaartjes opslaan' : 'Kaartjes opgeslagen')}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -6418,7 +6769,7 @@ function CategoriesScreen() {
           </Field>
         </div>
         <div className="hint" style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>De kleur zie je ook op de website: in de bolletjes bij de categorieknoppen en op de kaart. Het icoon is alleen voor herkenning hier in het CMS.</div>
-        <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={handleCreate} disabled={saving}><Icon name="plus" size={14} /> Categorie aanmaken</button>
+        <button title="Maak deze categorie aan" className="btn btn-primary" style={{ marginTop: 14 }} onClick={handleCreate} disabled={saving}><Icon name="plus" size={14} /> Categorie aanmaken</button>
       </div>
 
       <div className="hint" style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '18px 0 8px' }}>
@@ -6437,8 +6788,8 @@ function CategoriesScreen() {
                   <KleurKiezer waarde={editKleur} opKies={setEditKleur} kleuren={kleuren} inGebruik={kleurInGebruik(editKleur, c.id)} />
                 </Field>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-sm btn-primary" onClick={() => saveEdit(c.id, c.icoon, c.naam)} disabled={saving}><Icon name="check" size={12} /> Opslaan</button>
-                  <button className="btn btn-sm" onClick={() => setEditingId(null)}>Annuleren</button>
+                  <button title="Bewaar deze categorie" className="btn btn-sm btn-primary" onClick={() => saveEdit(c.id, c.icoon, c.naam)} disabled={saving}><Icon name="check" size={12} /> Opslaan</button>
+                  <button title="Laat deze categorie zoals hij was" className="btn btn-sm" onClick={() => setEditingId(null)}>Annuleren</button>
                 </div>
               </div>
             ) : (
@@ -6457,8 +6808,8 @@ function CategoriesScreen() {
                   <button className="icon-btn" title="Naar beneden" disabled={index === cats.length - 1 || saving} onClick={() => verplaats(index, 1)}>
                     <Icon name="chevron" size={12} style={{ transform: 'rotate(90deg)' }} />
                   </button>
-                  <button className="icon-btn" onClick={() => startEdit(c)}><Icon name="edit" size={14} /></button>
-                  <button className="icon-btn" onClick={() => handleDelete(c)}><Icon name="trash" size={14} /></button>
+                  <button title="Pas de naam of de kleur aan" className="icon-btn" onClick={() => startEdit(c)}><Icon name="edit" size={14} /></button>
+                  <button title="Verwijder deze categorie" className="icon-btn" onClick={() => handleDelete(c)}><Icon name="trash" size={14} /></button>
                 </div>
               </div>
             )}
@@ -6477,7 +6828,6 @@ const CMS_ICONEN = [
   { label: 'gamen', bestand: 'gamen.png' },
   { label: 'layout', bestand: 'layout.png' },
   { label: 'puzzel', bestand: 'puzzel.png' },
-  { label: 'muziek-noot', bestand: 'muziek-noot.png' },
   { label: 'zingen', bestand: 'zingen.png' },
   { label: 'muziek', bestand: 'muziek.png' },
   { label: 'bewegen', bestand: 'bewegen.png' },
@@ -6534,6 +6884,7 @@ const CMS_ICONEN = [
   { label: 'ster', bestand: 'ster.png' },
   { label: 'nieuws', bestand: 'nieuws.png' },
   { label: 'camera', bestand: 'camera.png' },
+  { label: 'overig', bestand: 'overig.png' },
 ];
 const CMS_ICOON_BASE_URL = 'https://bxklumejqczcmhrpzstt.supabase.co/storage/v1/object/public/icons/';
 
@@ -6603,7 +6954,7 @@ const TIB_LOG_OPENBAAR = [
   'partners', 'netwerken', 'voorzieningen',
 ];
 
-const TIB_ROL_LABEL = { superadmin: 'Superadmin', redactie: 'Redactie', beheerder: 'Initiatief-beheerder' };
+const TIB_ROL_LABEL = TIB_ROLLEN;
 
 // "vandaag om 14:02", "gisteren om 9:30", anders de datum erbij.
 function tibLogWanneer(waarde) {
@@ -6699,7 +7050,7 @@ function WijzigingenScreen({ onNav, onBadgeRefresh }) {
         title="Wijzigingen"
         sub="Wat er in het beheerpaneel is aangepast, en door wie. Alles staat al op de website; hier kijkt u het na en vinkt u het af."
         actions={tab === 'nieuw' && aantalNieuw > 0 && (
-          <button className="btn" onClick={alleNieuweGoedkeuren} disabled={bezig === 'alles'}>
+          <button title="Zet alle nieuwe regels in één keer op afgevinkt" className="btn" onClick={alleNieuweGoedkeuren} disabled={bezig === 'alles'}>
             <Icon name="check" size={14} /> Alles afvinken
           </button>
         )}
@@ -6714,11 +7065,11 @@ function WijzigingenScreen({ onNav, onBadgeRefresh }) {
       {tabelBestaat && (
         <>
           <div className="tabs">
-            <div className={"tab" + (tab === 'nieuw' ? ' active' : '')} onClick={() => setTab('nieuw')}>
+            <div className={"tab" + (tab === 'nieuw' ? ' active' : '')} title="Wijzigingen die nog nagekeken moeten worden" onClick={() => setTab('nieuw')}>
               Nog na te kijken <span style={{ opacity: 0.5, marginLeft: 4 }}>{aantalNieuw}</span>
             </div>
-            <div className={"tab" + (tab === 'goedgekeurd' ? ' active' : '')} onClick={() => setTab('goedgekeurd')}>Nagekeken</div>
-            <div className={"tab" + (tab === 'gearchiveerd' ? ' active' : '')} onClick={() => setTab('gearchiveerd')}>Gearchiveerd</div>
+            <div className={"tab" + (tab === 'goedgekeurd' ? ' active' : '')} title="Wijzigingen die u al hebt afgevinkt" onClick={() => setTab('goedgekeurd')}>Nagekeken</div>
+            <div className={"tab" + (tab === 'gearchiveerd' ? ' active' : '')} title="Wijzigingen die u uit de lijst hebt gehaald" onClick={() => setTab('gearchiveerd')}>Gearchiveerd</div>
           </div>
 
           {rijen === null ? (
@@ -6762,7 +7113,7 @@ function WijzigingenScreen({ onNav, onBadgeRefresh }) {
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {TIB_LOG_ROUTE[r.tabel] && r.soort !== 'verwijderd' && (
-                          <button className="btn btn-sm" onClick={() => {
+                          <button title="Open het item waar deze wijziging over gaat" className="btn btn-sm" onClick={() => {
                             // Eerst de wens neerleggen, dan pas navigeren: het
                             // scherm pakt hem op zodra het verschijnt.
                             if (TIB_LOG_OPENBAAR.indexOf(r.tabel) !== -1) tibWilItemOpenen(r.tabel, r.rij_id);
@@ -6773,17 +7124,17 @@ function WijzigingenScreen({ onNav, onBadgeRefresh }) {
                         )}
                         {r.status === 'nieuw' ? (
                           <>
-                            <button className="btn btn-sm btn-primary" disabled={bezig === r.id}
+                            <button title="Vink deze wijziging af als nagekeken" className="btn btn-sm btn-primary" disabled={bezig === r.id}
                               onClick={() => zetStatus(r, 'goedgekeurd')}>
                               <Icon name="check" size={13} /> Goedkeuren
                             </button>
-                            <button className="btn btn-sm" disabled={bezig === r.id}
+                            <button title="Haal deze regel uit de lijst" className="btn btn-sm" disabled={bezig === r.id}
                               onClick={() => zetStatus(r, 'gearchiveerd')}>
                               <Icon name="archive" size={13} /> Archiveren
                             </button>
                           </>
                         ) : (
-                          <button className="btn btn-sm" disabled={bezig === r.id}
+                          <button title="Zet deze regel terug in de lijst" className="btn btn-sm" disabled={bezig === r.id}
                             onClick={() => zetStatus(r, 'nieuw')}>
                             <Icon name="refresh" size={13} /> Terugzetten
                           </button>
@@ -6869,8 +7220,8 @@ function WijzigingenMelding({ aantal, laatste, onBekijken, onSluiten }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-          <button className="btn btn-sm" onClick={onSluiten}>Later</button>
-          <button className="btn btn-sm btn-primary" onClick={onBekijken}>
+          <button title="Later bekijken" className="btn btn-sm" onClick={onSluiten}>Later</button>
+          <button title="Open deze melding" className="btn btn-sm btn-primary" onClick={onBekijken}>
             <Icon name="arrow" size={13} /> Bekijken
           </button>
         </div>
@@ -6931,7 +7282,7 @@ function MediaScreen() {
         title="Mediabibliotheek"
         sub="Alle afbeeldingen en iconen op één plek."
         actions={
-          <button className="btn btn-primary" onClick={() => bestandRef.current && bestandRef.current.click()} disabled={bezig}>
+          <button title="Kies een of meer afbeeldingen om toe te voegen" className="btn btn-primary" onClick={() => bestandRef.current && bestandRef.current.click()} disabled={bezig}>
             <Icon name="upload" size={14} /> {bezig ? 'Bezig met uploaden…' : 'Upload'}
           </button>
         }
@@ -7155,7 +7506,7 @@ function MenuScreen() {
         title="Navigatie"
         sub="Het hoofdmenu van de website: namen, volgorde en wat wel of niet getoond wordt."
         actions={
-          <button className="btn" onClick={() => setShowAdd(s => !s)} disabled={laden}>
+          <button title="Zet een pagina in het menu" className="btn" onClick={() => setShowAdd(s => !s)} disabled={laden}>
             <Icon name="plus" size={14} /> Pagina toevoegen
           </button>
         }
@@ -7189,10 +7540,10 @@ function MenuScreen() {
               onChange={e => setAddLabel(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAdd()} />
           </Field>
-          <button className="btn btn-primary" onClick={handleAdd} disabled={bezig} style={{ marginBottom: 1 }}>
+          <button title="Zet deze pagina in het menu" className="btn btn-primary" onClick={handleAdd} disabled={bezig} style={{ marginBottom: 1 }}>
             <Icon name="plus" size={13} /> Toevoegen
           </button>
-          <button className="btn" onClick={() => setShowAdd(false)} style={{ marginBottom: 1 }}>Annuleren</button>
+          <button title="Toch geen pagina toevoegen" className="btn" onClick={() => setShowAdd(false)} style={{ marginBottom: 1 }}>Annuleren</button>
         </div>
       )}
 
@@ -7241,8 +7592,8 @@ function MenuScreen() {
                           <option key={p.target} value={p.target}>{p.label}</option>
                         ))}
                       </select>
-                      <button className="btn btn-sm btn-primary" onClick={commitEdit} disabled={bezig}><Icon name="check" size={12} /></button>
-                      <button className="btn btn-sm" onClick={() => setEditingId(null)}>Annuleren</button>
+                      <button title="Klaar met dit menu-item" className="btn btn-sm btn-primary" onClick={commitEdit} disabled={bezig}><Icon name="check" size={12} /></button>
+                      <button title="Laat dit menu-item zoals het was" className="btn btn-sm" onClick={() => setEditingId(null)}>Annuleren</button>
                     </>
                   ) : (
                     <>
@@ -7440,8 +7791,8 @@ function HuisstijlScreen() {
                 <div className="sec-sub" style={{ marginBottom: 0 }}>Kies een kleur met de kleurkiezer of typ een hex-code. Klik op "Opslaan" om ze echt op de website te zetten.</div>
               </div>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                <button className="btn" onClick={resetKleuren}><Icon name="refresh" size={14} /> Herstel standaardkleuren</button>
-                <button className="btn btn-primary" disabled={kleurenOpslaan || kleurenLaden} onClick={opslaanKleuren}><Icon name="save" size={14} /> {kleurenOpslaan ? 'Bezig…' : 'Opslaan'}</button>
+                <button title="Zet alle kleuren terug naar de standaardkleuren" className="btn" onClick={resetKleuren}><Icon name="refresh" size={14} /> Herstel standaardkleuren</button>
+                <button title="Bewaar de kleuren en zet ze op de website" className="btn btn-primary" disabled={kleurenOpslaan || kleurenLaden} onClick={opslaanKleuren}><Icon name="save" size={14} /> {kleurenOpslaan ? 'Bezig…' : 'Opslaan'}</button>
               </div>
             </div>
 
@@ -7560,8 +7911,8 @@ function HuisstijlScreen() {
             <h3>Tone-of-voice</h3>
             <div className="sec-sub">Het systeem gebruikt deze keuze in alle standaardteksten (formulieren, bevestigingen, foutmeldingen).</div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className={"chip" + (tone === 'je' ? ' active' : '')} onClick={() => setTone('je')} style={{ padding: '8px 16px' }}>"Je" — informeel</button>
-              <button className={"chip" + (tone === 'u' ? ' active' : '')} onClick={() => setTone('u')} style={{ padding: '8px 16px' }}>"U" — formeel</button>
+              <button title="Spreek bezoekers aan met je en jouw" className={"chip" + (tone === 'je' ? ' active' : '')} onClick={() => setTone('je')} style={{ padding: '8px 16px' }}>"Je" — informeel</button>
+              <button title="Spreek bezoekers aan met u en uw" className={"chip" + (tone === 'u' ? ' active' : '')} onClick={() => setTone('u')} style={{ padding: '8px 16px' }}>"U" — formeel</button>
             </div>
             <div style={{ marginTop: 14, padding: 12, background: 'var(--cream-2)', borderRadius: 8, fontSize: 13 }}>
               <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginBottom: 4 }}>Voorbeeld bevestigingsmail</div>
@@ -7599,7 +7950,7 @@ function HuisstijlScreen() {
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>
                 Ontdek bewonersinitiatieven, activiteiten en evenementen bij {tone === 'je' ? 'jou' : 'u'} om de hoek.
               </p>
-              <button style={{ background: kleuren.donker, color: 'white', border: 0, padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>Doe mee →</button>
+              <button title="Voorbeeldknop — hier gebeurt niets" style={{ background: kleuren.donker, color: 'white', border: 0, padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>Doe mee →</button>
               <div style={{ marginTop: 10, height: 18, borderRadius: 4, background: kleuren.creme, border: '1px solid var(--line)' }} title="Crème band"></div>
             </div>
           </div>
@@ -7641,6 +7992,7 @@ function GebruikersScreen() {
   // Uitnodigingsformulier
   const [inviteEmail, setInviteEmail] = React.useState('');
   const [inviteClubId, setInviteClubId] = React.useState('');
+  const [inviteRole, setInviteRole] = React.useState('redactie_assistent');
   const [inviting, setInviting] = React.useState(false);
 
   // Gebruikersoverzicht
@@ -7680,7 +8032,7 @@ function GebruikersScreen() {
         action: 'invite',
         email: inviteEmail.trim(),
         club_id: inviteClubId ? Number(inviteClubId) : null,
-        role: 'beheerder',
+        role: inviteRole,
       });
       window.__showToast && window.__showToast('Uitnodiging verzonden naar ' + inviteEmail.trim());
       setInviteEmail('');
@@ -7753,10 +8105,10 @@ function GebruikersScreen() {
               Dit kan niet ongedaan worden gemaakt.
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-              <button className="btn btn-sm" onClick={() => setToDelete(null)} disabled={deleting}>
+              <button title="Toch niet verwijderen" className="btn btn-sm" onClick={() => setToDelete(null)} disabled={deleting}>
                 Annuleren
               </button>
-              <button className="btn btn-sm btn-ghost btn-danger" onClick={handleDeleteConfirm} disabled={deleting}>
+              <button title="Verwijder deze gebruiker definitief" className="btn btn-sm btn-ghost btn-danger" onClick={handleDeleteConfirm} disabled={deleting}>
                 <Icon name="trash" size={13} /> {deleting ? 'Bezig…' : 'Definitief verwijderen'}
               </button>
             </div>
@@ -7785,8 +8137,16 @@ function GebruikersScreen() {
                 placeholder="naam@voorbeeld.nl"
               />
             </Field>
-            <Field label="Bewonersinitiatief" hint="Laat leeg voor een algemene beheerder zonder clubkoppeling.">
-              <select value={inviteClubId} onChange={e => setInviteClubId(e.target.value)}>
+            <Field label="Rol" hint="Een redactie-assistent voegt zelf bewonersinitiatieven, activiteiten, voorzieningen en nieuws toe. Wat hij aanmaakt is van hem.">
+              <select value={inviteRole} onChange={e => setInviteRole(e.target.value)} title="Kies wat deze persoon mag">
+                <option value="redactie_assistent">Redactie-assistent</option>
+                <option value="redactie">Redactie</option>
+                <option value="superadmin">Superadmin</option>
+                <option value="beheerder">Initiatief-beheerder</option>
+              </select>
+            </Field>
+            <Field label="Bewonersinitiatief" hint="Alleen voor een initiatief-beheerder: het bewonersinitiatief waar diegene bij hoort.">
+              <select value={inviteClubId} onChange={e => setInviteClubId(e.target.value)} title="Koppel deze persoon aan één bewonersinitiatief">
                 <option value="">Geen club — algemene beheerder</option>
                 {clubs.map(c => (
                   <option key={c.id} value={c.id}>{c.naam}</option>
@@ -7794,7 +8154,7 @@ function GebruikersScreen() {
               </select>
             </Field>
           </div>
-          <button className="btn btn-primary" type="submit" disabled={inviting}>
+          <button title="Stuur deze persoon een uitnodiging per e-mail" className="btn btn-primary" type="submit" disabled={inviting}>
             {inviting
               ? 'Bezig…'
               : <><Icon name="plus" size={14} /> Uitnodiging versturen</>
@@ -7861,7 +8221,7 @@ function GebruikersScreen() {
                     <td style={{ padding: '11px 20px' }}>
                       {isSelf ? (
                         <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-                          {u.role === 'superadmin' ? 'Superadmin' : u.role === 'redactie' ? 'Redactie' : 'Beheerder'}
+                          {TIB_ROLLEN[u.role] || 'Beheerder'}
                         </span>
                       ) : (
                         <select
@@ -7870,8 +8230,9 @@ function GebruikersScreen() {
                           style={{ fontSize: 13 }}
                         >
                           <option value="superadmin">Superadmin</option>
-                          <option value="beheerder">Beheerder</option>
                           <option value="redactie">Redactie</option>
+                          <option value="redactie_assistent">Redactie-assistent</option>
+                          <option value="beheerder">Initiatief-beheerder</option>
                         </select>
                       )}
                     </td>
@@ -7984,7 +8345,7 @@ window.renderBackupCard = function() {
               'Download alle databasetabellen als één JSON-bestand. Alleen zichtbaar voor superadmins.',
             '</div>',
           '</div>',
-          '<button id="tib-backup-btn" class="btn btn-accent"',
+          '<button id="tib-backup-btn" class="btn btn-accent" title="Download alle databasetabellen als \u00e9\u00e9n bestand"',
             ' style="width:fit-content;display:inline-flex;align-items:center;gap:8px;"',
             ' onclick="window.__handleJsonBackup()">',
             'JSON Backup downloaden',
@@ -8669,7 +9030,7 @@ function LoginScreen({ onLogin }) {
                   Als <strong>{email}</strong> bekend is bij ons, ontvang je zo een e-mail
                   met een link om een nieuw wachtwoord in te stellen.
                 </p>
-                <button
+                <button title="Terug naar het inlogscherm"
                   type="button"
                   className="btn"
                   style={{ width: '100%', justifyContent: 'center', padding: '10px 0', fontSize: 14 }}
@@ -8712,7 +9073,7 @@ function LoginScreen({ onLogin }) {
                     {vergetenFout}
                   </div>
                 )}
-                <button
+                <button title="Stuur een e-mail om een nieuw wachtwoord te kiezen"
                   type="submit"
                   className="btn btn-primary"
                   disabled={vergetenBezig}
@@ -8720,7 +9081,7 @@ function LoginScreen({ onLogin }) {
                 >
                   {vergetenBezig ? 'Bezig…' : 'Verstuur link'}
                 </button>
-                <button
+                <button title="Terug naar het inlogscherm"
                   type="button"
                   className="btn"
                   style={{ width: '100%', justifyContent: 'center', padding: '10px 0', fontSize: 14 }}
@@ -8808,7 +9169,7 @@ function LoginScreen({ onLogin }) {
               </div>
             )}
 
-            <button
+            <button title="Log in op het beheerpaneel"
               type="submit"
               className="btn btn-primary"
               disabled={loading}
@@ -8816,7 +9177,7 @@ function LoginScreen({ onLogin }) {
             >
               {loading ? 'Bezig…' : 'Inloggen'}
             </button>
-            <button
+            <button title="Stuur mezelf een link om een nieuw wachtwoord te kiezen"
               type="button"
               onClick={() => { setModus('vergeten'); setError(''); setVergetenFout(''); setVergetenVerzonden(false); }}
               style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', fontSize: 12.5, textDecoration: 'underline', cursor: 'pointer', padding: 0, marginTop: -4, alignSelf: 'center' }}
@@ -8873,6 +9234,10 @@ function App() {
         const p = data || { role: 'beheerder', club_id: null };
         setProfile(p);
         window._tibProfile = p;
+        window._tibGebruikerId = session.user.id;
+        // Namen van de andere gebruikers ophalen, zodat bij een item kan
+        // staan van wie het is. Dat mag alleen de superadmin opvragen.
+        if (p.role === 'superadmin') tibLaadGebruikersNamen(session.access_token);
         window.renderBackupCard && window.renderBackupCard();
       });
   }, [session?.user?.id, session?.access_token]);
@@ -9089,7 +9454,8 @@ function App() {
     voorzieningen: { crumbs: ['Voorzieningen'], render: () => <VoorzieningenScreen /> },
     netwerken: { crumbs: ['Netwerken'], render: () => <NetwerkenScreen /> },
     doneren: { crumbs: ['Doneren & Boek'], render: () => <DonerenScreen /> },
-    contact: { crumbs: ['Contact'], render: () => <ContactScreen /> },
+    // Oude route: Contact is onderdeel van Pagina's geworden.
+    contact: { crumbs: ["Pagina's", 'Contact'], render: () => <PagesScreen startPagina="contact" /> },
     buurtatlas: { crumbs: ['Buurtatlas'], render: () => <BuurtatlasScreen /> },
     categorieen: { crumbs: ['Categorieën'], render: () => <CategoriesScreen /> },
     media: { crumbs: ['Mediabibliotheek'], render: () => <MediaScreen /> },
@@ -9109,6 +9475,7 @@ function App() {
   const REDACTIE_BLOCKED = ['gebruikers', 'huisstijl', 'domein', 'wijzigingen'];
   const isBlocked =
     (role === 'beheerder' && !BEHEERDER_ROUTES.has(route)) ||
+    (role === 'redactie_assistent' && !ASSISTENT_ROUTES.has(route)) ||
     (role === 'redactie' && REDACTIE_BLOCKED.includes(route));
 
   // Nog niet vrijgegeven? Dan is het scherm ook niet te bereiken, ook niet
@@ -9486,6 +9853,12 @@ window.__supabaseInsert = async function(tabel, item) {
     const dbTabel = tabel === 'weekagenda' ? 'terugkerende_activiteiten' : tabel;
     const bron = __DB_VERTALING[tabel] ? __DB_VERTALING[tabel](item) : item;
     const { id, ...zonderId } = bron;
+    // Maakt een redactie-assistent iets aan, dan is het van hem. Van de
+    // superadmin en de redactie blijft het "van de redactie" (geen eigenaar).
+    if (TIB_EIGENAAR_TABELLEN.indexOf(tabel) !== -1 && tibIsAssistent()
+        && zonderId.eigenaar_id == null && tibMijnGebruikerId()) {
+      zonderId.eigenaar_id = tibMijnGebruikerId();
+    }
     // Geen lege aanmaakdatum meesturen: dan vult de database zelf de standaardwaarde in.
     if (!zonderId.aangemaakt_op) delete zonderId.aangemaakt_op;
     const { data, error } = await window.supabase.from(dbTabel).insert(zonderId).select().single();
@@ -9571,7 +9944,7 @@ function toonWachtwoordResetFormulier() {
           style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:12px;">
         <input type="password" id="bevestig-wachtwoord" placeholder="Bevestig wachtwoord"
           style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:16px;">
-        <button onclick="slaWachtwoordOp()"
+        <button onclick="slaWachtwoordOp()" title="Bewaar het nieuwe wachtwoord"
           style="width:100%;padding:12px;background:#2d6a4f;color:white;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">
           Wachtwoord opslaan
         </button>
@@ -9767,7 +10140,7 @@ if (_hash.includes('type=recovery')) {
               '<div style="font-weight:600;font-size:14px;margin-bottom:4px;">Gegevensback-up</div>' +
               '<div style="font-size:13px;color:var(--ink-soft);">Download alle databasetabellen als één JSON-bestand. Alleen zichtbaar voor superadmins.</div>' +
             '</div>' +
-            '<button id="tib-backup-btn" class="btn btn-accent" style="width:fit-content;display:inline-flex;align-items:center;gap:8px;" onclick="window.__handleJsonBackup()">' +
+            '<button id="tib-backup-btn" class="btn btn-accent" title="Download alle databasetabellen als \u00e9\u00e9n bestand" style="width:fit-content;display:inline-flex;align-items:center;gap:8px;" onclick="window.__handleJsonBackup()">' +
               'JSON Backup downloaden' +
             '</button>' +
             '<div id="tib-backup-error" style="display:none;font-size:12.5px;color:var(--danger);background:oklch(0.96 0.04 25);border:1px solid oklch(0.85 0.08 25);border-radius:7px;padding:8px 12px;"></div>' +

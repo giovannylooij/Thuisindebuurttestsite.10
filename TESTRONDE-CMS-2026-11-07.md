@@ -116,20 +116,24 @@ Het logboek is slim opgezet: de gedeelde opslagfuncties (`__supabaseUpsert`,
 `__supabaseInsert`, `__supabaseDelete`) loggen vanzelf. Elk scherm dat die
 gebruikt staat dus automatisch in Margareths overzicht.
 
-Maar een aantal schermen schrijft er rechtstreeks omheen, en die verschijnen
-niet in het logboek:
+> **Correctie 9-11.** Dit punt klopte maar deels. Bij het bouwen van de
+> redactie-assistent bleek dat **Voorzieningen en Categorieën wél loggen** —
+> die gebruiken `__logVooraf`, dat ik bij de eerste doorlichting over het
+> hoofd heb gezien. Alleen **Huisstijl** schrijft er echt omheen.
 
-| Scherm | Wat er ongemerkt verandert |
+Een aantal schermen schrijft rechtstreeks naar de database. Na natellen blijft
+hiervan over:
+
+| Scherm | Logt het? |
 |---|---|
-| Voorzieningen | voorzieningen toevoegen, wijzigen, verwijderen |
-| Categorieën | categorieën toevoegen, hernoemen, verwijderen, volgorde |
-| Huisstijl | alle kleuren van de site |
-| Bewonersinitiatieven (lijst) | aanmeldingen en de vragenlijst |
-| De zes Inzendingen-schermen | afhandelen en verwijderen van inzendingen |
+| Huisstijl | **nee** — alle kleuren van de site veranderen ongemerkt |
+| Voorzieningen | ja, via `__logVooraf` |
+| Categorieën | ja, via `__logVooraf` |
+| Navigatie | ja |
+| De zes Inzendingen-schermen | nee — afhandelen en verwijderen van inzendingen |
 
-Dat Margareth niet ziet dat iemand de huisstijlkleuren of de categorieën heeft
-omgegooid, is het vervelendst — juist dat soort wijzigingen valt op de site
-meteen op.
+Dat Margareth niet ziet dat iemand de huisstijlkleuren heeft omgegooid, is het
+vervelendst — juist dat valt op de site meteen op.
 
 Voor de Inzendingen-schermen is het de vraag of je dat wilt loggen. Dat is
 jouw keuze, geen fout.

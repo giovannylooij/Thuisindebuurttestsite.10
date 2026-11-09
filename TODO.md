@@ -33,6 +33,102 @@ probleem nog.
 
 ---
 
+## Voorvertoning per item + één publicatieknop (9-11, lokaal — nog niet gepusht)
+
+**Voorvertoning gaat nu naar het stuk waar je mee bezig bent.** De website
+leest sinds nu het adres: `?pagina=doneren` opent de doneerpagina,
+`?pagina=clubje&id=31` opent dat bewonersinitiatief. Dat zat er nog niet in —
+de site hield de pagina alleen in het geheugen bij.
+
+- Bewonersinitiatief, activiteit en nieuwsbericht: de knop opent dat ene item.
+- Staat het nog op concept, dan staat het niet op de website en is de knop
+  uitgeschakeld met de uitleg "eerst publiceren". Hetzelfde voor iets dat nog
+  nooit is opgeslagen.
+- Pagina's: "Bekijk deze pagina" opent de pagina die je aan het bewerken bent.
+- Doneren & Boek: opent de doneerpagina, of de boekpagina als je op dat
+  tabblad staat.
+- Voorziening: opent de pagina Voorzieningen (een losse voorziening heeft geen
+  eigen adres op de site).
+- Een onbekend adres valt terug op de homepagina; een id dat niet bestaat geeft
+  de nette melding "Niet gevonden".
+
+**Van drie opslagknoppen naar twee duidelijke.** Er stonden in de
+publicatiekaart een schakelaar *Publiceren* plus de knoppen *Opslaan als
+concept* en *Publiceer*, én bovenin nog een *Opslaan*. Drie manieren voor twee
+dingen. Nu:
+
+- **Opslaan** (bovenin) bewaart tussendoor en laat de status zoals hij is —
+  dat is precies het "ik ga even weg en ga later verder" (besluit Giovanny
+  9-11: concept blijft bestaan, maar heet niet meer zo in de knoppen).
+- In de kaart staat de status, en één knop: **Publiceren** als het nog concept
+  is, **Van de website halen** als het online staat. Die slaat meteen op.
+- Eronder staat in één zin wat Opslaan doet.
+- Dit is doorgevoerd bij bewonersinitiatieven, activiteiten, agenda-items en
+  nieuws. Bij agenda en nieuws deed de oude knop "Concept" overigens niets:
+  die zette alleen een vinkje om zonder op te slaan.
+
+---
+
+## Redactie-assistent + vier kleine punten (9-11, lokaal — nog niet gepusht)
+
+### De rol Redactie-assistent
+
+Er komen meerdere mensen die zelf dingen gaan toevoegen. Afspraak: wat iemand
+aanmaakt is van hém.
+
+- Nieuwe rol **redactie_assistent**. Ziet vijf schermen: Dashboard,
+  Bewonersinitiatieven, Activiteiten, Voorzieningen en Nieuws. De rest staat
+  niet in het menu en is ook niet te openen via de route.
+- Elke rij in die vier tabellen krijgt een kolom **`eigenaar_id`**. Maakt een
+  assistent iets aan, dan komt hij daarin te staan. Maakt Margareth of de
+  redactie iets aan, dan blijft die leeg: "van de redactie", precies zoals
+  het nu is. Alle bestaande rijen blijven dus van de redactie.
+- Een assistent ziet in de lijsten **alleen zijn eigen werk** — ook op het
+  dashboard bij Concepten en in de teller bij Activiteiten.
+- Margareth ziet alles, met een labeltje "van wie". Bij andermans item staat
+  geen potlood maar een oogje: ze kan het openen en lezen, maar het formulier
+  staat op slot en Opslaan en Verwijderen zijn er niet. Zo wilde Giovanny het
+  (9-11): kijken mag, bewerken pas als de assistent het overdraagt.
+- De assistent heeft bij zijn eigen item de knop **Overdragen aan Margareth**.
+  Daarna heeft de rij geen eigenaar meer, dus de redactie kan eraan werken en
+  hij zelf niet meer. Die actie komt in het wijzigingenlogboek.
+- Een assistent kiest zelf Concept of Gepubliceerd (besluit Giovanny 9-11:
+  direct live, geen goedkeuring vooraf).
+- Bij **Gebruikers** staat nu een rolkeuze in het uitnodigingsformulier, met
+  Redactie-assistent als voorkeur. Tot nu toe werd iedereen automatisch
+  "beheerder" — de rol die volgens de testronde van 7-11 nergens bij kan.
+
+**Nog te doen voordat dit werkt:** `sql/redactie_assistent.sql` draaien in
+Supabase (kolom + index + de nieuwe rol toestaan in profiles).
+
+**Wat hier nog níét in zit:** het afdwingen in de database zelf (RLS). Nu
+regelt het CMS wie wat ziet. Wie rechtstreeks met de publieke sleutel de
+database bevraagt, kan de rijen van een ander ophalen. Dat hoort samen met
+de rechten-audit in één keer goed te gebeuren; de uitleg staat onderaan in
+het SQL-bestand.
+
+### De vier kleine punten
+
+1. **Tooltips bij elke knop.** Alle 149 knoppen in het CMS hebben nu een
+   `title`, plus de 21 menu-items en de 10 tabbladen. Even blijven hangen met
+   de muis en er staat wat de knop doet.
+2. **Contact uit het menu.** De teksten stonden al bij Pagina's → Contact.
+   De contactkaartjes (rol, omschrijving, e-mail, icoon) stonden alléén in
+   dat scherm, dus die zijn mee verhuisd naar Pagina's → Contact; daar staan
+   ze nu onder de teksten met een eigen knop "Kaartjes opslaan". Het losse
+   menu-item is weg. De oude route stuurt door naar Pagina's.
+3. **Icoon "Overig"** — een leeg vierkantje in dezelfde stijl als de andere
+   iconen (paarse tegel, witte rand). Staat klaar als `public/iconen/overig.png`
+   en moet nog in de opslagmap `icons` gezet worden; het kapotte
+   `muziek-noot.png` (een roze vlak zonder tekening) kan weg. In de vaste
+   lijst in de code is dat al geruild.
+4. **Wijk/gebied** staat bij een nieuw bewonersinitiatief en een nieuwe
+   activiteit standaard op **Scheveningen - Noord**. Let op: in de database
+   staan nu drie schrijfwijzen door elkaar (Scheveningen-Noord, Scheveningen
+   Noord, Scheveingen Noord). Bestaande items zijn niet aangeraakt.
+
+---
+
 ## Doneren & Boek werkt nu echt (8-11, lokaal — nog niet gepusht)
 
 Uit de testronde van 7-11 kwam: het scherm **Doneren & Boek** meldde
