@@ -73,6 +73,15 @@ plaats van het Leaflet-ballonnetje dat er eerst stond.
   Visserijbuurt en Statenkwartier. (9-11 uitgebreid tot en met de haven op
   verzoek van Giovanny, en de stippellijn vervangen door een duidelijke lijn;
   alle bewonersinitiatieven, activiteiten en partners vallen er nu binnen.)
+  Alles búíten het gebied ligt onder een witte waas van 60%: één vlak over de
+  hele kaart met het gebied eruit geknipt, dus het klopt ook bij inzoomen en
+  verslepen. Dat vlak vangt geen klikken op.
+
+- **Telefoonfout opgelost** (stond al live, niet door bovenstaande veroorzaakt):
+  de buurtatlas liep op een smal scherm zo'n 60 pixels van het scherm af. In de
+  lijst onder de kaart pasten het bolletje, de tekst, het categorielabel en de
+  knop "Bezoek site" niet naast elkaar. Onder 600 pixels zakken het label en de
+  knop nu onder de tekst (`.place-item` in template.html).
   De punten komen uit de officiële wijken- en buurtkaart van het CBS (via
   PDOK, versie 2023), samengevoegd tot één omtrek en afgerond op ongeveer vijf
   meter — 108 punten, ruim 2 kB. Het staat als `TIB_WIJKGRENS` bovenin
