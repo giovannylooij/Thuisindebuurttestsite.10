@@ -66,9 +66,13 @@ plaats van het Leaflet-ballonnetje dat er eerst stond.
   scheelt dit veel: op de Wijkwinkel staan 16 dingen op hetzelfde punt, en
   daarvan was er één zichtbaar.
 
-- **Grens van de wijk op de kaart.** De Buurtatlas laat nu een stippellijn zien
-  rond Noordelijk Scheveningen: de buurten Belgisch Park, Westbroekpark,
-  Duttendel, Van Stolkpark en Scheveningse Bosjes, Oostduinen en Rijslag.
+- **Grens van het gebied op de kaart.** De Buurtatlas laat een doorgetrokken
+  lijn in het huisstijlgroen zien rond elf buurten: Belgisch Park,
+  Westbroekpark, Duttendel, Van Stolkpark en Scheveningse Bosjes, Oostduinen,
+  Rijslag, Scheveningen Badplaats, Oud Scheveningen, Vissershaven,
+  Visserijbuurt en Statenkwartier. (9-11 uitgebreid tot en met de haven op
+  verzoek van Giovanny, en de stippellijn vervangen door een duidelijke lijn;
+  alle bewonersinitiatieven, activiteiten en partners vallen er nu binnen.)
   De punten komen uit de officiële wijken- en buurtkaart van het CBS (via
   PDOK, versie 2023), samengevoegd tot één omtrek en afgerond op ongeveer vijf
   meter — 108 punten, ruim 2 kB. Het staat als `TIB_WIJKGRENS` bovenin
