@@ -33,6 +33,25 @@ probleem nog.
 
 ---
 
+## Buurtatlas krijgt hetzelfde kaartvenster als Activiteiten (9-11, nog niet gepusht)
+
+Op verzoek van Giovanny: precies hetzelfde als de kaart bij Activiteiten, in
+plaats van het Leaflet-ballonnetje dat er eerst stond.
+
+- Klik op een stip opent nu een wit paneel linksboven in de kaart, met
+  "x plekken" erboven, per regel een gekleurd bolletje van de categorie en de
+  naam als klikbare link, en onderaan het adres met een speldje.
+- De naam opent de pagina van dat bewonersinitiatief, die activiteit of die
+  voorziening. Een partner heeft geen eigen pagina; daar opent de naam zijn
+  website als die bekend is, anders is het gewone tekst.
+- Meer dan tien op één adres? Dan twee kolommen, als de kaart breed genoeg is.
+  Klik naast de stippen om het paneel te sluiten.
+- **De stip zelf:** één plek houdt de kleur van zijn categorie, zodat hij
+  klopt met de knoppenbalk eronder. Zitten er meerdere onder, dan wordt hij
+  groter en krijgt hij de huisstijlkleur — zo zie je meteen waar meer zit.
+
+---
+
 ## Buurtatlas: meerdere plekken per stip + wijkgrens (9-11, lokaal — nog niet gepusht)
 
 - **"Activiteit herhaalt wekelijks of maandelijks"** heet nu **"Activiteit
