@@ -33,6 +33,39 @@ probleem nog.
 
 ---
 
+## Buurtatlas: meerdere plekken per stip + wijkgrens (9-11, lokaal — nog niet gepusht)
+
+- **"Activiteit herhaalt wekelijks of maandelijks"** heet nu **"Activiteit
+  herhaalt periodiek"** (bij de schakelaar Terugkerend).
+
+- **Meerdere plekken op één stip.** Op de Buurtatlas lagen stippen op hetzelfde
+  adres bovenop elkaar; je kon er maar één aanklikken. Nu worden ze
+  gegroepeerd, net als op de kaart bij Bewonersinitiatieven: één stip, en in
+  het venster staat alles wat op dat adres zit, met een kopje "x plekken op
+  dit adres". Staat er meer dan één, dan is de stip iets groter; zitten er
+  verschillende soorten onder, dan krijgt hij de huisstijlkleur. In de praktijk
+  scheelt dit veel: op de Wijkwinkel staan 16 dingen op hetzelfde punt, en
+  daarvan was er één zichtbaar.
+
+- **Grens van de wijk op de kaart.** De Buurtatlas laat nu een stippellijn zien
+  rond Noordelijk Scheveningen: de buurten Belgisch Park, Westbroekpark,
+  Duttendel, Van Stolkpark en Scheveningse Bosjes, Oostduinen en Rijslag.
+  De punten komen uit de officiële wijken- en buurtkaart van het CBS (via
+  PDOK, versie 2023), samengevoegd tot één omtrek en afgerond op ongeveer vijf
+  meter — 108 punten, ruim 2 kB. Het staat als `TIB_WIJKGRENS` bovenin
+  `bundle-src/buurtatlas.jsx`; bij een herindeling hoeft alleen die lijst
+  vervangen te worden.
+  De kaart opent nu ook precies op dat gebied in plaats van op een vast
+  zoomniveau, zodat de hele wijk in beeld staat. Is er in het CMS wél een
+  zoomniveau ingesteld, dan gaat dat voor.
+  Keuze Giovanny (9-11): alleen op de Buurtatlas, niet op de kleine kaartjes
+  bij Bewonersinitiatieven en Activiteiten.
+
+  *Let op:* twee partners (Statenkwartier en Visserijbuurt) liggen buiten die
+  lijn. Dat klopt met de buurtindeling, maar het valt op de kaart op.
+
+---
+
 ## Voorvertoning per item + één publicatieknop (9-11, lokaal — nog niet gepusht)
 
 **Voorvertoning gaat nu naar het stuk waar je mee bezig bent.** De website
