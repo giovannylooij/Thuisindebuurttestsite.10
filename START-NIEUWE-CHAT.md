@@ -1,6 +1,6 @@
 # Startprompt voor een nieuwe chat — Thuis in de Buurt
 
-*Bijgewerkt: 9 november 2026. Plak dit hele bestand in een nieuwe chat.*
+*Bijgewerkt: 10 november 2026. Plak dit hele bestand in een nieuwe chat.*
 
 ---
 
@@ -69,36 +69,43 @@ zo bleef een kapot nieuwsscherm lang onopgemerkt.
 
 ## Waar we nu staan
 
-Live: **versie 1.0.249**. Laatste gepushte commit: `5caa546`.
+Live: **versie 1.0.256**.
 
-**Recent af en live:** doneerpagina slaat echt op in de database; de rol
-Redactie-assistent met eigenaarschap per item; tooltips op alle knoppen;
-Contact verhuisd naar Pagina's; voorvertoning gaat naar het item waar je mee
-bezig bent (de site leest nu `?pagina=` en `?id=`); één duidelijke
-publicatieknop in plaats van drie; buurtatlas met gegroepeerde stippen, de
-wijkgrens in huisstijlgroen en een waas eromheen.
+**Recent af en live:** de rol Redactie-assistent werkt helemaal — eigen
+bewonersinitiatieven, activiteiten, voorzieningen, nieuws en netwerken
+aanmaken, bewerken, publiceren en overdragen aan Margareth, en niemand ziet
+elkaars werk. Er is ook een handleiding met schermafdrukken
+(Handleiding-redactie-assistent.pdf). Verder: de doneerpagina slaat echt op, tooltips op alle knoppen,
+Contact verhuisd naar Pagina's, voorvertoning gaat naar het item zelf
+(`?pagina=` en `?id=`), één duidelijke publicatieknop, buurtatlas met
+gegroepeerde stippen en de wijkgrens in huisstijlgroen, en nieuwsberichten
+komen eindelijk op de website.
 
-**Klaar maar nog niet gepusht** (staat lokaal, is getest):
-- nieuwsberichten komen nu op de website (stonden er nooit op);
-- een nieuwsbericht opslaan werkte helemaal niet en het CMS meldde toch
-  "opgeslagen!" — vertaling naar de echte kolomnamen erbij, melding pas na
-  bevestiging;
-- veld voor de volledige tekst van een nieuwsbericht toegevoegd;
-- drie nieuwe SQL-bestanden in `sql/`.
+**Twee dingen om te weten bij dit onderwerp:**
+
+1. **Overdragen gaat via een functie in de database**, niet via een gewone
+   wijziging: `public.tib_draag_over(tabel, id)`, zie `sql/overdragen-functie.sql`.
+   Een gewone wijziging werd geweigerd, en dat is geen fout in de regels: de
+   database staat niet toe dat iemand een rij zo aanpast dat hij hem daarna
+   zelf niet meer mag zien — en dat is precies wat overdragen doet. De
+   leesregel willen we houden zoals hij is (assistenten zien elkaars werk
+   niet), dus doet die functie de controle zelf.
+2. **Nieuwe tabellen krijgen in dit project automatisch RLS.** Maak je er een
+   aan om iets uit te zoeken, zet die dan uit, anders kun je er zelf niet in
+   schrijven.
 
 **Openstaand bij Gio:**
-1. Mijn eigen rol terugzetten naar superadmin (ik had hem op Redactie-assistent
-   gezet om te testen en sloot mezelf buiten).
-2. `sql/nieuws_kolommen.sql` draaien (kolommen `cat` en `uitgelicht`).
-3. `public/iconen/overig.png` uploaden in de Mediabibliotheek, en het kapotte
+1. Armando aanmaken als Redactie-assistent en samen natesten.
+2. `public/iconen/overig.png` uploaden in de Mediabibliotheek, en het kapotte
    `muziek-noot.png` weggooien in Supabase → Storage → icons.
-4. Armando aanmaken als Redactie-assistent en samen natesten.
+3. Uitzoeken wie er nog op de rol "beheerder" staat — die rol loopt op negen
+   van de tien schermen dood.
 
 **Groter werk dat nog wacht:** rechten-audit op de hele database
 (`sql/rls_audit.sql`); Mollie-betaling aanzetten (wacht op een eigen
 websiteprofiel en op een bevestigingsmail — e-mail zit nergens in het
-project); de rol "beheerder" is onbruikbaar (ziet tien menu-items waarvan er
-negen doodlopen); Huisstijl schrijft om het wijzigingenlogboek heen.
+project); de rol "beheerder" is onbruikbaar; Huisstijl schrijft om het
+wijzigingenlogboek heen; de zoomstand van de Buurtatlas slaat niet op.
 
 Lees `TODO.md` voor de volledige stand van zaken en
 `TESTRONDE-CMS-2026-11-07.md` voor de doorlichting van het CMS.

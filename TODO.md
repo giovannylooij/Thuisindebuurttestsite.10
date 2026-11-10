@@ -33,6 +33,61 @@ probleem nog.
 
 ---
 
+## Redactie-assistent werkend — afgerond en live (10-11, versie 1.0.255)
+
+De rol doet nu wat afgesproken is. Onderweg kwamen er vijf fouten boven water.
+
+- [x] **Eigen gebruikers-id uit de inlogsessie** in plaats van uit het profiel.
+      Stond het er nog niet toen een assistent iets aanmaakte, dan kreeg die
+      rij geen eigenaar en verdween hij uit zijn eigen lijst.
+- [x] **Eigenaar gaat expliciet mee bij opslaan** van een bestaande rij. Hing
+      eerder af van hoe de database een upsert afhandelt.
+- [x] **Melding als de rol niet gelezen kan worden**, in plaats van stil
+      terugvallen op "beheerder" (de rol die op negen van de tien schermen
+      doodloopt).
+- [x] **Een item dat je niet mag bewerken is zichtbaar grijs** en heeft geen
+      publicatieknop meer. Die knop deed al niets, maar zag er wel uit alsof
+      hij werkte.
+- [x] **Overdragen via `public.tib_draag_over()`** (sql/overdragen-functie.sql).
+      Het ging eerst mis met "new row violates row-level security policy".
+      Nagespeeld in de database: niets wijzigen lukt, eigenaar op zichzelf
+      zetten lukt, eigenaar leegmaken niet — terwijl de schrijfregel zegt dat
+      het mag. Oorzaak: de rij verdwijnt daarmee uit het zicht van de
+      assistent, en dat staat de database niet toe. Dat zit in de leesregel,
+      die we juist zo willen houden. Daarom nu een functie die zelf
+      controleert of het item van de aanroeper is.
+- [x] Teksten noemen **Margareth** in plaats van "de redactie" — zij is de
+      superadmin (admin@thuisindebuurt.nl). Onder water blijft het veld leeg,
+      dus het redactie-account kan er technisch ook bij.
+- [x] **Netwerken erbij voor de assistent** (sql/netwerken-assistent.sql).
+      Zelfde regels als de andere onderdelen. De leesregel gebruikt
+      coalesce(actief, true), want de website toont een netwerk zolang actief
+      niet uitstaat.
+- [x] Nieuws: de eigenaar ging niet mee in de lijst na het aanmaken, waardoor
+      een vers bericht meteen uit de eigen lijst verdween tot de pagina werd
+      ververst.
+- [x] Nieuws: berichten komen op de website (stonden er nooit op), opslaan
+      werkte niet en meldde toch "opgeslagen", veld voor de volledige tekst.
+- [x] SQL gedraaid: `rol-werkend-maken.sql` (eigen profiel lezen + de kolommen
+      `cat` en `uitgelicht`) en `overdragen-functie.sql`.
+
+Getest met twee echte accounts (aigiovannylooij@gmail.com en
+giovannylooijesteijn@icloud.com): ze zien elkaars werk niet, overdragen werkt,
+en de superadmin ziet alles maar kan andermans werk niet wijzigen.
+
+**Let op bij testen:** Safari houdt `beheer.html` hardnekkig vast. Het
+versienummer linksonder in het menu zegt welke versie je voor je hebt.
+
+**Nog open hierbij:**
+- [ ] Armando aanmaken als Redactie-assistent en samen doorlopen.
+- [ ] Eén gebruiker staat nog op de rol **beheerder** — die rol loopt op negen
+      van de tien schermen dood. Uitzoeken wie dat is en wat daarmee moet.
+- [ ] Wil Giovanny dat écht alleen Margareth een overgedragen item kan
+      bewerken (nu kan het redactie-account het ook), dan moet de schrijfregel
+      mee veranderen. Bewust nog niet gedaan.
+
+---
+
 ## Testronde na "ik kan niet publiceren" (9-11, nog niet gepusht)
 
 Giovanny kon een bewonersinitiatief niet publiceren. De knop bleek in orde;
