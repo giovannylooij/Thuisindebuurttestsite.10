@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.255', datum: '10-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.256', datum: '10-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1354,10 +1354,10 @@ const TIB_ROLLEN = {
   beheerder:          'Initiatief-beheerder',
 };
 // Waar mag een redactie-assistent bij?
-const ASSISTENT_ROUTES = new Set(['dashboard', 'clubjes', 'activiteiten', 'voorzieningen', 'nieuws']);
+const ASSISTENT_ROUTES = new Set(['dashboard', 'clubjes', 'activiteiten', 'voorzieningen', 'nieuws', 'netwerken']);
 // In deze tabellen houden we bij wie het heeft aangemaakt (kolom eigenaar_id,
 // zie sql/redactie_assistent.sql).
-const TIB_EIGENAAR_TABELLEN = ['clubjes', 'activiteiten', 'voorzieningen', 'nieuws'];
+const TIB_EIGENAAR_TABELLEN = ['clubjes', 'activiteiten', 'voorzieningen', 'nieuws', 'netwerken'];
 
 // Wie hoort bij welk gebruikers-id? Alleen de superadmin mag dit opvragen;
 // een assistent heeft het niet nodig, die ziet alleen zijn eigen werk.
@@ -4273,7 +4273,9 @@ function NieuwsEdit({ item, onBack }) {
     }
     const created = await window.__supabaseInsert('nieuws', toSave);
     if (!created) return false;
-    DATA.nieuws.push({ ...toSave, id: created.id });
+    // Alles overnemen wat de database teruggaf, niet alleen het id: anders
+    // mist eigenaar_id en verdwijnt een vers bericht uit de eigen lijst.
+    DATA.nieuws.push({ ...toSave, ...created });
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Nieuwsbericht opgeslagen!');
     return true;
@@ -5589,6 +5591,14 @@ function PartnersScreen() {
 
 function NetwerkEdit({ item, onBack, onOpgeslagen }) {
   const [fd, setFd] = React.useState({ ...item });
+  // Een redactie-assistent werkt alleen aan zijn eigen netwerken; die van de
+  // redactie of van een andere assistent staan op slot (zie tibMagBewerken).
+  const magBewerken = tibMagBewerken(item);
+  const bestaatEigen = tibIsAssistent() && item && item.id != null
+    && item.eigenaar_id === tibMijnGebruikerId();
+  const eigenaarTekst = (item && item.eigenaar_id && window._tibGebruikersNamen
+    && window._tibGebruikersNamen[item.eigenaar_id])
+    ? ' (' + window._tibGebruikersNamen[item.eigenaar_id] + ')' : '';
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [bezig, setBezig] = React.useState(false);
   // null = nog niet gekeken, false = sql/netwerken_herstellen.sql is nog niet gedraaid
@@ -5644,10 +5654,24 @@ function NetwerkEdit({ item, onBack, onOpgeslagen }) {
         title={fd.naam || 'Nieuw netwerk'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar netwerken</a></>}
         actions={<>
-          {item.id != null && <button title="Verwijder dit netwerk definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button title="Bewaar dit netwerk" className="btn btn-primary" disabled={bezig} onClick={async () => { if (await handleSave()) onBack(); }}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>
+          {magBewerken && item.id != null && <button title="Verwijder dit netwerk definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
+          {magBewerken && <button title="Bewaar dit netwerk" className="btn btn-primary" disabled={bezig} onClick={async () => { if (await handleSave()) onBack(); }}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>}
+          {magBewerken && bestaatEigen && (
+            <button title="Geef dit item aan Margareth; daarna kunt u het zelf niet meer aanpassen"
+              className="btn" onClick={async () => { if (await tibDraagOver('netwerken', item, fd.naam)) onBack(); }}>
+              <Icon name="users" size={14} /> Overdragen aan Margareth
+            </button>
+          )}
         </>}
       />
+      {!magBewerken && (
+        <HintCard icon="info">
+          Dit item is aangemaakt door een redactie-assistent{eigenaarTekst}. U kunt het bekijken,
+          maar niet aanpassen. Pas als die persoon het overdraagt, kunt u eraan werken.
+        </HintCard>
+      )}
+      {/* Op slot? Dan ook zichtbaar grijs, net als bij de andere schermen. */}
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55 }}>
       <div className="form-grid">
         <div>
           <div className="form-section">
@@ -5698,6 +5722,7 @@ function NetwerkEdit({ item, onBack, onOpgeslagen }) {
           </div>
         </div>
       </div>
+      </fieldset>
     </>
   );
 }
@@ -5744,26 +5769,36 @@ function NetwerkenScreen() {
         actions={<button title="Maak een nieuw netwerk aan" className="btn btn-primary" onClick={() => setEditing('new')}><Icon name="plus" size={14} /> Nieuw netwerk</button>}
       />
       <div className="grid grid-2">
-        {DATA.netwerken.map(n => (
+        {tibZichtbaarVoorMij(DATA.netwerken).map(n => (
           <div key={n.id} className="card card-pad">
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <div className="row-icon" style={{ width: 44, height: 44 }}><Icon name="network" size={16} /></div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 600 }}>{n.naam}</div>
+                <div style={{ fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 600 }}>
+                  {n.naam}<EigenaarLabel rij={n} />
+                </div>
                 <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>Doelgroep: {n.doelgroep || '—'}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>Bereik: {n.locatie || '—'}</div>
                 <div style={{ marginTop: 6 }}>
                   <Pill variant={n.actief !== false ? 'published' : 'draft'}>{n.actief !== false ? 'Zichtbaar' : 'Verborgen'}</Pill>
                 </div>
                 <div style={{ marginTop: 12, display: 'flex', gap: 6 }}>
-                  <button title="Pas dit netwerk aan" className="btn btn-sm" onClick={() => setEditing(n.id)}><Icon name="edit" size={12} /> Bewerk</button>
-                  <button title="Verwijder dit netwerk definitief" className="btn btn-sm btn-ghost btn-danger" onClick={() => handleDelete(n.id, n.naam)}><Icon name="trash" size={12} /></button>
+                  <button title={tibMagBewerken(n) ? 'Pas dit netwerk aan' : 'Bekijk dit netwerk; aanpassen kan alleen de maker'}
+                    className="btn btn-sm" onClick={() => setEditing(n.id)}>
+                    <Icon name={tibMagBewerken(n) ? 'edit' : 'eye'} size={12} /> {tibMagBewerken(n) ? 'Bewerk' : 'Bekijk'}
+                  </button>
+                  {tibMagBewerken(n) && <button title="Verwijder dit netwerk definitief" className="btn btn-sm btn-ghost btn-danger" onClick={() => handleDelete(n.id, n.naam)}><Icon name="trash" size={12} /></button>}
                 </div>
               </div>
             </div>
           </div>
         ))}
-        {DATA.netwerken.length === 0 && <EmptyState title="Geen netwerken" sub="Voeg het eerste netwerk toe via de knop rechtsboven." />}
+        {tibZichtbaarVoorMij(DATA.netwerken).length === 0 && (
+          <EmptyState title="Geen netwerken"
+            sub={tibIsAssistent()
+              ? 'U ziet hier alleen de netwerken die u zelf hebt toegevoegd. Voeg er een toe via de knop rechtsboven.'
+              : 'Voeg het eerste netwerk toe via de knop rechtsboven.'} />
+        )}
       </div>
     </>
   );
