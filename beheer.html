@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.249', datum: '09-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.253', datum: '10-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -2733,7 +2733,9 @@ function ClubjeEdit({ id, onBack }) {
           maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
         </HintCard>
       )}
-      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+      {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
+          maar nergens op reageert, laat iemand eindeloos klikken. */}
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55 }}>
 
       <div className="form-grid">
         {/* Main */}
@@ -2860,7 +2862,11 @@ function ClubjeEdit({ id, onBack }) {
             <div className="row"><span>Status</span><strong>{published ? 'Gepubliceerd' : 'Concept'}</strong></div>
             <div className="row"><span>Zichtbaarheid</span><strong>{published ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
             <div className="divider"></div>
-            {published ? (
+            {!magBewerken ? (
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
+                Alleen de redactie-assistent die dit heeft gemaakt, kan de status veranderen.
+              </p>
+            ) : published ? (
               <button className="btn btn-sm" style={{ width: '100%' }} disabled={bezig}
                 title="Haal dit van de website; het blijft als concept in het CMS staan"
                 onClick={async () => { if (await handleSave(false)) { setPublished(false); toast('Van de website gehaald — staat nu als concept in het CMS'); } }}>
@@ -3561,7 +3567,9 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
           maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
         </HintCard>
       )}
-      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+      {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
+          maar nergens op reageert, laat iemand eindeloos klikken. */}
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55 }}>
 
       {TIB_BETALEN_AAN && bestaat && fd.betaald && betaalKolommen !== false && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
@@ -3797,7 +3805,11 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
             <div className="row"><span>Status</span><strong>{published ? 'Gepubliceerd' : 'Concept'}</strong></div>
             <div className="row"><span>Zichtbaarheid</span><strong>{published ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
             <div className="divider"></div>
-            {published ? (
+            {!magBewerken ? (
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
+                Alleen de redactie-assistent die dit heeft gemaakt, kan de status veranderen.
+              </p>
+            ) : published ? (
               <button className="btn btn-sm" style={{ width: '100%' }} disabled={bezig}
                 title="Haal dit van de website; het blijft als concept in het CMS staan"
                 onClick={async () => { if (await handleSave(false)) { setPublished(false); toast('Van de website gehaald — staat nu als concept in het CMS'); } }}>
@@ -4223,28 +4235,40 @@ function NieuwsEdit({ item, onBack }) {
   const bestaatEigen = tibIsAssistent() && item && item.id != null && item.eigenaar_id === tibMijnGebruikerId();
   const eigenaarTekst = (item && item.eigenaar_id && window._tibGebruikersNamen && window._tibGebruikersNamen[item.eigenaar_id])
     ? ' (' + window._tibGebruikersNamen[item.eigenaar_id] + ')' : '';
-  const [fd, setFd] = React.useState({ ...item });
+  // Een bericht uit de database heeft intro/inhoud/foto_url; het scherm werkt
+  // met lead/inhoud/photo. Zonder deze omzetting opende een bestaand bericht
+  // met een lege intro en zonder foto (gevonden 9-11).
+  const [fd, setFd] = React.useState(() => ({
+    ...item,
+    lead:   item.lead   !== undefined ? item.lead   : (item.intro || ''),
+    inhoud: item.inhoud !== undefined ? item.inhoud : (item.tekst || ''),
+    photo:  item.photo  !== undefined ? item.photo  : (item.foto_url || null),
+  }));
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [gepubliceerd, setGepubliceerd] = React.useState(item.status === 'Gepubliceerd');
   const [uitgelicht, setUitgelicht] = React.useState(!!item.uitgelicht);
 
-  function handleSave(pubOverride) {
+  // Pas melden dat het is opgeslagen als de database het heeft bevestigd.
+  // Hiervoor verscheen "Nieuwsbericht opgeslagen!" altijd, ook als het
+  // wegschrijven mislukte (gevonden 9-11).
+  async function handleSave(pubOverride) {
     const isPublished = pubOverride !== undefined ? pubOverride : gepubliceerd;
     let toSave = { ...fd, uitgelicht, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     const idx = DATA.nieuws.findIndex(n => n.id === item.id);
     if (idx >= 0) {
+      const gelukt = await window.__supabaseUpsert('nieuws', toSave);
+      if (!gelukt) return false;
       DATA.nieuws[idx] = toSave;
       window.__syncToSite && window.__syncToSite();
-      window.__supabaseUpsert('nieuws', toSave);
       window.__showToast && window.__showToast('Nieuwsbericht opgeslagen!');
-    } else {
-      window.__supabaseInsert('nieuws', toSave).then(created => {
-        if (!created) return;
-        DATA.nieuws.push({ ...toSave, id: created.id });
-        window.__syncToSite && window.__syncToSite();
-        window.__showToast && window.__showToast('Nieuwsbericht opgeslagen!');
-      });
+      return true;
     }
+    const created = await window.__supabaseInsert('nieuws', toSave);
+    if (!created) return false;
+    DATA.nieuws.push({ ...toSave, id: created.id });
+    window.__syncToSite && window.__syncToSite();
+    window.__showToast && window.__showToast('Nieuwsbericht opgeslagen!');
+    return true;
   }
 
   function handleDelete() {
@@ -4284,7 +4308,9 @@ function NieuwsEdit({ item, onBack }) {
           maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
         </HintCard>
       )}
-      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+      {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
+          maar nergens op reageert, laat iemand eindeloos klikken. */}
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55 }}>
       <div className="form-grid">
         <div>
           <div className="form-section">
@@ -4297,6 +4323,9 @@ function NieuwsEdit({ item, onBack }) {
             <Field label="Datum"><input type="date" value={fd.datum || ''} onChange={e => up('datum', e.target.value)} /></Field>
             <Field label="Intro / lead" hint="Korte samenvatting, zichtbaar op overzichtspagina's.">
               <textarea value={fd.lead || ''} onChange={e => up('lead', e.target.value)} />
+            </Field>
+            <Field label="Het bericht zelf" hint="De volledige tekst, zichtbaar als iemand het bericht opent. Dit veld ontbrak nog in het scherm.">
+              <textarea rows={10} value={fd.inhoud || ''} onChange={e => up('inhoud', e.target.value)} />
             </Field>
             <Field label="URL-slug">
               <div className="url-slug">
@@ -4360,7 +4389,11 @@ function NieuwsEdit({ item, onBack }) {
             <div className="row" style={{ marginTop: 4 }}><span>Status</span><strong>{gepubliceerd ? 'Gepubliceerd' : 'Concept'}</strong></div>
             <div className="row"><span>Zichtbaarheid</span><strong>{gepubliceerd ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
             <div className="divider"></div>
-            {gepubliceerd ? (
+            {!magBewerken ? (
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
+                Alleen de redactie-assistent die dit heeft gemaakt, kan de status veranderen.
+              </p>
+            ) : gepubliceerd ? (
               <button className="btn btn-sm" style={{ width: '100%' }}
                 title="Haal dit van de website; het blijft als concept in het CMS staan"
                 onClick={() => { setGepubliceerd(false); handleSave(false); window.__showToast && window.__showToast('Van de website gehaald — staat nu als concept in het CMS'); }}>
@@ -5245,7 +5278,9 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
           maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
         </HintCard>
       )}
-      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+      {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
+          maar nergens op reageert, laat iemand eindeloos klikken. */}
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55 }}>
       <div className="form-grid">
         <div>
           <div className="form-section">
@@ -9220,6 +9255,11 @@ function App() {
     window._tibGebruiker = session
       ? { id: session.user.id, email: session.user.email }
       : null;
+    // Het eigen gebruikers-id komt uit de sessie, niet uit het profiel. Stond
+    // dit eerder pas na het ophalen van het profiel klaar, dan kon een
+    // redactie-assistent iets aanmaken zonder eigenaar — en zag hij zijn
+    // eigen item daarna niet meer in de lijst staan.
+    window._tibGebruikerId = session ? session.user.id : null;
   }, [session?.user?.id]);
 
   // Haal profiel (rol + club_id) op zodra de sessie bekend is
@@ -9230,11 +9270,18 @@ function App() {
       .select('role, club_id')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // Lukt het lezen van het profiel niet, dan weten we de rol niet. Niet
+        // stilzwijgend "beheerder" aannemen: een redactie-assistent kreeg dan
+        // een menu vol doodlopende schermen en geen enkele uitleg waarom.
+        if (error || !data) {
+          console.warn('Profiel (rol) niet gelezen:', error);
+          window.__showToast && window.__showToast(
+            'Uw rol kon niet worden opgehaald. Vernieuw de pagina; blijft dit staan, meld het dan aan de beheerder.');
+        }
         const p = data || { role: 'beheerder', club_id: null };
         setProfile(p);
         window._tibProfile = p;
-        window._tibGebruikerId = session.user.id;
         // Namen van de andere gebruikers ophalen, zodat bij een item kan
         // staan van wie het is. Dat mag alleen de superadmin opvragen.
         if (p.role === 'superadmin') tibLaadGebruikersNamen(session.access_token);
@@ -9637,7 +9684,28 @@ function __mapNetwerkenToDb(item) {
   return rij;
 }
 
-const __DB_VERTALING = { clubjes: __mapClubjesToDb, activiteiten: __mapActiviteitenToDb, partners: __mapPartnersToDb, netwerken: __mapNetwerkenToDb };
+// Het nieuwsscherm werkt met andere veldnamen dan de tabel: lead/photo waar
+// de database intro/foto_url heeft, plus cat en uitgelicht. Zonder deze
+// vertaling stuurde het CMS die namen rechtstreeks mee en weigerde de
+// database de hele rij — "Opslaan mislukt", terwijl het scherm toch
+// "Nieuwsbericht opgeslagen!" meldde. Gevonden 9-11.
+function __mapNieuwsToDb(item) {
+  return {
+    id:         item.id,
+    titel:      item.titel,
+    intro:      item.lead !== undefined ? item.lead : item.intro,
+    inhoud:     item.inhoud !== undefined ? item.inhoud : (item.tekst !== undefined ? item.tekst : item.body),
+    cat:        item.cat !== undefined ? item.cat : item.categorie,
+    auteur:     item.auteur,
+    datum:      item.datum || null,
+    status:     item.status,
+    uitgelicht: item.uitgelicht === true,
+    foto_url:   item.photo || item.foto_url || null,
+    aangemaakt_op: item.aangemaakt_op || null,
+  };
+}
+
+const __DB_VERTALING = { clubjes: __mapClubjesToDb, activiteiten: __mapActiviteitenToDb, partners: __mapPartnersToDb, netwerken: __mapNetwerkenToDb, nieuws: __mapNieuwsToDb };
 
 /* ===== Wijzigingenlogboek (3-11) =====
    Margareth wil na het inloggen zien wat er is aangepast en door wie. Alle
@@ -9687,7 +9755,7 @@ const TIB_LOG_VELD_LABEL = {
 };
 
 // Deze velden zeggen Margareth niets, of veranderen buiten haar om.
-const TIB_LOG_NEGEER = ['id', 'aangemaakt_op', 'bijgewerkt_op', 'volgorde', 'slug'];
+const TIB_LOG_NEGEER = ['id', 'aangemaakt_op', 'bijgewerkt_op', 'volgorde', 'slug', 'eigenaar_id'];
 
 /* Een nieuw item komt uit het formulier met een rij standaardwaarden die
    niemand zelf heeft ingevuld: servicekosten 0, vraag adres nee, de
@@ -9824,6 +9892,16 @@ window.__supabaseUpsert = async function(tabel, item) {
         const vorige = await window.supabase.from(dbTabel).select('*').eq('id', dbItem.id).maybeSingle();
         oudeRij = vorige.data || null;
       } catch (leesFout) {}
+    }
+    // De eigenaar altijd meesturen bij een rij die er al is. De vertaaltabel
+    // hierboven geeft alleen de velden van het scherm door, en eigenaar_id zit
+    // daar niet bij. Zonder dit hangt het bewaren van het eigenaarschap af van
+    // hoe de database een upsert afhandelt — te wankel voor juist dit veld:
+    // raakt het kwijt, dan verdwijnt het item uit de lijst van de assistent
+    // die het heeft gemaakt.
+    if (oudeRij && TIB_EIGENAAR_TABELLEN.indexOf(tabel) !== -1
+        && dbItem && dbItem.eigenaar_id === undefined && oudeRij.eigenaar_id != null) {
+      dbItem.eigenaar_id = oudeRij.eigenaar_id;
     }
     const { error } = await window.supabase.from(dbTabel).upsert(dbItem, { onConflict: 'id' });
     if (error) throw error;

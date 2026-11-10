@@ -3,3 +3,6 @@ node_modules/
 *.log
 bundle-src/
 backups/
+
+# Lokale testkopie van het CMS (nep-Supabase ervoor) — nooit meecommitten.
+beheer-test.html

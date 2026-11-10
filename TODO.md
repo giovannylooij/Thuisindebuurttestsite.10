@@ -33,6 +33,60 @@ probleem nog.
 
 ---
 
+## Testronde na "ik kan niet publiceren" (9-11, nog niet gepusht)
+
+Giovanny kon een bewonersinitiatief niet publiceren. De knop bleek in orde;
+onderweg kwamen er wél drie echte fouten boven water.
+
+### 1. De oorzaak van het publiceren
+
+Giovanny had zijn eigen account op Redactie-assistent gezet om te testen. De
+schrijfregels in de database stonden op `superadmin` en `redactie`; de nieuwe
+rol stond daar niet bij, dus weigerde de database alles wat hij opsloeg.
+Opgelost met `sql/redactie_assistent_rechten.sql` (gedraaid 9-11): schrijven
+per eigenaar, en lezen zo dat een assistent alleen zijn eigen werk ziet, de
+redactie alles, en de website alleen wat gepubliceerd is.
+
+*Les voor de volgende keer:* niet je eigen account van rol veranderen — je
+sluit jezelf uit Gebruikers en kunt het dan niet meer terugzetten vanuit het
+CMS. Maak een apart testaccount.
+
+### 2. De nieuwspagina op de website was altijd leeg
+
+`NEWS` werd alleen bijgewerkt, nooit gevuld: er stond wel code om een
+bestaand bericht aan te passen, maar nieuwe berichten uit het CMS werden
+nergens toegevoegd. Er staan vier gepubliceerde berichten in de database en
+geen daarvan kwam op de site. Nu wel, nieuwste bovenaan, met de datum
+uitgeschreven ("2 mei 2026") en concepten eraf.
+
+### 3. Een nieuwsbericht opslaan mislukte altijd — en het CMS zei van niet
+
+Het scherm stuurde `cat`, `lead`, `uitgelicht` en `photo` mee; die kolommen
+heten in de database `intro` en `foto_url`, en `cat`/`uitgelicht` bestaan
+helemaal niet. De database weigerde daarom elke keer de hele rij, terwijl het
+scherm meteen "Nieuwsbericht opgeslagen!" meldde zonder het antwoord af te
+wachten. Drie dingen rechtgezet:
+
+- een vertaling CMS → database (`__mapNieuwsToDb`), zoals die er voor
+  bewonersinitiatieven en activiteiten al was;
+- de melding komt pas als de database het heeft bevestigd;
+- **nog te draaien:** `sql/nieuws_kolommen.sql` voegt `cat` en `uitgelicht`
+  toe. Zonder dat blijven die twee velden leeg (de rest werkt dan al wel).
+
+Nagekeken of hetzelfde bij andere schermen speelt: bewonersinitiatieven (25
+velden) en activiteiten (24 velden) sturen alleen bestaande kolommen mee.
+Daar zit het goed.
+
+### 4. Twee dingen die in het nieuwsscherm ontbraken
+
+- Een bestaand bericht openen liet de intro en de foto leeg staan: het scherm
+  zocht `lead`/`photo`, de database levert `intro`/`foto_url`.
+- **De volledige tekst van een bericht was nergens in te vullen**, terwijl de
+  website hem wel toont op de detailpagina. Er staat nu een veld "Het bericht
+  zelf".
+
+---
+
 ## Buurtatlas krijgt hetzelfde kaartvenster als Activiteiten (9-11, nog niet gepusht)
 
 Op verzoek van Giovanny: precies hetzelfde als de kaart bij Activiteiten, in
