@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.253', datum: '10-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.254', datum: '10-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1400,11 +1400,12 @@ function EigenaarLabel({ rij }) {
 }
 
 // Een assistent kan zijn item overdragen. Daarna heeft het geen eigenaar
-// meer: het is van de redactie, en Margareth kan er weer bij.
+// meer. Margareth is de superadmin (admin@thuisindebuurt.nl) en kan er dan
+// bij; in de database betekent dat: geen eigenaar, dus van de redactie.
 async function tibDraagOver(tabel, rij, titel) {
   if (!rij || rij.id == null) return false;
   const vraag = '"' + (titel || 'Dit item') + '" overdragen aan Margareth?\n\n'
-    + 'Daarna staat het op naam van de redactie. U kunt het dan zelf niet meer aanpassen.';
+    + 'Daarna staat het op naam van Margareth. U kunt het dan zelf niet meer aanpassen.';
   if (!window.confirm(vraag)) return false;
   const res = await window.supabase.from(tabel).update({ eigenaar_id: null }).eq('id', rij.id);
   if (res.error) {
@@ -1419,9 +1420,9 @@ async function tibDraagOver(tabel, rij, titel) {
   }
   window.__logWijziging && window.__logWijziging({
     tabel: tabel, rij_id: rij.id, titel: titel, soort: 'aangepast',
-    velden: [{ veld: 'Eigenaar', oud: 'Redactie-assistent', nieuw: 'De redactie' }],
+    velden: [{ veld: 'Eigenaar', oud: 'Redactie-assistent', nieuw: 'Margareth' }],
   });
-  window.__showToast && window.__showToast('Overgedragen aan de redactie');
+  window.__showToast && window.__showToast('Overgedragen aan Margareth');
   return true;
 }
 
@@ -2730,7 +2731,7 @@ function ClubjeEdit({ id, onBack }) {
       {!magBewerken && (
         <HintCard icon="info">
           Dit item is aangemaakt door een redactie-assistent{eigenaarTekst}. U kunt het bekijken,
-          maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
+          maar niet aanpassen. Pas als die persoon het overdraagt, kunt u eraan werken.
         </HintCard>
       )}
       {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
@@ -3564,7 +3565,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
       {!magBewerken && (
         <HintCard icon="info">
           Dit item is aangemaakt door een redactie-assistent{eigenaarTekst}. U kunt het bekijken,
-          maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
+          maar niet aanpassen. Pas als die persoon het overdraagt, kunt u eraan werken.
         </HintCard>
       )}
       {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
@@ -4305,7 +4306,7 @@ function NieuwsEdit({ item, onBack }) {
       {!magBewerken && (
         <HintCard icon="info">
           Dit item is aangemaakt door een redactie-assistent{eigenaarTekst}. U kunt het bekijken,
-          maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
+          maar niet aanpassen. Pas als die persoon het overdraagt, kunt u eraan werken.
         </HintCard>
       )}
       {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
@@ -5275,7 +5276,7 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
       {!magBewerken && (
         <HintCard icon="info">
           Dit item is aangemaakt door een redactie-assistent{eigenaarTekst}. U kunt het bekijken,
-          maar niet aanpassen. Pas als die persoon het overdraagt, kan de redactie eraan werken.
+          maar niet aanpassen. Pas als die persoon het overdraagt, kunt u eraan werken.
         </HintCard>
       )}
       {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
