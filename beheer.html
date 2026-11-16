@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.264', datum: '16-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.265', datum: '16-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -2004,15 +2004,63 @@ function AdresVeld({ value, onChange, onLocatieGevonden }) {
 
 function MiniMap({ lat, lng, label }) {
   const ref = React.useRef(null);
+  const kaart = React.useRef(null);
+  // De kaart kon niet groter; op dit formaat is lastig zien of de pin klopt.
+  // (terugkoppeling redactie-assistenten, 16-11)
+  const [groot, setGroot] = React.useState(false);
   React.useEffect(() => {
     if (!window.L || !ref.current) return;
     const m = window.L.map(ref.current, { zoomControl: false, scrollWheelZoom: false })
       .setView([lat, lng], 15);
+    kaart.current = m;
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
     window.L.marker([lat, lng]).addTo(m).bindTooltip(label || '', { permanent: true, direction: 'top', offset: [0, -8] });
-    return () => m.remove();
+    return () => { kaart.current = null; m.remove(); };
   }, [lat, lng, label]);
-  return <div ref={ref} style={{ height: 320, marginTop: 8, borderRadius: 8, border: '1px solid var(--line)', zIndex: 0 }} />;
+  React.useEffect(() => {
+    // Na het veranderen van de hoogte moet de kaart opnieuw meten, anders
+    // blijft de onderste helft grijs.
+    if (kaart.current) setTimeout(() => { if (kaart.current) kaart.current.invalidateSize(); }, 80);
+  }, [groot]);
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div ref={ref} style={{ height: groot ? 620 : 320, borderRadius: 8, border: '1px solid var(--line)', zIndex: 0 }} />
+      <button type="button" className="btn btn-sm" style={{ marginTop: 8 }}
+        title={groot ? 'Maak de kaart weer kleiner' : 'Maak de kaart groter om beter te zien waar de pin staat'}
+        onClick={() => setGroot(g => !g)}>
+        <Icon name="map" size={13} /> {groot ? 'Kaart kleiner' : 'Kaart groter'}
+      </button>
+    </div>
+  );
+}
+
+/* De coördinaten stonden altijd in beeld, terwijl het adres ze al invult.
+   Voor wie ze niet nodig heeft stonden ze alleen in de weg; voor wie een
+   verkeerd geplaatste pin moet corrigeren zijn ze onmisbaar. Daarom nu
+   achter één regel. (terugkoppeling redactie-assistenten, 16-11) */
+function CoordinatenVelden({ lat, lng, onLat, onLng }) {
+  const [open, setOpen] = React.useState(false);
+  if (!open) {
+    return (
+      <button type="button" className="btn btn-sm btn-ghost" style={{ marginBottom: 4 }}
+        title="Toon de coördinaten om de pin met de hand te verplaatsen"
+        onClick={() => setOpen(true)}>
+        Staat de pin verkeerd? Coördinaten aanpassen
+      </button>
+    );
+  }
+  return (
+    <div className="row-2">
+      <Field label="Latitude" hint="Noord-zuid. Alleen nodig als de pin verkeerd staat.">
+        <input type="number" step="0.0001" value={lat != null ? lat : ''}
+          onChange={e => onLat(e.target.value)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+      </Field>
+      <Field label="Longitude" hint="Oost-west.">
+        <input type="number" step="0.0001" value={lng != null ? lng : ''}
+          onChange={e => onLng(e.target.value)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
+      </Field>
+    </div>
+  );
 }
 
 const TIB_CAT_KLEUREN = [
@@ -2606,6 +2654,21 @@ function IconenKiezer({ iconen, gekozenLabel, onKies }) {
    browser vrijwel niet te doen; dat kostte de redactie-assistenten veel
    geklungel, en een verkeerd ingevulde datum was niet terug te draaien.
    (terugkoppeling 16-11) */
+/* Wanneer is dit aangemaakt? Twee berichten met dezelfde titel waren niet
+   uit elkaar te houden in de lijst. (terugkoppeling 16-11) */
+function tibAanmaakMoment(waarde) {
+  if (!waarde) return '—';
+  const d = new Date(waarde);
+  if (isNaN(d.getTime())) return '—';
+  const tijd = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const vandaag = new Date(); vandaag.setHours(0, 0, 0, 0);
+  const dag = new Date(d); dag.setHours(0, 0, 0, 0);
+  const verschil = Math.round((vandaag - dag) / 86400000);
+  if (verschil === 0) return 'vandaag om ' + tijd;
+  if (verschil === 1) return 'gisteren om ' + tijd;
+  return d.getDate() + ' ' + TIB_MAAND_LANG[d.getMonth()] + ' om ' + tijd;
+}
+
 function DatumVeld({ waarde, onChange }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2695,7 +2758,7 @@ function WanneerBlok({ fd, up, kolommen, soort }) {
                hint={freq === 'dagelijks'
                  ? 'Tot wanneer loopt het? Leeg laten betekent: elke dag, zonder eind.'
                  : freq === 'eenmalig'
-                   ? 'Duurt het meer dan één dag? Vul dan de laatste dag in. Is het één dag, laat dit dan leeg.'
+                   ? 'Duurt het meer dan één dag? Vul dan de laatste dag in. Is het één dag of is het doorlopend, laat dit dan leeg.'
                    : 'Leeg laten als het blijft doorgaan.'}>
           <DatumVeld waarde={fd.tot_datum} onChange={v => up('tot_datum', v)} />
         </Field>
@@ -2706,8 +2769,10 @@ function WanneerBlok({ fd, up, kolommen, soort }) {
         <input type="text" value={fd.wanneer || ''} placeholder={voorbeeld || ''} onChange={e => up('wanneer', e.target.value)} />
       </Field>
       {voorbeeld && !fd.wanneer && (
-        <button title="Zet deze tekst in het veld hierboven" className="btn btn-sm" style={{ marginTop: -4, marginBottom: 10 }} onClick={() => up('wanneer', voorbeeld)}>
-          Neem deze tekst over en pas hem aan
+        <button title="Zet deze tekst in het veld hierboven, dan kunt u hem aanpassen"
+          className="btn btn-sm" style={{ marginTop: -4, marginBottom: 10 }}
+          onClick={() => up('wanneer', voorbeeld)}>
+          <Icon name="copy" size={13} /> Tekst overnemen
         </button>
       )}
 
@@ -2926,14 +2991,8 @@ function ClubjeEdit({ id, onBack }) {
                 onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
               />
             </Field>
-            <div className="row-2">
-              <Field label="Latitude">
-                <input type="number" step="0.0001" value={fd.lat != null ? fd.lat : ''} onChange={e => up('lat', getal(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-              </Field>
-              <Field label="Longitude">
-                <input type="number" step="0.0001" value={fd.lng != null ? fd.lng : ''} onChange={e => up('lng', getal(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-              </Field>
-            </div>
+            <CoordinatenVelden lat={fd.lat} lng={fd.lng}
+              onLat={v => up('lat', getal(v))} onLng={v => up('lng', getal(v))} />
             {fd.lat != null && fd.lng != null ? <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} /> : null}
           </div>
 
@@ -3860,14 +3919,8 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
                 onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
               />
             </Field>
-            <div className="row-2">
-              <Field label="Latitude">
-                <input type="number" step="0.0001" value={fd.lat != null ? fd.lat : ''} onChange={e => up('lat', getal(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-              </Field>
-              <Field label="Longitude">
-                <input type="number" step="0.0001" value={fd.lng != null ? fd.lng : ''} onChange={e => up('lng', getal(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-              </Field>
-            </div>
+            <CoordinatenVelden lat={fd.lat} lng={fd.lng}
+              onLat={v => up('lat', getal(v))} onLng={v => up('lng', getal(v))} />
             {fd.lat != null && fd.lng != null ? <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} /> : null}
           </div>
 
@@ -4590,7 +4643,12 @@ function NieuwsScreen() {
   }
   const rows = tibZichtbaarVoorMij(DATA.nieuws)
     .filter(n => catFilter === 'alle' || n.cat === catFilter)
-    .filter(n => !search || [n.titel, n.auteur, n.cat].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
+    .filter(n => !search || [n.titel, n.auteur, n.cat].some(v => v && v.toLowerCase().includes(search.toLowerCase())))
+    // Het laatst aangemaakte bericht bovenaan, zodat je ziet waar je gebleven
+    // was. Is het aanmaakmoment onbekend, dan telt het hoogste nummer.
+    .slice()
+    .sort((a, b) => String(b.aangemaakt_op || '').localeCompare(String(a.aangemaakt_op || ''))
+      || (Number(b.id) || 0) - (Number(a.id) || 0));
 
   if (editing !== null) {
     const item = DATA.nieuws.find(n => n.id === editing) || { id: null, titel: '', cat: '', auteur: 'Webredactie', datum: new Date().toISOString().slice(0, 10), lead: '', uitgelicht: false, status: 'Concept' };
@@ -4642,7 +4700,7 @@ function NieuwsScreen() {
                     <div className="row-thumb"></div>
                     <div>
                       <div className="strong">{n.titel}<EigenaarLabel rij={n} /></div>
-                      <div className="sub">{n.titel.length > 30 ? '/' + n.titel.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 36) : '—'}</div>
+                      <div className="sub">Aangemaakt {tibAanmaakMoment(n.aangemaakt_op)}</div>
                     </div>
                   </div>
                 </td>
@@ -5316,14 +5374,8 @@ function PartnerEdit({ item, onBack }) {
                 onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
               />
             </Field>
-            <div className="row-2">
-              <Field label="Latitude">
-                <input type="number" step="0.0001" value={fd.lat || ''} onChange={e => up('lat', parseFloat(e.target.value) || fd.lat)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-              </Field>
-              <Field label="Longitude">
-                <input type="number" step="0.0001" value={fd.lng || ''} onChange={e => up('lng', parseFloat(e.target.value) || fd.lng)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-              </Field>
-            </div>
+            <CoordinatenVelden lat={fd.lat} lng={fd.lng}
+              onLat={v => up('lat', parseFloat(v) || fd.lat)} onLng={v => up('lng', parseFloat(v) || fd.lng)} />
             {(fd.lat && fd.lng) && <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} />}
           </div>
         </div>
@@ -5534,14 +5586,8 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
                 onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
               />
             </Field>
-            <div className="row-2">
-              <Field label="Latitude">
-                <input type="number" step="0.0001" value={fd.lat != null ? fd.lat : ''} onChange={e => up('lat', __getalOfNull(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-              </Field>
-              <Field label="Longitude">
-                <input type="number" step="0.0001" value={fd.lng != null ? fd.lng : ''} onChange={e => up('lng', __getalOfNull(e.target.value))} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-              </Field>
-            </div>
+            <CoordinatenVelden lat={fd.lat} lng={fd.lng}
+              onLat={v => up('lat', __getalOfNull(v))} onLng={v => up('lng', __getalOfNull(v))} />
             {(fd.lat && fd.lng) && <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} />}
           </div>
 
