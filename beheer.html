@@ -523,6 +523,22 @@ a { color: inherit; text-decoration: none; }
   color: var(--ink);
 }
 .field .hint { font-size: 11.5px; color: var(--ink-mute); }
+/* Vraagteken naast een veldnaam: klik voor uitleg. (16-11, punt 2 redactie) */
+.field label .veld-uitleg-knop {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; margin-left: 6px; padding: 0;
+  border-radius: 50%; border: 1px solid var(--line); background: var(--surface, #fff);
+  color: var(--ink-soft); font-size: 11px; font-weight: 600; line-height: 1;
+  cursor: pointer; vertical-align: 1px;
+}
+.field label .veld-uitleg-knop:hover,
+.field label .veld-uitleg-knop[aria-expanded="true"] {
+  background: oklch(0.96 0.04 250); border-color: oklch(0.86 0.05 250); color: oklch(0.40 0.10 250);
+}
+.field .veld-uitleg {
+  font-size: 12.5px; line-height: 1.5; padding: 8px 10px; border-radius: var(--radius-sm);
+  background: oklch(0.96 0.04 250); border: 1px solid oklch(0.86 0.05 250); color: oklch(0.40 0.10 250);
+}
 .field input[type=text],
 .field input[type=email],
 .field input[type=tel],
@@ -1084,7 +1100,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.266', datum: '16-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.267', datum: '16-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1634,7 +1650,8 @@ function Toggle({ on, label, sub, onChange }) {
   );
 }
 
-function Field({ label, hint, children, full, verplicht }) {
+function Field({ label, hint, children, full, verplicht, uitleg }) {
+  const [uitlegOpen, setUitlegOpen] = React.useState(false);
   return (
     <div className="field" style={full ? { gridColumn: '1 / -1' } : null}>
       {label && (
@@ -1643,8 +1660,14 @@ function Field({ label, hint, children, full, verplicht }) {
           {/* Een sterretje bij wat ingevuld moet worden. De redactie-
               assistenten konden niet zien welk veld verplicht was. (16-11) */}
           {verplicht && <span title="Dit veld is verplicht" style={{ color: '#b3261e', marginLeft: 3 }}>*</span>}
+          {uitleg && (
+            <button type="button" className="veld-uitleg-knop" title="Klik voor uitleg bij dit veld"
+              aria-label={'Uitleg bij ' + label} aria-expanded={uitlegOpen}
+              onClick={e => { e.preventDefault(); e.stopPropagation(); setUitlegOpen(o => !o); }}>?</button>
+          )}
         </label>
       )}
+      {uitleg && uitlegOpen && <div className="veld-uitleg">{uitleg}</div>}
       {children}
       {hint && <div className="hint">{hint}</div>}
     </div>
@@ -2747,7 +2770,7 @@ function WanneerBlok({ fd, up, kolommen, soort }) {
       )}
 
       <div className="row-2">
-        <Field label="Startdatum" hint={start ? 'Dit is een ' + TIB_DAG_LANG[start.getDay()] + '.' : 'De eerste keer dat het doorgaat.'}>
+        <Field label="Startdatum" uitleg="De dag dat het voor het eerst doorgaat. Een datum in de toekomst is normaal: de agenda en de weekkalender tonen het item pas vanaf die dag, niet eerder." hint={start ? 'Dit is een ' + TIB_DAG_LANG[start.getDay()] + '.' : 'De eerste keer dat het doorgaat.'}>
           <DatumVeld waarde={fd.startdatum} onChange={v => up('startdatum', v)} />
         </Field>
         <Field label="Hoe vaak">
@@ -2958,7 +2981,7 @@ function ClubjeEdit({ id, onBack }) {
               <input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} />
             </Field>
             <div className="row-2">
-              <Field label="Categorie">
+              <Field label="Categorie" uitleg="Kies de categorie uit de lijst. De categorie bepaalt het label bij dit item op de website en de kleur van het bolletje bij de categorieknoppen en op de kaart. Staat de categorie die je zoekt er niet bij? Nieuwe maak je aan bij Categorieën in het menu.">
                 <CategorieSelect value={fd.categorie} onChange={v => up('categorie', v)} />
               </Field>
               <Field label="Wijk / gebied" hint={'Staat standaard op ' + TIB_STANDAARD_WIJK + '. Aanpassen mag, bijvoorbeeld Belgisch Park of Renbaankwartier.'}>
@@ -3794,7 +3817,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
               <input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} />
             </Field>
             <div className="row-2">
-              <Field label="Categorie">
+              <Field label="Categorie" uitleg="Kies de categorie uit de lijst. De categorie bepaalt het label bij dit item op de website en de kleur van het bolletje bij de categorieknoppen en op de kaart. Staat de categorie die je zoekt er niet bij? Nieuwe maak je aan bij Categorieën in het menu.">
                 <CategorieSelect value={fd.categorie} onChange={v => up('categorie', v)} />
               </Field>
               <Field label="Wijk / gebied" hint={'Staat standaard op ' + TIB_STANDAARD_WIJK + '. Aanpassen mag, bijvoorbeeld Belgisch Park of Renbaankwartier.'}>
@@ -4214,7 +4237,7 @@ function AgendaEdit({ item, onBack }) {
             <h3>Basisgegevens</h3>
             <Field label="Titel" verplicht><input type="text" value={fd.titel || ''} onChange={e => up('titel', e.target.value)} /></Field>
             <div className="row-2">
-              <Field label="Datum"><DatumVeld waarde={fd.datum} onChange={v => up('datum', v)} /></Field>
+              <Field label="Datum" uitleg="De dag waarop het gebeurt. Het item staat in de agenda op precies die dag. Een datum in de toekomst is dus gewoon goed; een datum in het verleden telt als afgelopen."><DatumVeld waarde={fd.datum} onChange={v => up('datum', v)} /></Field>
               <Field label="Tag / label"><input type="text" value={fd.tag || ''} onChange={e => up('tag', e.target.value)} placeholder="bijv. Jaarlijks" /></Field>
             </div>
             <div className="row-2">
@@ -4548,14 +4571,14 @@ function NieuwsEdit({ item, onBack }) {
               <input type="text" value={fd.titel} onChange={e => up('titel', e.target.value)} />
             </Field>
             <div className="row-2">
-              <Field label="Categorie" hint="Het label boven de titel, bijvoorbeeld Nieuws of Buurttuin. Laat je het leeg, dan staat er Nieuws.">
+              <Field label="Categorie" hint="Het label boven de titel, bijvoorbeeld Nieuws of Buurttuin. Laat je het leeg, dan staat er Nieuws." uitleg="Een klein label dat bij het bericht staat op de nieuwspagina, en als Rubriek op de pagina van het bericht zelf. Je typt het gewoon in, bijvoorbeeld Buurttuin of Winkeliers. Het is alleen een etiket voor de lezer en bepaalt verder niets.">
                 <input type="text" value={fd.cat || ''} onChange={e => up('cat', e.target.value)} placeholder="Nieuws" />
               </Field>
-              <Field label="Auteur" hint="Wie het bericht heeft geschreven. Mag leeg blijven; dan staat er niemand bij.">
+              <Field label="Auteur" hint="Wie het bericht heeft geschreven. Mag leeg blijven." uitleg="Alleen voor jullie zelf: de naam staat in de lijst met berichten in het CMS, zodat je ziet wie het schreef. Op de website staat de auteur nu niet bij het bericht. Mag leeg blijven.">
                 <input type="text" value={fd.auteur || ''} onChange={e => up('auteur', e.target.value)} />
               </Field>
             </div>
-            <Field label="Datum" hint="De dag waarop het bericht hoort — niet de dag waarop u het typt.">
+            <Field label="Datum" hint="De dag waarop het bericht hoort — niet de dag waarop je het typt." uitleg="Deze datum zien bezoekers bij het bericht, en de lijst wordt erop gesorteerd: nieuwste bovenaan. Kies je een datum in de toekomst, dan wacht het bericht niet tot die dag: zodra de status Gepubliceerd is, staat het meteen online, bovenaan, met die toekomstige datum. Wil je het nog niet laten zien? Laat de status dan op Concept staan.">
               <DatumVeld waarde={fd.datum} onChange={v => up('datum', v)} />
             </Field>
             <Field label="Intro / lead" hint="Korte samenvatting, zichtbaar op overzichtspagina's.">
@@ -6412,7 +6435,7 @@ function DonerenScreen() {
                   <input type="text" value={w['boek.boek_naam']} placeholder={standaardVan('boek.boek_naam')}
                     onChange={e => zet('boek.boek_naam', e.target.value)} />
                 </Field>
-                <Field label="Auteur">
+                <Field label="Auteur" uitleg="De naam van de schrijver van het boek. Die staat op de boekpagina van de website.">
                   <input type="text" value={w['boek.auteur']} placeholder={standaardVan('boek.auteur')}
                     onChange={e => zet('boek.auteur', e.target.value)} />
                 </Field>
