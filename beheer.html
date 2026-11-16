@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.263', datum: '16-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.264', datum: '16-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1634,10 +1634,17 @@ function Toggle({ on, label, sub, onChange }) {
   );
 }
 
-function Field({ label, hint, children, full }) {
+function Field({ label, hint, children, full, verplicht }) {
   return (
     <div className="field" style={full ? { gridColumn: '1 / -1' } : null}>
-      {label && <label>{label}</label>}
+      {label && (
+        <label>
+          {label}
+          {/* Een sterretje bij wat ingevuld moet worden. De redactie-
+              assistenten konden niet zien welk veld verplicht was. (16-11) */}
+          {verplicht && <span title="Dit veld is verplicht" style={{ color: '#b3261e', marginLeft: 3 }}>*</span>}
+        </label>
+      )}
       {children}
       {hint && <div className="hint">{hint}</div>}
     </div>
@@ -2738,7 +2745,7 @@ function ClubjeEdit({ id, onBack }) {
   const eigenaarTekst = (item && item.eigenaar_id && window._tibGebruikersNamen && window._tibGebruikersNamen[item.eigenaar_id])
     ? ' (' + window._tibGebruikersNamen[item.eigenaar_id] + ')' : '';
   const leeg = {
-    naam: 'Nieuw bewonersinitiatief', categorie: 'Ontmoeting/Sociaal', wijk: TIB_STANDAARD_WIJK,
+    naam: '', categorie: 'Ontmoeting/Sociaal', wijk: TIB_STANDAARD_WIJK,
     omschrijving: '', uitgebreide_omschrijving: '',
     voor_wie: '', wat: '', waar: '', wanneer: '', kosten: '',
     // Blok 4 — zie sql/blok4_startdatum_frequentie.sql
@@ -2766,6 +2773,12 @@ function ClubjeEdit({ id, onBack }) {
   // Geeft true terug als de database het echt heeft opgeslagen.
   async function handleSave(pubOverride) {
     if (bezig) return false;
+    // Eindcontrole vóór het opslaan. Zonder naam stond er straks een lege
+    // regel in de lijst, en niemand zag waarom. (terugkoppeling 16-11)
+    if (!String(fd.naam || '').trim()) {
+      window.__showToast && window.__showToast('Vul eerst een naam in — dat veld is verplicht.');
+      return false;
+    }
     const isPublished = pubOverride !== undefined ? pubOverride : published;
     const toSave = { ...fd, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     // Zolang de kolommen niet bestaan, gaan startdatum en frequentie niet mee.
@@ -2812,7 +2825,7 @@ function ClubjeEdit({ id, onBack }) {
   return (
     <>
       <PageHead
-        title={fd.naam}
+        title={fd.naam || 'Nieuw bewonersinitiatief'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar bewonersinitiatieven</a></>}
         actions={<>
           {magBewerken && bestaat && <button title="Verwijder dit bewonersinitiatief definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
@@ -2847,7 +2860,7 @@ function ClubjeEdit({ id, onBack }) {
           <div className="form-section">
             <h3>Basisgegevens</h3>
             <div className="sec-sub">Wat ziet de bezoeker als eerste op de pagina van het bewonersinitiatief?</div>
-            <Field label="Naam van het bewonersinitiatief">
+            <Field label="Naam van het bewonersinitiatief" verplicht>
               <input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} />
             </Field>
             <div className="row-2">
@@ -3543,7 +3556,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
   const iconenLijst = useIconen(); // G13: lijst uit de opslagmap, incl. nieuw geüploade
   const item = itemProp && itemProp.id != null ? itemProp : null;
   const leeg = {
-    naam: 'Nieuwe activiteit', categorie: 'Ontmoeting/Sociaal', wijk: TIB_STANDAARD_WIJK,
+    naam: '', categorie: 'Ontmoeting/Sociaal', wijk: TIB_STANDAARD_WIJK,
     omschrijving: '', uitgebreide_omschrijving: '',
     voor_wie: '', wat: '', waar: '', wanneer: '', kosten: '',
     // Blok 4 — zie sql/blok4_startdatum_frequentie.sql
@@ -3583,6 +3596,12 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
   // Geeft true terug als de database het echt heeft opgeslagen.
   async function handleSave(pubOverride) {
     if (bezig) return false;
+    // Eindcontrole vóór het opslaan. Zonder naam stond er straks een lege
+    // regel in de lijst, en niemand zag waarom. (terugkoppeling 16-11)
+    if (!String(fd.naam || '').trim()) {
+      window.__showToast && window.__showToast('Vul eerst een naam in — dat veld is verplicht.');
+      return false;
+    }
     const isPublished = pubOverride !== undefined ? pubOverride : published;
     const toSave = { ...fd, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     // Zolang de kolommen niet bestaan, gaan de betaalvelden niet mee.
@@ -3631,7 +3650,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
   return (
     <>
       <PageHead
-        title={fd.naam}
+        title={fd.naam || 'Nieuwe activiteit'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar activiteiten</a></>}
         actions={<>
           {magBewerken && bestaat && <button title="Verwijder deze activiteit definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
@@ -3681,7 +3700,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
           <div className="form-section">
             <h3>Basisgegevens</h3>
             <div className="sec-sub">Wat ziet de bezoeker als eerste op de pagina van de activiteit?</div>
-            <Field label="Naam van de activiteit">
+            <Field label="Naam van de activiteit" verplicht>
               <input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} />
             </Field>
             <div className="row-2">
@@ -4058,6 +4077,10 @@ function AgendaEdit({ item, onBack }) {
   const [uitgelicht, setUitgelicht] = React.useState(!!item.uitgelicht);
 
   function handleSave(pubOverride) {
+    if (!String(fd.titel || '').trim()) {
+      window.__showToast && window.__showToast('Vul eerst een titel in — dat veld is verplicht.');
+      return;
+    }
     const isPublished = pubOverride !== undefined ? pubOverride : gepubliceerd;
     let toSave = { ...fd, uitgelicht, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     // Zelfde valkuil als bij nieuws: op fd.id kijken, niet op item.id. Anders
@@ -4103,7 +4126,7 @@ function AgendaEdit({ item, onBack }) {
         <div>
           <div className="form-section">
             <h3>Basisgegevens</h3>
-            <Field label="Titel"><input type="text" value={fd.titel || ''} onChange={e => up('titel', e.target.value)} /></Field>
+            <Field label="Titel" verplicht><input type="text" value={fd.titel || ''} onChange={e => up('titel', e.target.value)} /></Field>
             <div className="row-2">
               <Field label="Datum"><DatumVeld waarde={fd.datum} onChange={v => up('datum', v)} /></Field>
               <Field label="Tag / label"><input type="text" value={fd.tag || ''} onChange={e => up('tag', e.target.value)} placeholder="bijv. Jaarlijks" /></Field>
@@ -4164,7 +4187,7 @@ function AgendaScreen() {
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
 
   if (editing !== null) {
-    const item = DATA.agenda.find(a => a.id === editing) || { id: null, titel: 'Nieuw agenda-item', datum: new Date().toISOString().slice(0, 10), start: '', eind: '', locatie: '', tag: '', omschrijving: '', aanmelden: false, contact: '', email: '', uitgelicht: false, status: 'Concept' };
+    const item = DATA.agenda.find(a => a.id === editing) || { id: null, titel: '', datum: new Date().toISOString().slice(0, 10), start: '', eind: '', locatie: '', tag: '', omschrijving: '', aanmelden: false, contact: '', email: '', uitgelicht: false, status: 'Concept' };
     return <AgendaEdit item={item} onBack={() => setEditing(null)} />;
   }
 
@@ -4329,7 +4352,39 @@ function NieuwsEdit({ item, onBack }) {
   // Pas melden dat het is opgeslagen als de database het heeft bevestigd.
   // Hiervoor verscheen "Nieuwsbericht opgeslagen!" altijd, ook als het
   // wegschrijven mislukte (gevonden 9-11).
+  // De foto ging vroeger als één lange reeks tekens mee de database in. Dat
+  // is zwaar en soms te groot, en een geplakt adres uit een zoekmachine wijst
+  // vaak naar een zoekpagina in plaats van naar een plaatje — vandaar dat er
+  // bij berichten geen foto verscheen. Nu gaat het bestand naar dezelfde
+  // opslag als de iconen, in een eigen map "nieuws". (terugkoppeling 16-11)
+  const [fotoBezig, setFotoBezig] = React.useState(false);
+  const [fotoFout, setFotoFout] = React.useState(false);
+  async function uploadFoto(e) {
+    const bestand = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!bestand) return;
+    const melding = (t) => window.__showToast && window.__showToast(t);
+    if (!/\.(png|jpe?g|webp|gif)$/i.test(bestand.name)) { melding('Alleen png, jpg, webp of gif.'); return; }
+    if (bestand.size > 3 * 1024 * 1024) { melding('De foto is groter dan 3 MB — kies een kleinere.'); return; }
+    setFotoBezig(true);
+    const extensie = (bestand.name.split('.').pop() || 'jpg').toLowerCase();
+    const kern = String(fd.titel || 'bericht').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'bericht';
+    const naam = 'nieuws/' + kern + '-' + Date.now() + '.' + extensie;
+    const res = await window.supabase.storage.from('icons')
+      .upload(naam, bestand, { upsert: false, contentType: bestand.type || undefined });
+    setFotoBezig(false);
+    if (res.error) { melding('Uploaden mislukt: ' + res.error.message); return; }
+    setFotoFout(false);
+    up('photo', CMS_ICOON_BASE_URL + naam);
+    melding('Foto geüpload — klik op Opslaan om hem te bewaren.');
+  }
+
   async function handleSave(pubOverride) {
+    if (!String(fd.titel || '').trim()) {
+      window.__showToast && window.__showToast('Vul eerst een titel in — dat veld is verplicht.');
+      return false;
+    }
     const isPublished = pubOverride !== undefined ? pubOverride : gepubliceerd;
     let toSave = { ...fd, uitgelicht, status: isPublished ? 'Gepubliceerd' : 'Concept' };
     // Op fd.id kijken en niet op item.id: dat laatste verandert niet nadat
@@ -4403,10 +4458,16 @@ function NieuwsEdit({ item, onBack }) {
         <div>
           <div className="form-section">
             <h3>Basisgegevens</h3>
-            <Field label="Titel"><input type="text" value={fd.titel} onChange={e => up('titel', e.target.value)} /></Field>
+            <Field label="Titel" verplicht hint="De kop van het bericht, zoals hij in het overzicht komt te staan.">
+              <input type="text" value={fd.titel} onChange={e => up('titel', e.target.value)} />
+            </Field>
             <div className="row-2">
-              <Field label="Categorie"><input type="text" value={fd.cat || ''} onChange={e => up('cat', e.target.value)} /></Field>
-              <Field label="Auteur"><input type="text" value={fd.auteur || ''} onChange={e => up('auteur', e.target.value)} /></Field>
+              <Field label="Categorie" hint="Het label boven de titel, bijvoorbeeld Nieuws of Buurttuin. Laat je het leeg, dan staat er Nieuws.">
+                <input type="text" value={fd.cat || ''} onChange={e => up('cat', e.target.value)} placeholder="Nieuws" />
+              </Field>
+              <Field label="Auteur" hint="Wie het bericht heeft geschreven. Mag leeg blijven; dan staat er niemand bij.">
+                <input type="text" value={fd.auteur || ''} onChange={e => up('auteur', e.target.value)} />
+              </Field>
             </div>
             <Field label="Datum" hint="De dag waarop het bericht hoort — niet de dag waarop u het typt.">
               <DatumVeld waarde={fd.datum} onChange={v => up('datum', v)} />
@@ -4428,21 +4489,25 @@ function NieuwsEdit({ item, onBack }) {
                 <img
                   src={fd.photo}
                   alt={fd.photoAlt || fd.titel}
-                  style={{ maxWidth: 300, width: '100%', height: 'auto', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)', display: 'block' }}
+                  onLoad={() => setFotoFout(false)}
+                  onError={() => setFotoFout(true)}
+                  style={{ maxWidth: 300, width: '100%', height: 'auto', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)', display: fotoFout ? 'none' : 'block' }}
                 />
+                {fotoFout && (
+                  <HintCard variant="warn" icon="warn">
+                    Deze foto kan niet worden getoond. Wijst het adres wel naar een afbeelding?
+                    Een link uit Google of Bing wijst meestal naar een zoekpagina. Klik met de
+                    rechtermuisknop op de foto zelf en kies "Afbeeldingsadres kopiëren" — of
+                    upload het bestand hierboven, dat werkt altijd.
+                  </HintCard>
+                )}
               </div>
             )}
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
               <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
-                <Icon name="upload" size={13} /> Foto uploaden
-                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
-                  const file = e.target.files && e.target.files[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = ev => up('photo', ev.target.result);
-                  reader.readAsDataURL(file);
-                }} />
+                <Icon name="upload" size={13} /> {fotoBezig ? 'Bezig met uploaden…' : 'Foto uploaden'}
+                <input type="file" accept=".png,.jpg,.jpeg,.webp,.gif" style={{ display: 'none' }} onChange={uploadFoto} />
               </label>
               {fd.photo && (
                 <button title="Haal de foto weg" className="btn btn-ghost btn-danger" onClick={() => { up('photo', null); up('photoAlt', ''); }}>
@@ -4451,7 +4516,7 @@ function NieuwsEdit({ item, onBack }) {
               )}
             </div>
 
-            <Field label="Of vul een foto-URL in" hint="Alternatief voor upload — directe link naar een afbeelding.">
+            <Field label="Of plak het adres van een foto" hint="Alleen een adres dat rechtstreeks naar een afbeelding wijst en op .jpg of .png eindigt. Een link uit Google of Bing werkt niet — die wijst naar een zoekpagina. Uploaden is makkelijker.">
               <input
                 type="url"
                 placeholder="https://example.com/foto.jpg"
@@ -4461,7 +4526,7 @@ function NieuwsEdit({ item, onBack }) {
             </Field>
 
             {fd.photo && (
-              <Field label="Alt-tekst" hint="Beschrijf wat er op de foto te zien is (voor schermlezers).">
+              <Field label="Omschrijving van de foto" hint="Eén zin over wat er te zien is. Blinden en slechtzienden krijgen deze tekst voorgelezen in plaats van de foto.">
                 <input type="text" value={fd.photoAlt || ''} onChange={e => up('photoAlt', e.target.value)} placeholder="Bijv. 'Buurtbewoners bouwen de pergola'" />
               </Field>
             )}
@@ -4528,7 +4593,7 @@ function NieuwsScreen() {
     .filter(n => !search || [n.titel, n.auteur, n.cat].some(v => v && v.toLowerCase().includes(search.toLowerCase())));
 
   if (editing !== null) {
-    const item = DATA.nieuws.find(n => n.id === editing) || { id: null, titel: 'Nieuw bericht', cat: '', auteur: 'Webredactie', datum: new Date().toISOString().slice(0, 10), lead: '', uitgelicht: false, status: 'Concept' };
+    const item = DATA.nieuws.find(n => n.id === editing) || { id: null, titel: '', cat: '', auteur: 'Webredactie', datum: new Date().toISOString().slice(0, 10), lead: '', uitgelicht: false, status: 'Concept' };
     return <NieuwsEdit item={item} onBack={() => setEditing(null)} />;
   }
 
@@ -5216,7 +5281,7 @@ function PartnerEdit({ item, onBack }) {
         <div>
           <div className="form-section">
             <h3>Partnergegevens</h3>
-            <Field label="Naam"><input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} /></Field>
+            <Field label="Naam" verplicht><input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} /></Field>
             {extraKolommen !== false && (
             <div className="row-2">
               <Field label="Contactpersoon"><input type="text" value={fd.contact || ''} onChange={e => up('contact', e.target.value)} /></Field>
@@ -5437,7 +5502,7 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
           <div className="form-section">
             <h3>Gegevens</h3>
             <div className="sec-sub">Dit staat op de pagina Voorzieningen en in het venster op de Buurtatlas.</div>
-            <Field label="Naam"><input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} placeholder="bijv. Apotheek Duinstraat" /></Field>
+            <Field label="Naam" verplicht><input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} placeholder="bijv. Apotheek Duinstraat" /></Field>
             <Field label="Soort" hint="Bepaalt de kleur van de stip en de knop waarmee bezoekers filteren.">
               <select value={fd.soort || 'Overig'} onChange={e => up('soort', e.target.value)}>
                 {TIB_VOORZIENING_SOORTEN.map(s => <option key={s.id} value={s.id}>{s.id}</option>)}
@@ -5807,7 +5872,7 @@ function NetwerkEdit({ item, onBack, onOpgeslagen }) {
                 De meeste velden hieronder werken pas nadat <strong>sql/netwerken_herstellen.sql</strong> in Supabase is uitgevoerd.
               </HintCard>
             )}
-            <Field label="Naam"><input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} /></Field>
+            <Field label="Naam" verplicht><input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} /></Field>
             <div className="row-2">
               <Field label="Doelgroep"><input type="text" value={fd.doelgroep || ''} onChange={e => up('doelgroep', e.target.value)} placeholder="bijv. Zorg & welzijn" /></Field>
               <Field label="Bereik / locatie"><input type="text" value={fd.locatie || ''} onChange={e => up('locatie', e.target.value)} placeholder="bijv. Wijk" /></Field>
@@ -9403,8 +9468,36 @@ function App() {
   const [session, setSession] = React.useState(undefined);
   const [profile, setProfile] = React.useState(null);
   const [badges, setBadges] = React.useState({});
-  const [route, setRoute] = React.useState('dashboard');
+  // Bij het openen meteen het scherm uit het webadres pakken, zodat
+  // verversen je op dezelfde plek laat staan.
+  const [route, setRoute] = React.useState(() => {
+    const uitAdres = (window.location.hash || '').replace('#', '').trim();
+    return /^[a-z-]{3,30}$/.test(uitAdres) ? uitAdres : 'dashboard';
+  });
   const [previewOn, setPreviewOn] = React.useState(false);
+
+  // De terugknop van de browser gooide je het beheerpaneel uit, omdat het
+  // één pagina is zonder geschiedenis. Elk scherm krijgt nu een eigen plek
+  // in die geschiedenis, zodat Terug gewoon een scherm terug gaat.
+  // (terugkoppeling redactie-assistenten, 16-11)
+  function gaNaar(nieuw) {
+    if (!nieuw || nieuw === route) return;
+    try { window.history.pushState({ tibRoute: nieuw }, '', '#' + nieuw); } catch (e) {}
+    setRoute(nieuw);
+  }
+  React.useEffect(() => {
+    // Het scherm waarmee we beginnen ook vastleggen, anders gaat de eerste
+    // keer Terug alsnog de website uit.
+    try { window.history.replaceState({ tibRoute: route }, '', '#' + route); } catch (e) {}
+    function terug(e) {
+      const naar = (e.state && e.state.tibRoute)
+        || (window.location.hash || '').replace('#', '')
+        || 'dashboard';
+      setRoute(naar);
+    }
+    window.addEventListener('popstate', terug);
+    return () => window.removeEventListener('popstate', terug);
+  }, []);
   const [toast, setToast] = React.useState(null);
   window.__showToast = (msg) => setToast(msg);
 
@@ -9659,10 +9752,10 @@ function App() {
 
   // Determine breadcrumbs and content based on route
   const screens = {
-    dashboard: { crumbs: ['Dashboard'], render: () => <Dashboard onNav={setRoute} onPreview={() => setPreviewOn(true)} badges={badges} /> },
-    wijzigingen: { crumbs: ['Wijzigingen'], render: () => <WijzigingenScreen onNav={setRoute} onBadgeRefresh={loadBadges} /> },
+    dashboard: { crumbs: ['Dashboard'], render: () => <Dashboard onNav={gaNaar} onPreview={() => setPreviewOn(true)} badges={badges} /> },
+    wijzigingen: { crumbs: ['Wijzigingen'], render: () => <WijzigingenScreen onNav={gaNaar} onBadgeRefresh={loadBadges} /> },
     pages: { crumbs: ["Pagina's"], render: () => <PagesScreen /> },
-    clubjes: { crumbs: ['Bewonersinitiatieven'], render: () => <ClubjesScreen onNav={setRoute} profile={profile} /> },
+    clubjes: { crumbs: ['Bewonersinitiatieven'], render: () => <ClubjesScreen onNav={gaNaar} profile={profile} /> },
     activiteiten: { crumbs: ['Activiteiten'], render: () => <ActiviteitenScreen /> },
     agenda: { crumbs: ['Agenda'], render: () => <AgendaScreen /> },
     nieuws: { crumbs: ['Nieuws'], render: () => <NieuwsScreen /> },
@@ -9707,10 +9800,10 @@ function App() {
           aantal={melding.aantal}
           laatste={melding.laatste}
           onSluiten={() => setMelding(null)}
-          onBekijken={() => { setMelding(null); setRoute('wijzigingen'); }}
+          onBekijken={() => { setMelding(null); gaNaar('wijzigingen'); }}
         />
       )}
-      <Sidebar active={route} onNav={setRoute} onLogout={handleLogout} profile={profile} userEmail={session?.user?.email} badges={badges} />
+      <Sidebar active={route} onNav={gaNaar} onLogout={handleLogout} profile={profile} userEmail={session?.user?.email} badges={badges} />
       <div className="main">
         <Topbar
           crumbs={current.crumbs}
