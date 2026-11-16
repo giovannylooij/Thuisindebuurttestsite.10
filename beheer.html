@@ -1084,7 +1084,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.265', datum: '16-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.266', datum: '16-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -2002,66 +2002,95 @@ function AdresVeld({ value, onChange, onLocatieGevonden }) {
   );
 }
 
-function MiniMap({ lat, lng, label }) {
+/* De pin is sleepbaar. Wie hem verplaatst krijgt automatisch het adres dat
+   bij de nieuwe plek hoort, opgezocht bij PDOK. Daarmee zijn de losse
+   coordinaatvelden overbodig: niemand hoeft nog cijfers te typen.
+   De kaart wordt een keer gemaakt en daarna alleen bijgewerkt, anders
+   springt hij tijdens het slepen terug.
+   (terugkoppeling redactie-assistenten, 16-11) */
+function MiniMap({ lat, lng, label, onVerplaats, onAdres }) {
   const ref = React.useRef(null);
   const kaart = React.useRef(null);
-  // De kaart kon niet groter; op dit formaat is lastig zien of de pin klopt.
-  // (terugkoppeling redactie-assistenten, 16-11)
+  const pin = React.useRef(null);
+  const cb = React.useRef({});
+  cb.current = { onVerplaats, onAdres };
   const [groot, setGroot] = React.useState(false);
+  const [bezig, setBezig] = React.useState(false);
+  const [melding, setMelding] = React.useState('');
+
   React.useEffect(() => {
-    if (!window.L || !ref.current) return;
-    const m = window.L.map(ref.current, { zoomControl: false, scrollWheelZoom: false })
-      .setView([lat, lng], 15);
+    if (!window.L || !ref.current || kaart.current) return;
+    const m = window.L.map(ref.current, { zoomControl: true, scrollWheelZoom: false })
+      .setView([lat, lng], 16);
     kaart.current = m;
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
-    window.L.marker([lat, lng]).addTo(m).bindTooltip(label || '', { permanent: true, direction: 'top', offset: [0, -8] });
-    return () => { kaart.current = null; m.remove(); };
-  }, [lat, lng, label]);
+    const mk = window.L.marker([lat, lng], { draggable: true, autoPan: true }).addTo(m);
+    pin.current = mk;
+    mk.on('dragstart', () => { setMelding(''); });
+    mk.on('dragend', async () => {
+      const punt = mk.getLatLng();
+      const nlat = Math.round(punt.lat * 1000000) / 1000000;
+      const nlng = Math.round(punt.lng * 1000000) / 1000000;
+      if (cb.current.onVerplaats) cb.current.onVerplaats(nlat, nlng);
+      if (!cb.current.onAdres) return;
+      setBezig(true);
+      try {
+        const r = await fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/reverse?rows=1&type=adres&lat=' + nlat + '&lon=' + nlng);
+        const j = await r.json();
+        const doc = j && j.response && j.response.docs && j.response.docs[0];
+        if (doc && doc.weergavenaam) {
+          cb.current.onAdres(doc.weergavenaam);
+          setMelding('Adres aangepast naar: ' + doc.weergavenaam);
+        } else {
+          setMelding('Op deze plek is geen adres gevonden. De pin staat goed, het adres hierboven is niet veranderd.');
+        }
+      } catch (e) {
+        setMelding('Het adres opzoeken lukte niet. De pin staat wel op de nieuwe plek.');
+      }
+      setBezig(false);
+    });
+    return () => { kaart.current = null; pin.current = null; m.remove(); };
+  }, []);
+
+  React.useEffect(() => {
+    // Als het adresveld een nieuwe plek oplevert, verspringt de pin mee.
+    if (!kaart.current || !pin.current || lat == null || lng == null) return;
+    const huidig = pin.current.getLatLng();
+    if (Math.abs(huidig.lat - lat) < 0.0000001 && Math.abs(huidig.lng - lng) < 0.0000001) return;
+    pin.current.setLatLng([lat, lng]);
+    kaart.current.setView([lat, lng], kaart.current.getZoom());
+  }, [lat, lng]);
+
+  React.useEffect(() => {
+    if (!pin.current) return;
+    pin.current.unbindTooltip();
+    if (label) pin.current.bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -8] });
+  }, [label]);
+
   React.useEffect(() => {
     // Na het veranderen van de hoogte moet de kaart opnieuw meten, anders
     // blijft de onderste helft grijs.
     if (kaart.current) setTimeout(() => { if (kaart.current) kaart.current.invalidateSize(); }, 80);
   }, [groot]);
+
   return (
     <div style={{ marginTop: 8 }}>
       <div ref={ref} style={{ height: groot ? 620 : 320, borderRadius: 8, border: '1px solid var(--line)', zIndex: 0 }} />
-      <button type="button" className="btn btn-sm" style={{ marginTop: 8 }}
-        title={groot ? 'Maak de kaart weer kleiner' : 'Maak de kaart groter om beter te zien waar de pin staat'}
-        onClick={() => setGroot(g => !g)}>
-        <Icon name="map" size={13} /> {groot ? 'Kaart kleiner' : 'Kaart groter'}
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-sm"
+          title={groot ? 'Maak de kaart weer kleiner' : 'Maak de kaart groter om beter te zien waar de pin staat'}
+          onClick={() => setGroot(g => !g)}>
+          <Icon name="map" size={13} /> {groot ? 'Kaart kleiner' : 'Kaart groter'}
+        </button>
+        <span className="hint" style={{ margin: 0 }}>
+          {bezig ? 'Bezig met het opzoeken van het adres...' : 'Staat de pin niet goed? Sleep hem naar de juiste plek, dan past het adres zich aan.'}
+        </span>
+      </div>
+      {melding ? <div className="hint" style={{ marginTop: 6 }}>{melding}</div> : null}
     </div>
   );
 }
 
-/* De coördinaten stonden altijd in beeld, terwijl het adres ze al invult.
-   Voor wie ze niet nodig heeft stonden ze alleen in de weg; voor wie een
-   verkeerd geplaatste pin moet corrigeren zijn ze onmisbaar. Daarom nu
-   achter één regel. (terugkoppeling redactie-assistenten, 16-11) */
-function CoordinatenVelden({ lat, lng, onLat, onLng }) {
-  const [open, setOpen] = React.useState(false);
-  if (!open) {
-    return (
-      <button type="button" className="btn btn-sm btn-ghost" style={{ marginBottom: 4 }}
-        title="Toon de coördinaten om de pin met de hand te verplaatsen"
-        onClick={() => setOpen(true)}>
-        Staat de pin verkeerd? Coördinaten aanpassen
-      </button>
-    );
-  }
-  return (
-    <div className="row-2">
-      <Field label="Latitude" hint="Noord-zuid. Alleen nodig als de pin verkeerd staat.">
-        <input type="number" step="0.0001" value={lat != null ? lat : ''}
-          onChange={e => onLat(e.target.value)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-      </Field>
-      <Field label="Longitude" hint="Oost-west.">
-        <input type="number" step="0.0001" value={lng != null ? lng : ''}
-          onChange={e => onLng(e.target.value)} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
-      </Field>
-    </div>
-  );
-}
 
 const TIB_CAT_KLEUREN = [
   { hex: '#D6453F', naam: 'Koraalrood' },
@@ -2983,7 +3012,7 @@ function ClubjeEdit({ id, onBack }) {
 
           <div className="form-section">
             <h3>Locatie op de Buurtatlas</h3>
-            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Kloppen de coördinaten niet precies? Pas ze hieronder handmatig aan.</div>
+            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Staat de pin niet precies goed? Sleep hem naar de juiste plek — het adres verandert dan mee.</div>
             <Field label="Adres">
               <AdresVeld
                 value={fd.adres || ''}
@@ -2991,9 +3020,11 @@ function ClubjeEdit({ id, onBack }) {
                 onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
               />
             </Field>
-            <CoordinatenVelden lat={fd.lat} lng={fd.lng}
-              onLat={v => up('lat', getal(v))} onLng={v => up('lng', getal(v))} />
-            {fd.lat != null && fd.lng != null ? <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} /> : null}
+            {fd.lat != null && fd.lng != null ? (
+              <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam}
+                onVerplaats={(la, lo) => { up('lat', la); up('lng', lo); }}
+                onAdres={a => up('adres', a)} />
+            ) : null}
           </div>
 
           <div className="form-section">
@@ -3911,7 +3942,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
 
           <div className="form-section">
             <h3>Locatie op de Buurtatlas</h3>
-            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Kloppen de coördinaten niet precies? Pas ze hieronder handmatig aan.</div>
+            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Staat de pin niet precies goed? Sleep hem naar de juiste plek — het adres verandert dan mee.</div>
             <Field label="Adres">
               <AdresVeld
                 value={fd.adres || ''}
@@ -3919,9 +3950,11 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
                 onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
               />
             </Field>
-            <CoordinatenVelden lat={fd.lat} lng={fd.lng}
-              onLat={v => up('lat', getal(v))} onLng={v => up('lng', getal(v))} />
-            {fd.lat != null && fd.lng != null ? <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} /> : null}
+            {fd.lat != null && fd.lng != null ? (
+              <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam}
+                onVerplaats={(la, lo) => { up('lat', la); up('lng', lo); }}
+                onAdres={a => up('adres', a)} />
+            ) : null}
           </div>
 
           <div className="form-section">
@@ -5366,7 +5399,7 @@ function PartnerEdit({ item, onBack }) {
           </div>
           <div className="form-section">
             <h3>Locatie op de Buurtatlas</h3>
-            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Kloppen de coördinaten niet precies? Pas ze hieronder handmatig aan.</div>
+            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Staat de pin niet precies goed? Sleep hem naar de juiste plek — het adres verandert dan mee.</div>
             <Field label="Adres">
               <AdresVeld
                 value={fd.adres || ''}
@@ -5374,9 +5407,11 @@ function PartnerEdit({ item, onBack }) {
                 onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
               />
             </Field>
-            <CoordinatenVelden lat={fd.lat} lng={fd.lng}
-              onLat={v => up('lat', parseFloat(v) || fd.lat)} onLng={v => up('lng', parseFloat(v) || fd.lng)} />
-            {(fd.lat && fd.lng) && <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} />}
+            {(fd.lat && fd.lng) && (
+              <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam}
+                onVerplaats={(la, lo) => { up('lat', la); up('lng', lo); }}
+                onAdres={a => up('adres', a)} />
+            )}
           </div>
         </div>
         <div>
@@ -5578,7 +5613,7 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
 
           <div className="form-section">
             <h3>Locatie op de kaart</h3>
-            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Zonder coördinaten verschijnt de voorziening wel in de lijst, maar niet op de kaart.</div>
+            <div className="sec-sub">Typ het adres en kies de juiste suggestie — de pin springt automatisch naar die plek. Staat de pin niet precies goed? Sleep hem naar de juiste plek — het adres verandert dan mee. Zonder adres verschijnt de voorziening wel in de lijst, maar niet op de kaart.</div>
             <Field label="Adres">
               <AdresVeld
                 value={fd.adres || ''}
@@ -5586,9 +5621,11 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
                 onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }}
               />
             </Field>
-            <CoordinatenVelden lat={fd.lat} lng={fd.lng}
-              onLat={v => up('lat', __getalOfNull(v))} onLng={v => up('lng', __getalOfNull(v))} />
-            {(fd.lat && fd.lng) && <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam} />}
+            {(fd.lat && fd.lng) && (
+              <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam}
+                onVerplaats={(la, lo) => { up('lat', la); up('lng', lo); }}
+                onAdres={a => up('adres', a)} />
+            )}
           </div>
 
           <div className="form-section">
