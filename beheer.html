@@ -1100,7 +1100,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.267', datum: '16-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.268', datum: '17-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1646,6 +1646,170 @@ function Toggle({ on, label, sub, onChange }) {
         <div className="toggle-label">{label}</div>
         {sub && <div className="toggle-sub">{sub}</div>}
       </div>
+    </div>
+  );
+}
+
+/* ── Spelling nakijken (punt 4.1 van de redactie-assistenten) ──
+   De woordenlijst van OpenTaal wordt pas opgehaald als iemand op de knop
+   drukt, en daarna hergebruikt zolang het CMS open staat. De tekst zelf gaat
+   nergens naartoe: het nakijken gebeurt in de browser van de redacteur.
+   Een woord dat niet in de lijst staat is niet per se fout — namen en
+   Engelse woorden staan er niet in. Daarom heet de knop "Tekst nakijken" en
+   niet "Spelfouten". (17-11) */
+const TIB_WOORDENLIJST = 'https://cdn.jsdelivr.net/gh/OpenTaal/opentaal-wordlist@master/wordlist.txt';
+// Onze eigen namen en woorden, die in geen woordenboek staan.
+const TIB_EIGEN_WOORDEN = ['tib', 'thuisindebuurt', 'margareth', 'armando', 'ria', 'donorbox',
+  'ideal', 'buurtatlas', 'whatsapp', 'facebook', 'instagram', 'linkedin', 'walking', 'dinner',
+  'online', 'website', 'wifi', 'qr', 'pdf', 'e-mail', 'ichthus', 'bezuidenhout', 'duindorp'];
+let tibWoorden = null;
+
+async function tibWoordenOphalen() {
+  if (tibWoorden) return tibWoorden;
+  const r = await fetch(TIB_WOORDENLIJST);
+  if (!r.ok) throw new Error('woordenlijst: ' + r.status);
+  const tekst = await r.text();
+  const set = new Set();
+  tekst.split('\n').forEach(w => { const k = w.trim().toLowerCase(); if (k) set.add(k); });
+  TIB_EIGEN_WOORDEN.forEach(w => set.add(w));
+  tibWoorden = set;
+  return set;
+}
+
+/* "Buurttuin" staat niet in de lijst, maar "buurt" en "tuin" wel. Daarom
+   knippen we een onbekend woord één keer door, ook met een tussen-s of -en
+   zoals in "bewonersinitiatief". Zonder dat zou half de buurt rood zijn. */
+function tibWoordBekend(woord, set) {
+  const w = woord.toLowerCase();
+  if (set.has(w)) return true;
+  for (let i = 3; i <= w.length - 3; i++) {
+    const a = w.slice(0, i), b = w.slice(i);
+    if (set.has(a) && set.has(b)) return true;
+    if (a.charAt(a.length - 1) === 's' && set.has(a.slice(0, -1)) && set.has(b)) return true;
+    if (a.slice(-2) === 'en' && set.has(a.slice(0, -2)) && set.has(b)) return true;
+  }
+  return false;
+}
+
+// Afkortingen eindigen op een punt zonder dat er een nieuwe zin begint.
+const TIB_AFKORTINGEN = ['bijv', 'bv', 'enz', 'etc', 'o.a', 'oa', 'ca', 'nl', 'dhr', 'mevr',
+  'ds', 'dr', 'ir', 'nr', 'blz', 'evt', 'incl', 'excl', 'tel', 'resp', 'max', 'min'];
+
+function tibTekstNakijken(stukken, set) {
+  const onbekend = new Map();
+  const opmaak = [];
+  stukken.forEach(stuk => {
+    const label = stuk.label;
+    const ruw = String(stuk.tekst || '');
+    if (!ruw.trim()) return;
+    function meld(wat) { if (!opmaak.some(o => o.waar === label && o.wat === wat)) opmaak.push({ waar: label, wat: wat }); }
+    // Webadressen en e-mailadressen eruit: daar horen punten zonder spatie.
+    const t = ruw
+      .replace(/https?:\/\/\S+/g, ' ')
+      .replace(/[\w.-]+@[\w.-]+/g, ' ')
+      .replace(/www\.\S+/g, ' ')
+      .replace(/[\w-]+\.(nl|com|org|eu|be|net|info)\b/gi, ' ');
+
+    if (/  +/.test(t)) meld('twee spaties achter elkaar');
+    if (/\s[,.;:!?]/.test(t)) meld('een spatie vóór een komma of punt');
+    if (/[,;:][A-Za-zÀ-ÿ]/.test(t)) meld('geen spatie ná een komma');
+    if (/!!|\?\?/.test(t)) meld('meer dan één uitroepteken of vraagteken');
+    // Twee letters is genoeg: "de de" is de fout die het meest voorkomt.
+    const dubbel = t.match(/\b([A-Za-zÀ-ÿ]{2,})\s+\1\b/i);
+    if (dubbel) meld('het woord "' + dubbel[1] + '" staat er twee keer achter elkaar');
+    // Een kleine letter na een punt: nieuwe zin zonder hoofdletter. Alleen
+    // melden als het woord ervoor geen afkorting is.
+    let m, patroon = /([A-Za-zÀ-ÿ]+)\.\s+([a-zà-ÿ])/g;
+    while ((m = patroon.exec(t)) !== null) {
+      if (TIB_AFKORTINGEN.indexOf(m[1].toLowerCase()) === -1 && m[1].length > 3) {
+        meld('een zin begint met een kleine letter (na "' + m[1] + '.")');
+        break;
+      }
+    }
+    // Woorden nakijken.
+    const woorden = t.match(/[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]*/g) || [];
+    woorden.forEach(w => {
+      const kaal = w.replace(/^[-'’]+|[-'’]+$/g, '');
+      if (kaal.length < 3) return;
+      if (kaal === kaal.toUpperCase()) return;          // afkorting als NL of CMS
+      // Een hoofdletter midden in een woord is bijna altijd een vergissing.
+      if (/[a-zà-ÿ][A-ZÀ-Þ]/.test(kaal)) { meld('een hoofdletter midden in "' + kaal + '"'); return; }
+      if (tibWoordBekend(kaal, set)) return;
+      const sleutel = kaal.toLowerCase();
+      const al = onbekend.get(sleutel);
+      if (al) { if (al.waar.indexOf(label) === -1) al.waar.push(label); }
+      else onbekend.set(sleutel, { woord: kaal, waar: [label] });
+    });
+  });
+  return { onbekend: Array.from(onbekend.values()), opmaak: opmaak };
+}
+
+function SpellingKnop({ stukken }) {
+  const [bezig, setBezig] = React.useState(false);
+  const [fout, setFout] = React.useState('');
+  const [uitslag, setUitslag] = React.useState(null);
+  const leeg = !stukken.some(st => String(st.tekst || '').trim());
+
+  async function nakijken() {
+    setFout(''); setUitslag(null); setBezig(true);
+    try {
+      const set = await tibWoordenOphalen();
+      setUitslag(tibTekstNakijken(stukken, set));
+    } catch (e) {
+      setFout('De woordenlijst kon niet worden opgehaald. Kijk of er internet is en probeer het nog een keer.');
+    }
+    setBezig(false);
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-sm" disabled={bezig || leeg}
+          title={leeg ? 'Typ eerst een tekst' : 'Kijk de titel, de intro en het bericht na op spelfouten'}
+          onClick={nakijken}>
+          <Icon name="check" size={13} /> {bezig ? 'Bezig met nakijken…' : 'Tekst nakijken'}
+        </button>
+        <span className="hint" style={{ margin: 0 }}>
+          Het nakijken gebeurt in uw eigen browser; uw tekst gaat nergens naartoe.
+          De eerste keer duurt het even, dan wordt de woordenlijst opgehaald.
+        </span>
+      </div>
+
+      {fout ? <HintCard variant="warn" icon="warn">{fout}</HintCard> : null}
+
+      {uitslag && !uitslag.onbekend.length && !uitslag.opmaak.length ? (
+        <HintCard icon="check">Niets gevonden om op te merken.</HintCard>
+      ) : null}
+
+      {uitslag && uitslag.opmaak.length ? (
+        <HintCard variant="warn" icon="warn">
+          <strong>Opmaak</strong>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+            {uitslag.opmaak.map((o, i) => <li key={i}>{o.waar}: {o.wat}</li>)}
+          </ul>
+        </HintCard>
+      ) : null}
+
+      {uitslag && uitslag.onbekend.length ? (
+        <HintCard icon="info">
+          <strong>Woorden die de lijst niet kent</strong>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0 0' }}>
+            {uitslag.onbekend.slice(0, 40).map((w, i) => (
+              <span key={i} title={'Staat in: ' + w.waar.join(', ')}
+                style={{ border: '1px solid var(--line)', borderRadius: 999, padding: '2px 9px', fontSize: 12.5, background: 'var(--surface, #fff)' }}>
+                {w.woord}
+              </span>
+            ))}
+          </div>
+          {uitslag.onbekend.length > 40
+            ? <div className="hint" style={{ marginTop: 6 }}>Er zijn er nog {uitslag.onbekend.length - 40} meer.</div>
+            : null}
+          <div className="hint" style={{ marginTop: 8 }}>
+            Namen, plaatsen en Engelse woorden staan niet in de lijst, die zijn dus niet fout.
+            Wijs een woord aan om te zien in welk veld het staat.
+          </div>
+        </HintCard>
+      ) : null}
     </div>
   );
 }
@@ -4525,8 +4689,8 @@ function NieuwsEdit({ item, onBack }) {
 
   function handleDelete() {
     if (!window.confirm('Nieuwsbericht "' + fd.titel + '" definitief verwijderen?')) return;
-    const idx = DATA.nieuws.findIndex(n => n.id === item.id);
-    if (idx >= 0) { window.__supabaseDelete('nieuws', item.id); DATA.nieuws.splice(idx, 1); }
+    const idx = DATA.nieuws.findIndex(n => n.id === fd.id);
+    if (idx >= 0) { window.__supabaseDelete('nieuws', fd.id); DATA.nieuws.splice(idx, 1); }
     window.__syncToSite && window.__syncToSite();
     window.__showToast && window.__showToast('Nieuwsbericht verwijderd');
     onBack();
@@ -4538,9 +4702,13 @@ function NieuwsEdit({ item, onBack }) {
         title={fd.titel || 'Nieuw bericht'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar nieuws</a></>}
         actions={<>
-          {magBewerken && item.id != null && <button title="Verwijder dit nieuwsbericht definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn" disabled={item.id == null || !gepubliceerd}
-            title={item.id == null ? 'Eerst opslaan, dan kunt u het op de website bekijken'
+          {magBewerken && fd.id != null && <button title="Verwijder dit nieuwsbericht definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
+          {/* Op fd.id kijken en niet op item.id. Dat laatste blijft leeg nadat
+              een nieuw bericht is aangemaakt, dus bleef deze knop grijs met de
+              melding "Eerst opslaan" terwijl het bericht al op de website
+              stond. (punt 5.2 van de redactie-assistenten, 17-11) */}
+          <button className="btn" disabled={fd.id == null || !gepubliceerd}
+            title={fd.id == null ? 'Eerst opslaan, dan kunt u het op de website bekijken'
               : !gepubliceerd ? 'Staat nog niet op de website — eerst publiceren'
               : 'Open dit nieuwsbericht op de website'}
             onClick={() => window.open(tibSiteLink('nieuws', fd.id), '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
@@ -4587,6 +4755,11 @@ function NieuwsEdit({ item, onBack }) {
             <Field label="Het bericht zelf" hint="De volledige tekst, zichtbaar als iemand het bericht opent.">
               <textarea rows={10} value={fd.inhoud || ''} onChange={e => up('inhoud', e.target.value)} />
             </Field>
+            <SpellingKnop stukken={[
+              { label: 'Titel', tekst: fd.titel },
+              { label: 'Intro', tekst: fd.lead },
+              { label: 'Het bericht zelf', tekst: fd.inhoud },
+            ]} />
           </div>
 
           <div className="form-section">
