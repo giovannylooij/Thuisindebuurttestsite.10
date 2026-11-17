@@ -563,6 +563,20 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 0 0 3px oklch(0.28 0.04 250 / 0.10);
 }
 .field textarea { min-height: 90px; resize: vertical; }
+.foto-keuze { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch; }
+.foto-keuze-vak { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--cream-2); }
+.foto-keuze-kop { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.foto-keuze-of { align-self: center; font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+@media (max-width: 900px) {
+  .foto-keuze { grid-template-columns: 1fr; }
+  .foto-keuze-of { justify-self: center; }
+}
+.veld-kopieer-knop {
+  margin-left: 8px; border: 1px solid var(--line); background: transparent;
+  color: var(--ink-soft); border-radius: 999px; padding: 1px 8px; font-size: 11px;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;
+}
+.veld-kopieer-knop:hover { background: var(--cream-2); color: var(--ink); }
 .field .url-slug { display: flex; align-items: center; gap: 0; }
 .field .url-slug .prefix {
   font-size: 12.5px;
@@ -1100,7 +1114,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.268', datum: '17-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.269', datum: '17-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1814,7 +1828,141 @@ function SpellingKnop({ stukken }) {
   );
 }
 
-function Field({ label, hint, children, full, verplicht, uitleg }) {
+/* ── Een foto bij een item (punten 3.7, 5.6 en 5.9 van de assistenten) ──
+   Twee manieren, elk met een eigen kopje, want eerder stonden ze onder
+   elkaar zonder dat te zien was dat het een keuze was: een bestand van de
+   eigen computer, of het adres van een foto die al ergens op internet staat.
+   Uploaden gaat naar dezelfde opslag als de iconen, in een eigen map per
+   soort item. (17-11) */
+function FotoVeld({ waarde, onChange, alt, onAlt, map, naam }) {
+  const [bezig, setBezig] = React.useState(false);
+  const [fout, setFout] = React.useState(false);
+  const melding = (t) => window.__showToast && window.__showToast(t);
+  const geplakt = waarde && String(waarde).indexOf('http') === 0 && String(waarde).indexOf(CMS_ICOON_BASE_URL) !== 0;
+
+  async function upload(e) {
+    const bestand = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!bestand) return;
+    if (!/\.(png|jpe?g|webp|gif)$/i.test(bestand.name)) { melding('Alleen png, jpg, webp of gif.'); return; }
+    if (bestand.size > 3 * 1024 * 1024) { melding('De foto is groter dan 3 MB — kies een kleinere.'); return; }
+    setBezig(true);
+    const extensie = (bestand.name.split('.').pop() || 'jpg').toLowerCase();
+    const kern = String(naam || 'foto').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'foto';
+    const pad = (map || 'fotos') + '/' + kern + '-' + Date.now() + '.' + extensie;
+    const res = await window.supabase.storage.from('icons')
+      .upload(pad, bestand, { upsert: false, contentType: bestand.type || undefined });
+    setBezig(false);
+    if (res.error) { melding('Uploaden mislukt: ' + res.error.message); return; }
+    setFout(false);
+    onChange(CMS_ICOON_BASE_URL + pad);
+    melding('Foto geüpload — klik op Opslaan om hem te bewaren.');
+  }
+
+  return (
+    <div>
+      {waarde ? (
+        <div style={{ marginBottom: 14 }}>
+          <img src={waarde} alt={alt || naam || 'foto'}
+            onLoad={() => setFout(false)} onError={() => setFout(true)}
+            style={{ maxWidth: 320, width: '100%', height: 'auto', borderRadius: 8, border: '1px solid var(--line)', display: fout ? 'none' : 'block' }} />
+          {fout && (
+            <HintCard variant="warn" icon="warn">
+              Deze foto kan niet worden getoond. Wijst het adres wel naar een afbeelding?
+              Een link uit Google of Bing wijst meestal naar een zoekpagina. Klik met de
+              rechtermuisknop op de foto zelf en kies "Afbeeldingsadres kopiëren" — of
+              upload het bestand, dat werkt altijd.
+            </HintCard>
+          )}
+          <button title="Haal de foto weg bij dit item" className="btn btn-sm btn-ghost btn-danger"
+            style={{ marginTop: 8 }}
+            onClick={() => { onChange(null); if (onAlt) onAlt(''); setFout(false); }}>
+            <Icon name="trash" size={12} /> Foto weghalen
+          </button>
+        </div>
+      ) : null}
+
+      <div className="foto-keuze">
+        <div className="foto-keuze-vak">
+          <div className="foto-keuze-kop"><Icon name="upload" size={13} /> Een foto van uw eigen computer</div>
+          <div className="hint" style={{ marginTop: 0 }}>
+            De gewone manier. Kies een bestand (png, jpg, webp of gif, tot 3 MB); hij wordt
+            bewaard bij ons en blijft altijd staan.
+          </div>
+          <label className="btn btn-primary btn-sm" style={{ cursor: 'pointer', marginTop: 8 }}
+            title="Kies een foto op uw computer">
+            <Icon name="upload" size={13} /> {bezig ? 'Bezig met uploaden…' : 'Bestand kiezen'}
+            <input type="file" accept=".png,.jpg,.jpeg,.webp,.gif" style={{ display: 'none' }} onChange={upload} />
+          </label>
+        </div>
+
+        <div className="foto-keuze-of">of</div>
+
+        <div className="foto-keuze-vak">
+          <div className="foto-keuze-kop"><Icon name="link" size={13} /> Het adres van een foto op internet</div>
+          <div className="hint" style={{ marginTop: 0 }}>
+            Alleen een adres dat rechtstreeks naar een afbeelding wijst en op .jpg of .png
+            eindigt. Een link uit Google of Bing werkt niet — die wijst naar een zoekpagina.
+            Staat de foto later niet meer op die website, dan is hij ook bij ons weg.
+          </div>
+          <input type="url" style={{ marginTop: 8 }}
+            placeholder="https://voorbeeld.nl/foto.jpg"
+            value={geplakt ? waarde : ''}
+            onChange={e => { setFout(false); onChange(e.target.value || null); }} />
+        </div>
+      </div>
+
+      {waarde && onAlt ? (
+        <Field label="Omschrijving van de foto"
+          hint="Één zin over wat er te zien is. Blinden en slechtzienden krijgen deze tekst voorgelezen in plaats van de foto."
+          uitleg="Deze tekst komt niet in beeld. Hij wordt voorgelezen door de voorleessoftware van iemand die de foto niet kan zien, en hij verschijnt als de foto niet geladen kan worden. Beschrijf gewoon wat erop staat.">
+          <input type="text" value={alt || ''} onChange={e => onAlt(e.target.value)}
+            placeholder="Bijv. 'Buurtbewoners bouwen de pergola'" />
+        </Field>
+      ) : null}
+    </div>
+  );
+}
+
+/* ── Een knopje om de inhoud van een veld over te nemen (17-11) ──
+   Armando en Ria typen teksten over van het ene item naar het andere. Dit
+   zet de hele inhoud in één klik op het klembord. Staat er niets in het
+   veld, dan is het knopje er ook niet. */
+function KopieerKnop({ tekst, wat }) {
+  const [gelukt, setGelukt] = React.useState(false);
+  if (!String(tekst || '').trim()) return null;
+  async function kopieer() {
+    const inhoud = String(tekst);
+    try {
+      await navigator.clipboard.writeText(inhoud);
+    } catch (e) {
+      // Zonder https of in een oudere browser bestaat het klembord niet;
+      // dan via een verborgen tekstvak, zoals dat vroeger ging.
+      const hulp = document.createElement('textarea');
+      hulp.value = inhoud;
+      hulp.style.position = 'fixed';
+      hulp.style.left = '-9999px';
+      document.body.appendChild(hulp);
+      hulp.select();
+      try { document.execCommand('copy'); } catch (e2) {}
+      document.body.removeChild(hulp);
+    }
+    setGelukt(true);
+    window.__showToast && window.__showToast('Tekst gekopieerd — plak hem met Ctrl+V of Cmd+V.');
+    setTimeout(() => setGelukt(false), 2000);
+  }
+  return (
+    <button type="button" className="veld-kopieer-knop"
+      title={'Kopieer ' + (wat || 'deze tekst') + ' naar het klembord'}
+      aria-label={'Kopieer ' + (wat || 'deze tekst')}
+      onClick={e => { e.preventDefault(); e.stopPropagation(); kopieer(); }}>
+      <Icon name={gelukt ? 'check' : 'copy'} size={11} /> {gelukt ? 'Gekopieerd' : 'Kopieer'}
+    </button>
+  );
+}
+
+function Field({ label, hint, children, full, verplicht, uitleg, kopieer }) {
   const [uitlegOpen, setUitlegOpen] = React.useState(false);
   return (
     <div className="field" style={full ? { gridColumn: '1 / -1' } : null}>
@@ -1829,6 +1977,7 @@ function Field({ label, hint, children, full, verplicht, uitleg }) {
               aria-label={'Uitleg bij ' + label} aria-expanded={uitlegOpen}
               onClick={e => { e.preventDefault(); e.stopPropagation(); setUitlegOpen(o => !o); }}>?</button>
           )}
+          {kopieer !== undefined && <KopieerKnop tekst={kopieer} wat={'de tekst bij ' + label} />}
         </label>
       )}
       {uitleg && uitlegOpen && <div className="veld-uitleg">{uitleg}</div>}
@@ -3152,10 +3301,10 @@ function ClubjeEdit({ id, onBack }) {
                 <input type="text" value={fd.wijk || ''} onChange={e => up('wijk', e.target.value)} placeholder={TIB_STANDAARD_WIJK} />
               </Field>
             </div>
-            <Field label="Korte omschrijving" hint="1 zin, gebruikt op kaarten en in zoekresultaten.">
+            <Field label="Korte omschrijving" hint="1 zin, gebruikt op kaarten en in zoekresultaten." kopieer={fd.omschrijving}>
               <input type="text" value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} />
             </Field>
-            <Field label="Omschrijving" hint="Uitgebreide tekst, zichtbaar op de detailpagina onder de korte omschrijving.">
+            <Field label="Omschrijving" hint="Uitgebreide tekst, zichtbaar op de detailpagina onder de korte omschrijving." kopieer={fd.uitgebreide_omschrijving}>
               <textarea rows={6} value={fd.uitgebreide_omschrijving || ''} onChange={e => up('uitgebreide_omschrijving', e.target.value)} />
             </Field>
           </div>
@@ -3215,6 +3364,15 @@ function ClubjeEdit({ id, onBack }) {
           </div>
 
           <div className="form-section">
+            <h3>Foto</h3>
+            <div className="sec-sub">Eén foto, zichtbaar bovenaan de pagina van dit bewonersinitiatief. Zonder foto staat er een gekleurd vlak.</div>
+            <FotoVeld
+              waarde={fd.foto_url} onChange={v => up('foto_url', v)}
+              alt={fd.foto_alt} onAlt={v => up('foto_alt', v)}
+              map="clubjes" naam={fd.naam || 'bewonersinitiatief'} />
+          </div>
+
+          <div className="form-section">
             <h3>Icoon</h3>
             <div className="sec-sub">Kies een icoon dat het bewonersinitiatief vertegenwoordigt. Dit icoon is zichtbaar op de kaart en in het aanmeldformulier.</div>
             {fd.icoon_url && (
@@ -3267,7 +3425,9 @@ function ClubjeEdit({ id, onBack }) {
           <div className="side-card" style={{ background: 'var(--cream-2)' }}>
             <h4>Hulp nodig?</h4>
             <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
-              Mail naar info@thuisindebuurt.nl.
+              {/* Dit adres stond er als gewone tekst; er was niet op te klikken. (17-11) */}
+              Mail naar <a href="mailto:info@thuisindebuurt.nl" title="Open een nieuw bericht aan info@thuisindebuurt.nl"
+                style={{ color: 'var(--accent-2)' }}>info@thuisindebuurt.nl</a>.
             </p>
           </div>
         </div>
@@ -3988,10 +4148,10 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
                 <input type="text" value={fd.wijk || ''} onChange={e => up('wijk', e.target.value)} placeholder={TIB_STANDAARD_WIJK} />
               </Field>
             </div>
-            <Field label="Korte omschrijving" hint="1 zin, gebruikt op kaarten en in zoekresultaten.">
+            <Field label="Korte omschrijving" hint="1 zin, gebruikt op kaarten en in zoekresultaten." kopieer={fd.omschrijving}>
               <input type="text" value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} />
             </Field>
-            <Field label="Omschrijving" hint="Uitgebreide tekst, zichtbaar op de detailpagina onder de korte omschrijving.">
+            <Field label="Omschrijving" hint="Uitgebreide tekst, zichtbaar op de detailpagina onder de korte omschrijving." kopieer={fd.uitgebreide_omschrijving}>
               <textarea rows={6} value={fd.uitgebreide_omschrijving || ''} onChange={e => up('uitgebreide_omschrijving', e.target.value)} />
             </Field>
           </div>
@@ -4059,7 +4219,9 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
                   </Field>
                 </div>
                 <Field label="Aanmelden kan tot" hint="Na deze dag verdwijnt de aanmeldknop.">
-                  <input type="date" value={fd.aanmelden_tot || ''} onChange={e => up('aanmelden_tot', e.target.value || null)} />
+                  {/* Dit was het laatste datumveld zonder kruisje om het weer
+                      leeg te maken. (17-11) */}
+                  <DatumVeld waarde={fd.aanmelden_tot} onChange={v => up('aanmelden_tot', v || null)} />
                 </Field>
 
                 <div style={{ marginTop: 8 }}>
@@ -4145,6 +4307,15 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
           </div>
 
           <div className="form-section">
+            <h3>Foto</h3>
+            <div className="sec-sub">Eén foto, zichtbaar bovenaan de pagina van deze activiteit. Zonder foto staat er een gekleurd vlak.</div>
+            <FotoVeld
+              waarde={fd.foto_url} onChange={v => up('foto_url', v)}
+              alt={fd.foto_alt} onAlt={v => up('foto_alt', v)}
+              map="activiteiten" naam={fd.naam || 'activiteit'} />
+          </div>
+
+          <div className="form-section">
             <h3>Icoon</h3>
             <div className="sec-sub">Kies een icoon dat de activiteit vertegenwoordigt. Dit icoon is zichtbaar op de kaartjes op de Activiteiten-pagina.</div>
             {fd.icoon_url && (
@@ -4197,7 +4368,9 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
           <div className="side-card" style={{ background: 'var(--cream-2)' }}>
             <h4>Hulp nodig?</h4>
             <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
-              Mail naar info@thuisindebuurt.nl.
+              {/* Dit adres stond er als gewone tekst; er was niet op te klikken. (17-11) */}
+              Mail naar <a href="mailto:info@thuisindebuurt.nl" title="Open een nieuw bericht aan info@thuisindebuurt.nl"
+                style={{ color: 'var(--accent-2)' }}>info@thuisindebuurt.nl</a>.
             </p>
           </div>
         </div>
@@ -4617,41 +4790,13 @@ function NieuwsEdit({ item, onBack }) {
     lead:   item.lead   !== undefined ? item.lead   : (item.intro || ''),
     inhoud: item.inhoud !== undefined ? item.inhoud : (item.tekst || ''),
     photo:  item.photo  !== undefined ? item.photo  : (item.foto_url || null),
+    photoAlt: item.photoAlt !== undefined ? item.photoAlt : (item.foto_alt || ''),
   }));
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [gepubliceerd, setGepubliceerd] = React.useState(item.status === 'Gepubliceerd');
   const [uitgelicht, setUitgelicht] = React.useState(!!item.uitgelicht);
 
-  // Pas melden dat het is opgeslagen als de database het heeft bevestigd.
-  // Hiervoor verscheen "Nieuwsbericht opgeslagen!" altijd, ook als het
-  // wegschrijven mislukte (gevonden 9-11).
-  // De foto ging vroeger als één lange reeks tekens mee de database in. Dat
-  // is zwaar en soms te groot, en een geplakt adres uit een zoekmachine wijst
-  // vaak naar een zoekpagina in plaats van naar een plaatje — vandaar dat er
-  // bij berichten geen foto verscheen. Nu gaat het bestand naar dezelfde
-  // opslag als de iconen, in een eigen map "nieuws". (terugkoppeling 16-11)
-  const [fotoBezig, setFotoBezig] = React.useState(false);
-  const [fotoFout, setFotoFout] = React.useState(false);
-  async function uploadFoto(e) {
-    const bestand = e.target.files && e.target.files[0];
-    e.target.value = '';
-    if (!bestand) return;
-    const melding = (t) => window.__showToast && window.__showToast(t);
-    if (!/\.(png|jpe?g|webp|gif)$/i.test(bestand.name)) { melding('Alleen png, jpg, webp of gif.'); return; }
-    if (bestand.size > 3 * 1024 * 1024) { melding('De foto is groter dan 3 MB — kies een kleinere.'); return; }
-    setFotoBezig(true);
-    const extensie = (bestand.name.split('.').pop() || 'jpg').toLowerCase();
-    const kern = String(fd.titel || 'bericht').toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'bericht';
-    const naam = 'nieuws/' + kern + '-' + Date.now() + '.' + extensie;
-    const res = await window.supabase.storage.from('icons')
-      .upload(naam, bestand, { upsert: false, contentType: bestand.type || undefined });
-    setFotoBezig(false);
-    if (res.error) { melding('Uploaden mislukt: ' + res.error.message); return; }
-    setFotoFout(false);
-    up('photo', CMS_ICOON_BASE_URL + naam);
-    melding('Foto geüpload — klik op Opslaan om hem te bewaren.');
-  }
+  // Het uploaden zit nu in <FotoVeld>, gedeeld met de andere schermen. (17-11)
 
   async function handleSave(pubOverride) {
     if (!String(fd.titel || '').trim()) {
@@ -4749,10 +4894,10 @@ function NieuwsEdit({ item, onBack }) {
             <Field label="Datum" hint="De dag waarop het bericht hoort — niet de dag waarop je het typt." uitleg="Deze datum zien bezoekers bij het bericht, en de lijst wordt erop gesorteerd: nieuwste bovenaan. Kies je een datum in de toekomst, dan wacht het bericht niet tot die dag: zodra de status Gepubliceerd is, staat het meteen online, bovenaan, met die toekomstige datum. Wil je het nog niet laten zien? Laat de status dan op Concept staan.">
               <DatumVeld waarde={fd.datum} onChange={v => up('datum', v)} />
             </Field>
-            <Field label="Intro / lead" hint="Korte samenvatting, zichtbaar op overzichtspagina's.">
+            <Field label="Intro / lead" hint="Korte samenvatting, zichtbaar op overzichtspagina's." kopieer={fd.lead}>
               <textarea value={fd.lead || ''} onChange={e => up('lead', e.target.value)} />
             </Field>
-            <Field label="Het bericht zelf" hint="De volledige tekst, zichtbaar als iemand het bericht opent.">
+            <Field label="Het bericht zelf" hint="De volledige tekst, zichtbaar als iemand het bericht opent." kopieer={fd.inhoud}>
               <textarea rows={10} value={fd.inhoud || ''} onChange={e => up('inhoud', e.target.value)} />
             </Field>
             <SpellingKnop stukken={[
@@ -4764,54 +4909,11 @@ function NieuwsEdit({ item, onBack }) {
 
           <div className="form-section">
             <h3>Afbeelding</h3>
-            <div className="sec-sub">Upload een foto of vul een URL in. Wordt getoond bovenaan het nieuwsbericht.</div>
-
-            {fd.photo && (
-              <div style={{ marginBottom: 12 }}>
-                <img
-                  src={fd.photo}
-                  alt={fd.photoAlt || fd.titel}
-                  onLoad={() => setFotoFout(false)}
-                  onError={() => setFotoFout(true)}
-                  style={{ maxWidth: 300, width: '100%', height: 'auto', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)', display: fotoFout ? 'none' : 'block' }}
-                />
-                {fotoFout && (
-                  <HintCard variant="warn" icon="warn">
-                    Deze foto kan niet worden getoond. Wijst het adres wel naar een afbeelding?
-                    Een link uit Google of Bing wijst meestal naar een zoekpagina. Klik met de
-                    rechtermuisknop op de foto zelf en kies "Afbeeldingsadres kopiëren" — of
-                    upload het bestand hierboven, dat werkt altijd.
-                  </HintCard>
-                )}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-              <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
-                <Icon name="upload" size={13} /> {fotoBezig ? 'Bezig met uploaden…' : 'Foto uploaden'}
-                <input type="file" accept=".png,.jpg,.jpeg,.webp,.gif" style={{ display: 'none' }} onChange={uploadFoto} />
-              </label>
-              {fd.photo && (
-                <button title="Haal de foto weg" className="btn btn-ghost btn-danger" onClick={() => { up('photo', null); up('photoAlt', ''); }}>
-                  <Icon name="trash" size={13} /> Verwijderen
-                </button>
-              )}
-            </div>
-
-            <Field label="Of plak het adres van een foto" hint="Alleen een adres dat rechtstreeks naar een afbeelding wijst en op .jpg of .png eindigt. Een link uit Google of Bing werkt niet — die wijst naar een zoekpagina. Uploaden is makkelijker.">
-              <input
-                type="url"
-                placeholder="https://example.com/foto.jpg"
-                value={fd.photo && fd.photo.startsWith('http') ? fd.photo : ''}
-                onChange={e => up('photo', e.target.value)}
-              />
-            </Field>
-
-            {fd.photo && (
-              <Field label="Omschrijving van de foto" hint="Eén zin over wat er te zien is. Blinden en slechtzienden krijgen deze tekst voorgelezen in plaats van de foto.">
-                <input type="text" value={fd.photoAlt || ''} onChange={e => up('photoAlt', e.target.value)} placeholder="Bijv. 'Buurtbewoners bouwen de pergola'" />
-              </Field>
-            )}
+            <div className="sec-sub">De foto staat bovenaan het bericht en op de nieuwspagina in de lijst.</div>
+            <FotoVeld
+              waarde={fd.photo} onChange={v => up('photo', v)}
+              alt={fd.photoAlt} onAlt={v => up('photoAlt', v)}
+              map="nieuws" naam={fd.titel || 'bericht'} />
           </div>
         </div>
         <div>
@@ -5729,6 +5831,10 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
       rij.icoon_url = fd.icoon_url || null;
       rij.icoon_label = fd.icoon_label || null;
     }
+    // Foto: alleen meesturen als het scherm er iets mee gedaan heeft, zodat
+    // bestaande voorzieningen blijven werken. Zie sql/fotos-bij-alle-items.sql
+    if (fd.foto_url !== undefined) rij.foto_url = fd.foto_url || null;
+    if (fd.foto_alt !== undefined) rij.foto_alt = fd.foto_alt || null;
     const klaar = await window.__logVooraf('voorzieningen', bestaat ? fd.id : null);
     const res = bestaat
       ? await window.supabase.from('voorzieningen').update(rij).eq('id', fd.id).select().single()
@@ -5791,7 +5897,7 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
                 {TIB_VOORZIENING_SOORTEN.map(s => <option key={s.id} value={s.id}>{s.id}</option>)}
               </select>
             </Field>
-            <Field label="Omschrijving" hint="Eén of twee zinnen. Een webadres of e-mailadres wordt vanzelf klikbaar.">
+            <Field label="Omschrijving" hint="Eén of twee zinnen. Een webadres of e-mailadres wordt vanzelf klikbaar." kopieer={fd.omschrijving}>
               <textarea rows={3} value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} />
             </Field>
             <div className="row-2">
@@ -5822,6 +5928,15 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
                 onVerplaats={(la, lo) => { up('lat', la); up('lng', lo); }}
                 onAdres={a => up('adres', a)} />
             )}
+          </div>
+
+          <div className="form-section">
+            <h3>Foto</h3>
+            <div className="sec-sub">Eén foto van deze plek, zichtbaar op de eigen pagina. Staat er geen foto, dan wordt het icoon hieronder getoond.</div>
+            <FotoVeld
+              waarde={fd.foto_url} onChange={v => up('foto_url', v)}
+              alt={fd.foto_alt} onAlt={v => up('foto_alt', v)}
+              map="voorzieningen" naam={fd.naam || 'voorziening'} />
           </div>
 
           <div className="form-section">
@@ -10124,6 +10239,7 @@ function __mapClubjesToDb(item) {
     telefoon:      item.telefoon,
     adres:         item.adres,
     foto_url:      item.fotoUrl || item.foto_url || null,
+    foto_alt:      item.foto_alt || null,
     lat:           __getalOfNull(item.lat),
     lng:           __getalOfNull(item.lng),
     status:        item.status,
@@ -10176,7 +10292,9 @@ function __mapActiviteitenToDb(item) {
   // scherm ze weg en blijft opslaan gewoon werken.
   ['betaald', 'prijs', 'servicekosten', 'max_personen', 'plekken', 'aanmelden_tot',
    'vraag_dieet', 'vraag_adres', 'vraag_telefoon', 'vraag_opmerking', 'betaalmethodes',
-   'extra_vragen'
+   'extra_vragen',
+   // Foto's: zie sql/fotos-bij-alle-items.sql (17-11).
+   'foto_url', 'foto_alt'
   ].forEach(function(k) { if (item[k] !== undefined) rij[k] = item[k]; });
   // Hetzelfde voor startdatum en frequentie (blok 4).
   TIB_PLAN_VELDEN.forEach(function(k) { if (item[k] !== undefined) rij[k] = item[k] === '' ? null : item[k]; });
@@ -10242,6 +10360,9 @@ function __mapNieuwsToDb(item) {
     status:     item.status,
     uitgelicht: item.uitgelicht === true,
     foto_url:   item.photo || item.foto_url || null,
+    // De omschrijving van de foto werd ingetypt maar nergens bewaard: de
+    // kolom bestond niet. Zie sql/fotos-bij-alle-items.sql (17-11).
+    foto_alt:   item.photoAlt !== undefined ? (item.photoAlt || null) : (item.foto_alt || null),
     aangemaakt_op: item.aangemaakt_op || null,
   };
 }
