@@ -201,6 +201,13 @@ a { color: inherit; text-decoration: none; }
   top: 0;
   z-index: 10;
 }
+.terug-knop {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--line); background: var(--paper);
+  color: var(--ink); border-radius: 7px; padding: 5px 11px;
+  font-size: 12.5px; font-family: var(--sans); cursor: pointer;
+}
+.terug-knop:hover { background: var(--cream-2); }
 .crumbs { font-size: 12.5px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
 .crumbs .sep { opacity: 0.5; }
 .crumbs strong { color: var(--ink); font-weight: 500; }
@@ -1123,7 +1130,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.272', datum: '18-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.273', datum: '18-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1600,8 +1607,19 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
   );
 }
 
-function Topbar({ crumbs, previewOn, onTogglePreview }) {
+function Topbar({ crumbs, previewOn, onTogglePreview, kanTerug }) {
   const [globalSearch, setGlobalSearch] = React.useState('');
+  // Verschijnt zodra er een item openstaat, en verdwijnt weer als het sluit.
+  const [itemOpen, setItemOpen] = React.useState(!!window.__tibSluitItem);
+  React.useEffect(() => {
+    function kijk() { setItemOpen(!!window.__tibSluitItem); }
+    window.addEventListener('tib-item', kijk);
+    return () => window.removeEventListener('tib-item', kijk);
+  }, []);
+  function terug() {
+    if (window.__tibSluitItem) { window.__tibSluitItem(); return; }
+    try { window.history.back(); } catch (e) {}
+  }
   function handleSearch(e) {
     if (e.key === 'Enter' && globalSearch.trim()) {
       window.__showToast && window.__showToast('Zoeken naar: ' + globalSearch.trim());
@@ -1610,6 +1628,12 @@ function Topbar({ crumbs, previewOn, onTogglePreview }) {
   }
   return (
     <div className="topbar">
+      {(itemOpen || kanTerug) && (
+        <button className="terug-knop" onClick={terug}
+          title={itemOpen ? 'Sluit dit item en ga terug naar de lijst' : 'Ga terug naar het vorige scherm'}>
+          <Icon name="arrow" size={13} style={{ transform: 'rotate(180deg)' }} /> Terug
+        </button>
+      )}
       <div className="crumbs">
         <span>TIB CMS</span>
         {crumbs.map((c, i) => (
@@ -1835,6 +1859,27 @@ function SpellingKnop({ stukken }) {
       ) : null}
     </div>
   );
+}
+
+/* ── Terug in het CMS (18-11) ──
+   De terugknop van de browser gooide je er nog steeds uit zodra je in een
+   item zat. De reparatie van 16-11 gaf elk één scherm een plek in de
+   geschiedenis, maar een geopend item is geen scherm: dat is een toestand
+   binnen een scherm. Terug sloeg het item dus over.
+   Nu meldt een geopend item zich aan, en doet de terugknop van de browser
+   hetzelfde als de knop in de bovenbalk: het item sluiten en in het CMS
+   blijven. (punt 5.4, opnieuw) */
+function useTerugknop(onBack) {
+  const terugRef = React.useRef(onBack);
+  terugRef.current = onBack;
+  React.useEffect(() => {
+    window.__tibSluitItem = () => { terugRef.current && terugRef.current(); };
+    window.dispatchEvent(new Event('tib-item'));
+    return () => {
+      window.__tibSluitItem = null;
+      window.dispatchEvent(new Event('tib-item'));
+    };
+  }, []);
 }
 
 /* ── De knoppen bij elkaar in de publicatiekaart (punt 6, 18-11) ──
@@ -3232,6 +3277,8 @@ function WanneerBlok({ fd, up, kolommen, soort }) {
 // Bewerkscherm bewonersinitiatief. ActiviteitEdit heeft exact dezelfde opbouw (F5);
 // wijzig je hier iets, doe dat daar ook.
 function ClubjeEdit({ id, onBack }) {
+  // De terugknop van de browser sluit dit item in plaats van het CMS te verlaten.
+  useTerugknop(onBack);
   const iconenLijst = useIconen(); // G13: lijst uit de opslagmap, incl. nieuw geüploade
   const item = id != null ? (DATA.clubjes.find(c => c.id === id) || null) : null;
   // Van wie is dit item? Alleen de eigenaar mag het aanpassen.
@@ -3357,6 +3404,11 @@ function ClubjeEdit({ id, onBack }) {
             <Field label="Omschrijving" hint="Uitgebreide tekst, zichtbaar op de detailpagina onder de korte omschrijving." kopieer={fd.uitgebreide_omschrijving}>
               <textarea rows={6} value={fd.uitgebreide_omschrijving || ''} onChange={e => up('uitgebreide_omschrijving', e.target.value)} />
             </Field>
+            <SpellingKnop stukken={[
+              { label: 'Naam', tekst: fd.naam },
+              { label: 'Korte omschrijving', tekst: fd.omschrijving },
+              { label: 'Omschrijving', tekst: fd.uitgebreide_omschrijving },
+            ]} />
           </div>
 
           <div className="form-section">
@@ -4045,6 +4097,8 @@ function BetaalChecklist({ activiteit }) {
 }
 
 function ActiviteitEdit({ item: itemProp, onBack }) {
+  // De terugknop van de browser sluit dit item in plaats van het CMS te verlaten.
+  useTerugknop(onBack);
   // Van wie is dit item? Alleen de eigenaar mag het aanpassen.
   const magBewerken = tibMagBewerken(itemProp);
   // Alleen de assistent die dit zelf heeft aangemaakt, kan het overdragen.
@@ -4199,6 +4253,11 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
             <Field label="Omschrijving" hint="Uitgebreide tekst, zichtbaar op de detailpagina onder de korte omschrijving." kopieer={fd.uitgebreide_omschrijving}>
               <textarea rows={6} value={fd.uitgebreide_omschrijving || ''} onChange={e => up('uitgebreide_omschrijving', e.target.value)} />
             </Field>
+            <SpellingKnop stukken={[
+              { label: 'Naam', tekst: fd.naam },
+              { label: 'Korte omschrijving', tekst: fd.omschrijving },
+              { label: 'Omschrijving', tekst: fd.uitgebreide_omschrijving },
+            ]} />
           </div>
 
           <div className="form-section">
@@ -4573,6 +4632,8 @@ function ActiviteitenScreen() {
 }
 
 function AgendaEdit({ item, onBack }) {
+  // De terugknop van de browser sluit dit item in plaats van het CMS te verlaten.
+  useTerugknop(onBack);
   const [fd, setFd] = React.useState({ ...item });
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
   const [gepubliceerd, setGepubliceerd] = React.useState(item.status === 'Gepubliceerd');
@@ -4833,6 +4894,8 @@ function AgendaScreen() {
 }
 
 function NieuwsEdit({ item, onBack }) {
+  // De terugknop van de browser sluit dit item in plaats van het CMS te verlaten.
+  useTerugknop(onBack);
   // Van wie is dit item? Alleen de eigenaar mag het aanpassen.
   const magBewerken = tibMagBewerken(item);
   // Alleen de assistent die dit zelf heeft aangemaakt, kan het overdragen.
@@ -5632,6 +5695,8 @@ function PagesScreen({ startPagina }) {
 }
 
 function PartnerEdit({ item, onBack }) {
+  // De terugknop van de browser sluit dit item in plaats van het CMS te verlaten.
+  useTerugknop(onBack);
   const [fd, setFd] = React.useState({ ...item });
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
 
@@ -5829,6 +5894,8 @@ function tibSoortKleur(soort) {
 }
 
 function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
+  // De terugknop van de browser sluit dit item in plaats van het CMS te verlaten.
+  useTerugknop(onBack);
   // Van wie is dit item? Alleen de eigenaar mag het aanpassen.
   const magBewerken = tibMagBewerken(item);
   // Alleen de assistent die dit zelf heeft aangemaakt, kan het overdragen.
@@ -5935,6 +6002,10 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
             <Field label="Omschrijving" hint="Eén of twee zinnen. Een webadres of e-mailadres wordt vanzelf klikbaar." kopieer={fd.omschrijving}>
               <textarea rows={3} value={fd.omschrijving || ''} onChange={e => up('omschrijving', e.target.value)} />
             </Field>
+            <SpellingKnop stukken={[
+              { label: 'Naam', tekst: fd.naam },
+              { label: 'Omschrijving', tekst: fd.omschrijving },
+            ]} />
             <div className="row-2">
               <Field label="Openingstijden" hint="Vrije tekst, bijvoorbeeld: ma–vr 08:30–17:30.">
                 <input type="text" value={fd.openingstijden || ''} onChange={e => up('openingstijden', e.target.value)} />
@@ -6219,6 +6290,8 @@ function PartnersScreen() {
 }
 
 function NetwerkEdit({ item, onBack, onOpgeslagen }) {
+  // De terugknop van de browser sluit dit item in plaats van het CMS te verlaten.
+  useTerugknop(onBack);
   const [fd, setFd] = React.useState({ ...item });
   // Een redactie-assistent werkt alleen aan zijn eigen netwerken; die van de
   // redactie of van een andere assistent staan op slot (zie tibMagBewerken).
@@ -9918,6 +9991,10 @@ function App() {
   // één pagina is zonder geschiedenis. Elk scherm krijgt nu een eigen plek
   // in die geschiedenis, zodat Terug gewoon een scherm terug gaat.
   // (terugkoppeling redactie-assistenten, 16-11)
+  // De luisteraar hieronder wordt één keer aangemaakt en kent `route` dan
+  // niet meer; daarom houden we hem apart bij.
+  const routeRef = React.useRef(route);
+  routeRef.current = route;
   function gaNaar(nieuw) {
     if (!nieuw || nieuw === route) return;
     try { window.history.pushState({ tibRoute: nieuw }, '', '#' + nieuw); } catch (e) {}
@@ -9928,6 +10005,17 @@ function App() {
     // keer Terug alsnog de website uit.
     try { window.history.replaceState({ tibRoute: route }, '', '#' + route); } catch (e) {}
     function terug(e) {
+      // Staat er een item open, dan sluit de terugknop eerst dat item en
+      // blijven we in het CMS. We zetten de plek in de geschiedenis terug,
+      // zodat de volgende keer Terug wel een scherm teruggaat.
+      if (window.__tibSluitItem) {
+        const sluit = window.__tibSluitItem;
+        window.__tibSluitItem = null;
+        try { window.history.pushState({ tibRoute: routeRef.current }, '', '#' + routeRef.current); } catch (err) {}
+        sluit();
+        window.dispatchEvent(new Event('tib-item'));
+        return;
+      }
       const naar = (e.state && e.state.tibRoute)
         || (window.location.hash || '').replace('#', '')
         || 'dashboard';
@@ -10247,6 +10335,7 @@ function App() {
           crumbs={current.crumbs}
           previewOn={previewOn}
           onTogglePreview={() => setPreviewOn(v => !v)}
+          kanTerug={route !== 'dashboard'}
         />
         <div className="content" data-screen-label={route}>
           {isBlocked
