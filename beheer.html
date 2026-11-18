@@ -1140,7 +1140,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.276', datum: '18-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.277', datum: '18-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1638,7 +1638,30 @@ function Topbar({ crumbs, previewOn, onTogglePreview, kanTerug }) {
     if (window.__tibSluitItem) { window.__tibSluitItem(); return; }
     try { window.history.back(); } catch (e) {}
   }
+  // Een redactie-assistent zoekt in zijn eigen items: Enter opent Mijn items
+  // met de zoekterm al ingevuld, en ⌘K zet de cursor in het zoekvak.
+  // Voor de andere rollen blijft het zoekvak zoals het was.
+  const zoekRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!tibIsAssistent()) return;
+    function sneltoets(e) {
+      if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {
+        e.preventDefault();
+        zoekRef.current && zoekRef.current.focus();
+      }
+    }
+    window.addEventListener('keydown', sneltoets);
+    return () => window.removeEventListener('keydown', sneltoets);
+  }, []);
   function handleSearch(e) {
+    if (e.key === 'Enter' && globalSearch.trim() && tibIsAssistent()) {
+      window.__tibZoekterm = globalSearch.trim();
+      window.__tibGaNaar && window.__tibGaNaar('mijn-items');
+      window.dispatchEvent(new Event('tib-zoek'));
+      setGlobalSearch('');
+      e.target.blur();
+      return;
+    }
     if (e.key === 'Enter' && globalSearch.trim()) {
       window.__showToast && window.__showToast('Zoeken naar: ' + globalSearch.trim());
       setGlobalSearch('');
@@ -1664,7 +1687,7 @@ function Topbar({ crumbs, previewOn, onTogglePreview, kanTerug }) {
       <div className="topbar-right">
         <div className="search">
           <Icon name="search" size={14} />
-          <input placeholder="Zoek in alles…" value={globalSearch} onChange={e => setGlobalSearch(e.target.value)} onKeyDown={handleSearch} />
+          <input ref={zoekRef} placeholder={tibIsAssistent() ? 'Zoek in mijn items…' : 'Zoek in alles…'} value={globalSearch} onChange={e => setGlobalSearch(e.target.value)} onKeyDown={handleSearch} />
           <span className="kbd">⌘K</span>
         </div>
         <button className="icon-btn" title="Meldingen" onClick={() => window.__showToast && window.__showToast('Geen nieuwe meldingen')}>
@@ -2314,6 +2337,8 @@ function Dashboard({ onNav, onPreview, badges }) {
             )}
           </div>
 
+          {/* Een redactie-assistent heeft geen Contact in het menu: kaart niet tonen. */}
+          {!tibIsAssistent() && (
           <div className="card">
             <div className="card-head">
               <h3 className="card-title">Contact via het contactformulier</h3>
@@ -2323,6 +2348,7 @@ function Dashboard({ onNav, onPreview, badges }) {
               Berichten van bezoekers staan onder Contact in het menu.
             </div>
           </div>
+          )}
         </div>
 
         {/* Right column */}
@@ -2384,9 +2410,15 @@ function Dashboard({ onNav, onPreview, badges }) {
               <h3 className="card-title">Tips & shortcuts</h3>
             </div>
             <div className="card-pad" style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+              {tibIsAssistent() ? (<>
+              <p style={{ margin: '0 0 8px' }}>Druk op <span className="kbd">⌘K</span> en typ een naam om meteen in uw eigen items te zoeken.</p>
+              <p style={{ margin: '0 0 8px' }}>Met de knop <strong>Bekijk site</strong> opent u de live website in een nieuw tabblad.</p>
+              <p style={{ margin: 0 }}>Klaar met een item? Open het in <a className="card-link" href="#" onClick={() => onNav('mijn-items')} style={{ color: 'var(--accent-2)' }}>Mijn items</a> en draag het over aan Margareth.</p>
+              </>) : (<>
               <p style={{ margin: '0 0 8px' }}>Druk op <span className="kbd">⌘K</span> om snel naar elk onderdeel te springen.</p>
               <p style={{ margin: '0 0 8px' }}>Met de knop <strong>Bekijk site</strong> open je de live website in een nieuw tabblad.</p>
               <p style={{ margin: 0 }}>Een vrijwilliger toevoegen? Ga naar <a className="card-link" href="#" onClick={() => onNav('gebruikers')} style={{ color: 'var(--accent-2)' }}>Gebruikers</a>.</p>
+              </>)}
             </div>
           </div>
         </div>
@@ -3391,7 +3423,7 @@ function ClubjeEdit({ id, onBack }) {
     <>
       <PageHead
         title={fd.naam || 'Nieuw bewonersinitiatief'}
-        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar bewonersinitiatieven</a></>}
+        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar {tibIsAssistent() ? 'Mijn items' : 'bewonersinitiatieven'}</a></>}
       />
       {!magBewerken && (
         <HintCard icon="info">
@@ -3969,7 +4001,16 @@ function MijnItemsScherm({ onNav }) {
   const [rijen, setRijen] = React.useState(null);
   const [bewerken, setBewerken] = React.useState(null);
   const [filter, setFilter] = React.useState('alle');
-  const [zoek, setZoek] = React.useState('');
+  // Komt de assistent hier via het zoekvak bovenin, dan staat de zoekterm al klaar.
+  const [zoek, setZoek] = React.useState(() => { const t = window.__tibZoekterm || ''; window.__tibZoekterm = ''; return t; });
+  React.useEffect(() => {
+    function nieuweZoekterm() {
+      if (!window.__tibZoekterm) return;
+      setZoek(window.__tibZoekterm); setFilter('alle'); window.__tibZoekterm = '';
+    }
+    window.addEventListener('tib-zoek', nieuweZoekterm);
+    return () => window.removeEventListener('tib-zoek', nieuweZoekterm);
+  }, []);
 
   async function laad() {
     const res = await Promise.all(TIB_SOORTEN.map(x => window.supabase.from(x.id).select('*')));
@@ -4003,7 +4044,8 @@ function MijnItemsScherm({ onNav }) {
 
   const zichtbaar = (rijen || [])
     .filter(x => filter === 'alle' || x.soort.id === filter)
-    .filter(x => !zoek || String(x.rij.naam || x.rij.titel || '').toLowerCase().includes(zoek.toLowerCase()));
+    .filter(x => !zoek || [x.rij.naam, x.rij.titel, x.rij.korte_omschrijving, x.rij.samenvatting, x.soort.label]
+      .filter(Boolean).join(' ').toLowerCase().includes(zoek.toLowerCase()));
 
   return (
     <>
@@ -4014,6 +4056,7 @@ function MijnItemsScherm({ onNav }) {
           <div className="search">
             <Icon name="search" size={14} />
             <input placeholder="Zoek op naam…" value={zoek} onChange={e => setZoek(e.target.value)} />
+            {zoek && <button className="btn btn-sm btn-ghost" title="Zoekterm wissen" onClick={() => setZoek('')}>✕</button>}
           </div>
           <button className={'chip' + (filter === 'alle' ? ' active' : '')} title="Toon alles" onClick={() => setFilter('alle')}>Alles</button>
           {TIB_SOORTEN.map(x => (
@@ -4041,7 +4084,18 @@ function MijnItemsScherm({ onNav }) {
                   <td>{tibItemStatus(x.soort.id, x.rij) === 'Gepubliceerd'
                     ? <Pill variant="published">Gepubliceerd</Pill> : <Pill variant="draft">Concept</Pill>}</td>
                   <td style={{ color: 'var(--ink-soft)', fontSize: 12.5 }}>{x.rij.aangemaakt_op ? tibAanmaakMoment(x.rij.aangemaakt_op) : '—'}</td>
-                  <td><button className="btn btn-sm btn-ghost" title="Open dit item"><Icon name="edit" size={13} /></button></td>
+                  <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+                    <button className="btn btn-sm btn-ghost" title="Open dit item"><Icon name="edit" size={13} /></button>
+                    <button className="btn btn-sm btn-ghost btn-danger" title="Verwijder dit item definitief"
+                      onClick={async e => {
+                        e.stopPropagation();
+                        const naam = x.rij.naam || x.rij.titel || 'dit item';
+                        if (!window.confirm(x.soort.label + ' "' + naam + '" definitief verwijderen?\n\nDit kan niet ongedaan worden gemaakt.')) return;
+                        await window.__supabaseDelete(x.soort.id, x.rij.id);
+                        window.__syncToSite && window.__syncToSite();
+                        laad();
+                      }}><Icon name="trash" size={13} /></button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -4705,7 +4759,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
     <>
       <PageHead
         title={fd.naam || 'Nieuwe activiteit'}
-        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar activiteiten</a></>}
+        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar {tibIsAssistent() ? 'Mijn items' : 'activiteiten'}</a></>}
       />
       {!magBewerken && (
         <HintCard icon="info">
@@ -5467,7 +5521,7 @@ function NieuwsEdit({ item, onBack }) {
     <>
       <PageHead
         title={fd.titel || 'Nieuw bericht'}
-        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar nieuws</a></>}
+        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar {tibIsAssistent() ? 'Mijn items' : 'nieuws'}</a></>}
       />
       {!magBewerken && (
         <HintCard icon="info">
@@ -6479,7 +6533,7 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
     <>
       <PageHead
         title={fd.naam || 'Nieuwe voorziening'}
-        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar voorzieningen</a></>}
+        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar {tibIsAssistent() ? 'Mijn items' : 'voorzieningen'}</a></>}
       />
       {!magBewerken && (
         <HintCard icon="info">
@@ -6856,7 +6910,7 @@ function NetwerkEdit({ item, onBack, onOpgeslagen }) {
     <>
       <PageHead
         title={fd.naam || 'Nieuw netwerk'}
-        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar netwerken</a></>}
+        sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar {tibIsAssistent() ? 'Mijn items' : 'netwerken'}</a></>}
         actions={<>
           {magBewerken && item.id != null && <button title="Verwijder dit netwerk definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
           {magBewerken && <button title="Bewaar dit netwerk" className="btn btn-primary" disabled={bezig} onClick={async () => { if (await handleSave()) onBack(); }}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>}
@@ -10502,6 +10556,8 @@ function App() {
     try { window.history.pushState({ tibRoute: nieuw }, '', '#' + nieuw); } catch (e) {}
     setRoute(nieuw);
   }
+  // Voor het zoekvak bovenin (alleen gebruikt bij de redactie-assistent).
+  window.__tibGaNaar = gaNaar;
   React.useEffect(() => {
     // Het scherm waarmee we beginnen ook vastleggen, anders gaat de eerste
     // keer Terug alsnog de website uit.
