@@ -496,6 +496,15 @@ a { color: inherit; text-decoration: none; }
 
 /* === Forms === */
 .form-grid { display: grid; gap: 18px; grid-template-columns: 2fr 1fr; align-items: start; }
+/* De rechterkolom blijft staan tijdens het scrollen, zodat Opslaan altijd
+   in beeld is — ook onderaan een lang bericht. (18-11) */
+.form-zijkolom {
+  position: sticky;
+  top: calc(var(--topbar-h) + 18px);
+  max-height: calc(100vh - var(--topbar-h) - 36px);
+  overflow-y: auto;
+}
+@media (max-width: 1100px) { .form-zijkolom { position: static; max-height: none; } }
 .form-section {
   background: var(--paper);
   border: 1px solid var(--line);
@@ -1114,7 +1123,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.269', datum: '17-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.271', datum: '18-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1825,6 +1834,62 @@ function SpellingKnop({ stukken }) {
         </HintCard>
       ) : null}
     </div>
+  );
+}
+
+/* ── De knoppen bij elkaar in de publicatiekaart (punt 6, 18-11) ──
+   Opslaan, Voorvertoning en Verwijderen stonden in een balk bovenaan die
+   wegscrolt, terwijl Publiceren in deze kaart staat. Bij een lang bericht
+   was Opslaan daardoor nergens meer te zien en moest je terug naar boven.
+   Nu staat alles wat je met een item doet op één plek, en de kaart plakt
+   mee tijdens het scrollen. Verwijderen staat apart onderaan: dat is niet
+   terug te draaien en hoort niet naast de knoppen die je de hele dag
+   gebruikt. (voorstel Giovanny) */
+function ItemActiesBoven({ magBewerken, onOpslaan, bezig, opslaanTitel,
+                           onVoorvertoning, voorvertoningUit, voorvertoningTitel }) {
+  return (
+    <>
+      {magBewerken && onOpslaan && (
+        <button className="btn btn-primary btn-sm" style={{ width: '100%' }} disabled={!!bezig}
+          title={opslaanTitel} onClick={onOpslaan}>
+          <Icon name="save" size={13} /> {bezig ? 'Opslaan…' : 'Opslaan'}
+        </button>
+      )}
+      {onVoorvertoning && (
+        <button className="btn btn-sm" style={{ width: '100%', marginTop: 8 }}
+          disabled={!!voorvertoningUit} title={voorvertoningTitel} onClick={onVoorvertoning}>
+          <Icon name="eye" size={13} /> Voorvertoning
+        </button>
+      )}
+      {((magBewerken && onOpslaan) || onVoorvertoning) && <div style={{ height: 8 }} />}
+    </>
+  );
+}
+
+function ItemActiesOnder({ magBewerken, onOverdragen, onVerwijderen, verwijderTitel }) {
+  if (!magBewerken || (!onOverdragen && !onVerwijderen)) return null;
+  return (
+    <>
+      {onOverdragen && (
+        <>
+          <div className="divider"></div>
+          <button className="btn btn-sm" style={{ width: '100%' }}
+            title="Geef dit item aan Margareth; daarna kunt u het zelf niet meer aanpassen"
+            onClick={onOverdragen}>
+            <Icon name="users" size={13} /> Overdragen aan Margareth
+          </button>
+        </>
+      )}
+      {onVerwijderen && (
+        <>
+          <div className="divider"></div>
+          <button className="btn btn-sm btn-ghost btn-danger" style={{ width: '100%' }}
+            title={verwijderTitel} onClick={onVerwijderen}>
+            <Icon name="trash" size={13} /> Verwijderen
+          </button>
+        </>
+      )}
+    </>
   );
 }
 
@@ -3257,22 +3322,6 @@ function ClubjeEdit({ id, onBack }) {
       <PageHead
         title={fd.naam || 'Nieuw bewonersinitiatief'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar bewonersinitiatieven</a></>}
-        actions={<>
-          {magBewerken && bestaat && <button title="Verwijder dit bewonersinitiatief definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn" disabled={!bestaat || !published}
-            title={!bestaat ? 'Eerst opslaan, dan kunt u het op de website bekijken'
-              : !published ? 'Staat nog niet op de website — eerst publiceren'
-              : 'Open dit bewonersinitiatief op de website'}
-            onClick={() => window.open(tibSiteLink('clubje', fd.id), '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
-          {magBewerken && <button title="Bewaar dit bewonersinitiatief" className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>}
-          {magBewerken && bestaatEigen && (
-            <button title="Geef dit item aan Margareth; daarna kunt u het zelf niet meer aanpassen"
-              className="btn" onClick={async () => { if (await tibDraagOver('clubjes', item, fd.naam)) onBack(); }}>
-              <Icon name="users" size={14} /> Overdragen aan Margareth
-            </button>
-          )}
-
-        </>}
       />
       {!magBewerken && (
         <HintCard icon="info">
@@ -3393,12 +3442,19 @@ function ClubjeEdit({ id, onBack }) {
         </div>
 
         {/* Sidebar */}
-        <div>
+        <div className="form-zijkolom">
           <div className="side-card">
             <h4>Publicatie</h4>
             <div className="row"><span>Status</span><strong>{published ? 'Gepubliceerd' : 'Concept'}</strong></div>
             <div className="row"><span>Zichtbaarheid</span><strong>{published ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
             <div className="divider"></div>
+            <ItemActiesBoven magBewerken={magBewerken} onOpslaan={opslaan} bezig={bezig}
+              opslaanTitel="Bewaar dit bewonersinitiatief"
+              onVoorvertoning={() => window.open(tibSiteLink('clubje', fd.id), '_blank')}
+              voorvertoningUit={!bestaat || !published}
+              voorvertoningTitel={!bestaat ? 'Eerst opslaan, dan kunt u het op de website bekijken'
+                : !published ? 'Staat nog niet op de website — eerst publiceren'
+                : 'Open dit bewonersinitiatief op de website'} />
             {!magBewerken ? (
               <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
                 Alleen de redactie-assistent die dit heeft gemaakt, kan de status veranderen.
@@ -3407,7 +3463,7 @@ function ClubjeEdit({ id, onBack }) {
               <button className="btn btn-sm" style={{ width: '100%' }} disabled={bezig}
                 title="Haal dit van de website; het blijft als concept in het CMS staan"
                 onClick={async () => { if (await handleSave(false)) { setPublished(false); toast('Van de website gehaald — staat nu als concept in het CMS'); } }}>
-                <Icon name="eye" size={13} /> Van de website halen
+                <Icon name="archive" size={13} /> Van de website halen
               </button>
             ) : (
               <button className="btn btn-primary btn-sm" style={{ width: '100%' }} disabled={bezig}
@@ -3420,6 +3476,10 @@ function ClubjeEdit({ id, onBack }) {
               Met <strong>Opslaan</strong> bewaart u tussendoor, zonder de status te veranderen —
               zo kunt u later verder waar u gebleven was.
             </p>
+            <ItemActiesOnder magBewerken={magBewerken}
+              onOverdragen={bestaatEigen ? (async () => { if (await tibDraagOver('clubjes', item, fd.naam)) onBack(); }) : null}
+              onVerwijderen={bestaat ? handleDelete : null}
+              verwijderTitel="Verwijder dit bewonersinitiatief definitief" />
           </div>
 
           <div className="side-card" style={{ background: 'var(--cream-2)' }}>
@@ -4089,22 +4149,6 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
       <PageHead
         title={fd.naam || 'Nieuwe activiteit'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar activiteiten</a></>}
-        actions={<>
-          {magBewerken && bestaat && <button title="Verwijder deze activiteit definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn" disabled={!bestaat || !published}
-            title={!bestaat ? 'Eerst opslaan, dan kunt u het op de website bekijken'
-              : !published ? 'Staat nog niet op de website — eerst publiceren'
-              : 'Open deze activiteit op de website'}
-            onClick={() => window.open(tibSiteLink('activiteit', fd.id), '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
-          {magBewerken && <button title="Bewaar deze activiteit" className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>}
-          {magBewerken && bestaatEigen && (
-            <button title="Geef dit item aan Margareth; daarna kunt u het zelf niet meer aanpassen"
-              className="btn" onClick={async () => { if (await tibDraagOver('activiteiten', itemProp, fd.naam)) onBack(); }}>
-              <Icon name="users" size={14} /> Overdragen aan Margareth
-            </button>
-          )}
-
-        </>}
       />
       {!magBewerken && (
         <HintCard icon="info">
@@ -4336,12 +4380,19 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
         </div>
 
         {/* Sidebar */}
-        <div>
+        <div className="form-zijkolom">
           <div className="side-card">
             <h4>Publicatie</h4>
             <div className="row"><span>Status</span><strong>{published ? 'Gepubliceerd' : 'Concept'}</strong></div>
             <div className="row"><span>Zichtbaarheid</span><strong>{published ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
             <div className="divider"></div>
+            <ItemActiesBoven magBewerken={magBewerken} onOpslaan={opslaan} bezig={bezig}
+              opslaanTitel="Bewaar deze activiteit"
+              onVoorvertoning={() => window.open(tibSiteLink('activiteit', fd.id), '_blank')}
+              voorvertoningUit={!bestaat || !published}
+              voorvertoningTitel={!bestaat ? 'Eerst opslaan, dan kunt u het op de website bekijken'
+                : !published ? 'Staat nog niet op de website — eerst publiceren'
+                : 'Open deze activiteit op de website'} />
             {!magBewerken ? (
               <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
                 Alleen de redactie-assistent die dit heeft gemaakt, kan de status veranderen.
@@ -4350,7 +4401,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
               <button className="btn btn-sm" style={{ width: '100%' }} disabled={bezig}
                 title="Haal dit van de website; het blijft als concept in het CMS staan"
                 onClick={async () => { if (await handleSave(false)) { setPublished(false); toast('Van de website gehaald — staat nu als concept in het CMS'); } }}>
-                <Icon name="eye" size={13} /> Van de website halen
+                <Icon name="archive" size={13} /> Van de website halen
               </button>
             ) : (
               <button className="btn btn-primary btn-sm" style={{ width: '100%' }} disabled={bezig}
@@ -4363,6 +4414,10 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
               Met <strong>Opslaan</strong> bewaart u tussendoor, zonder de status te veranderen —
               zo kunt u later verder waar u gebleven was.
             </p>
+            <ItemActiesOnder magBewerken={magBewerken}
+              onOverdragen={bestaatEigen ? (async () => { if (await tibDraagOver('activiteiten', itemProp, fd.naam)) onBack(); }) : null}
+              onVerwijderen={bestaat ? handleDelete : null}
+              verwijderTitel="Verwijder deze activiteit definitief" />
           </div>
 
           <div className="side-card" style={{ background: 'var(--cream-2)' }}>
@@ -4563,10 +4618,6 @@ function AgendaEdit({ item, onBack }) {
       <PageHead
         title={fd.titel || 'Nieuw agenda-item'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar agenda</a></>}
-        actions={<>
-          {item.id != null && <button title="Verwijder dit agenda-item definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button title="Bewaar dit agenda-item" className="btn btn-primary" onClick={() => { handleSave(); onBack(); }}><Icon name="save" size={14} /> Opslaan</button>
-        </>}
       />
       <div className="form-grid">
         <div>
@@ -4593,18 +4644,20 @@ function AgendaEdit({ item, onBack }) {
             </div>
           </div>
         </div>
-        <div>
+        <div className="form-zijkolom">
           <div className="side-card">
             <h4>Publicatie</h4>
             <Toggle on={uitgelicht} label="Uitgelicht" sub="Gemarkeerd als uitgelicht evenement" onChange={setUitgelicht} />
             <div className="row" style={{ marginTop: 4 }}><span>Status</span><strong>{gepubliceerd ? 'Gepubliceerd' : 'Concept'}</strong></div>
             <div className="row"><span>Zichtbaarheid</span><strong>{gepubliceerd ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
             <div className="divider"></div>
+            <ItemActiesBoven magBewerken={true} onOpslaan={() => handleSave()}
+              opslaanTitel="Bewaar dit agenda-item" />
             {gepubliceerd ? (
               <button className="btn btn-sm" style={{ width: '100%' }}
                 title="Haal dit van de website; het blijft als concept in het CMS staan"
                 onClick={() => { setGepubliceerd(false); handleSave(false); window.__showToast && window.__showToast('Van de website gehaald — staat nu als concept in het CMS'); }}>
-                <Icon name="eye" size={13} /> Van de website halen
+                <Icon name="archive" size={13} /> Van de website halen
               </button>
             ) : (
               <button className="btn btn-primary btn-sm" style={{ width: '100%' }}
@@ -4617,6 +4670,9 @@ function AgendaEdit({ item, onBack }) {
               Met <strong>Opslaan</strong> bewaart u tussendoor, zonder de status te veranderen —
               zo kunt u later verder waar u gebleven was.
             </p>
+            <ItemActiesOnder magBewerken={true}
+              onVerwijderen={item.id != null ? handleDelete : null}
+              verwijderTitel="Verwijder dit agenda-item definitief" />
           </div>
         </div>
       </div>
@@ -4846,26 +4902,6 @@ function NieuwsEdit({ item, onBack }) {
       <PageHead
         title={fd.titel || 'Nieuw bericht'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar nieuws</a></>}
-        actions={<>
-          {magBewerken && fd.id != null && <button title="Verwijder dit nieuwsbericht definitief" className="btn btn-ghost btn-danger" onClick={handleDelete}><Icon name="trash" size={14} /> Verwijderen</button>}
-          {/* Op fd.id kijken en niet op item.id. Dat laatste blijft leeg nadat
-              een nieuw bericht is aangemaakt, dus bleef deze knop grijs met de
-              melding "Eerst opslaan" terwijl het bericht al op de website
-              stond. (punt 5.2 van de redactie-assistenten, 17-11) */}
-          <button className="btn" disabled={fd.id == null || !gepubliceerd}
-            title={fd.id == null ? 'Eerst opslaan, dan kunt u het op de website bekijken'
-              : !gepubliceerd ? 'Staat nog niet op de website — eerst publiceren'
-              : 'Open dit nieuwsbericht op de website'}
-            onClick={() => window.open(tibSiteLink('nieuws', fd.id), '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
-          {magBewerken && <button title="Bewaar dit nieuwsbericht" className="btn btn-primary" onClick={() => { handleSave(); onBack(); }}><Icon name="save" size={14} /> Opslaan</button>}
-          {magBewerken && bestaatEigen && (
-            <button title="Geef dit item aan Margareth; daarna kunt u het zelf niet meer aanpassen"
-              className="btn" onClick={async () => { if (await tibDraagOver('nieuws', item, fd.titel)) onBack(); }}>
-              <Icon name="users" size={14} /> Overdragen aan Margareth
-            </button>
-          )}
-
-        </>}
       />
       {!magBewerken && (
         <HintCard icon="info">
@@ -4916,12 +4952,19 @@ function NieuwsEdit({ item, onBack }) {
               map="nieuws" naam={fd.titel || 'bericht'} />
           </div>
         </div>
-        <div>
+        <div className="form-zijkolom">
           <div className="side-card">
             <h4>Publicatie</h4>
             <div className="row" style={{ marginTop: 4 }}><span>Status</span><strong>{gepubliceerd ? 'Gepubliceerd' : 'Concept'}</strong></div>
             <div className="row"><span>Zichtbaarheid</span><strong>{gepubliceerd ? 'Openbaar' : 'Alleen in het CMS'}</strong></div>
             <div className="divider"></div>
+            <ItemActiesBoven magBewerken={magBewerken} onOpslaan={() => handleSave()}
+              opslaanTitel="Bewaar dit nieuwsbericht"
+              onVoorvertoning={() => window.open(tibSiteLink('nieuws', fd.id), '_blank')}
+              voorvertoningUit={fd.id == null || !gepubliceerd}
+              voorvertoningTitel={fd.id == null ? 'Eerst opslaan, dan kunt u het op de website bekijken'
+                : !gepubliceerd ? 'Staat nog niet op de website — eerst publiceren'
+                : 'Open dit nieuwsbericht op de website'} />
             {!magBewerken ? (
               <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
                 Alleen de redactie-assistent die dit heeft gemaakt, kan de status veranderen.
@@ -4930,7 +4973,7 @@ function NieuwsEdit({ item, onBack }) {
               <button className="btn btn-sm" style={{ width: '100%' }}
                 title="Haal dit van de website; het blijft als concept in het CMS staan"
                 onClick={() => { setGepubliceerd(false); handleSave(false); window.__showToast && window.__showToast('Van de website gehaald — staat nu als concept in het CMS'); }}>
-                <Icon name="eye" size={13} /> Van de website halen
+                <Icon name="archive" size={13} /> Van de website halen
               </button>
             ) : (
               <button className="btn btn-primary btn-sm" style={{ width: '100%' }}
@@ -4943,6 +4986,10 @@ function NieuwsEdit({ item, onBack }) {
               Met <strong>Opslaan</strong> bewaart u tussendoor, zonder de status te veranderen —
               zo kunt u later verder waar u gebleven was.
             </p>
+            <ItemActiesOnder magBewerken={magBewerken}
+              onOverdragen={bestaatEigen ? (async () => { if (await tibDraagOver('nieuws', item, fd.titel)) onBack(); }) : null}
+              onVerwijderen={fd.id != null ? handleDelete : null}
+              verwijderTitel="Verwijder dit nieuwsbericht definitief" />
           </div>
           <div className="side-card">
             <h4>Uitlichten</h4>
@@ -5863,19 +5910,6 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
       <PageHead
         title={fd.naam || 'Nieuwe voorziening'}
         sub={<><a href="#" onClick={e => { e.preventDefault(); onBack(); }} style={{ color: 'var(--accent-2)' }}>← Terug naar voorzieningen</a></>}
-        actions={<>
-          {magBewerken && bestaat && <button title="Verwijder deze voorziening definitief" className="btn btn-ghost btn-danger" onClick={verwijder}><Icon name="trash" size={14} /> Verwijderen</button>}
-          <button className="btn" title="Open de pagina Voorzieningen op de website"
-            onClick={() => window.open(tibSiteLink('voorzieningen'), '_blank')}><Icon name="eye" size={14} /> Voorvertoning</button>
-          {magBewerken && <button title="Bewaar deze voorziening" className="btn btn-primary" disabled={bezig} onClick={opslaan}><Icon name="save" size={14} /> {bezig ? 'Opslaan…' : 'Opslaan'}</button>}
-          {magBewerken && bestaatEigen && (
-            <button title="Geef dit item aan Margareth; daarna kunt u het zelf niet meer aanpassen"
-              className="btn" onClick={async () => { if (await tibDraagOver('voorzieningen', item, fd.naam)) onBack(); }}>
-              <Icon name="users" size={14} /> Overdragen aan Margareth
-            </button>
-          )}
-
-        </>}
       />
       {!magBewerken && (
         <HintCard icon="info">
@@ -5967,10 +6001,19 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
             )}
           </div>
         </div>
-        <div>
+        <div className="form-zijkolom">
           <div className="side-card">
             <h4>Zichtbaarheid</h4>
             <Toggle on={fd.zichtbaar !== false} label="Zichtbaar op website" sub="Toon op de pagina Voorzieningen en op de Buurtatlas" onChange={v => up('zichtbaar', v)} />
+            <div className="divider"></div>
+            <ItemActiesBoven magBewerken={magBewerken} onOpslaan={opslaan} bezig={bezig}
+              opslaanTitel="Bewaar deze voorziening"
+              onVoorvertoning={() => window.open(tibSiteLink('voorzieningen'), '_blank')}
+              voorvertoningTitel="Open de pagina Voorzieningen op de website" />
+            <ItemActiesOnder magBewerken={magBewerken}
+              onOverdragen={bestaatEigen ? (async () => { if (await tibDraagOver('voorzieningen', item, fd.naam)) onBack(); }) : null}
+              onVerwijderen={bestaat ? verwijder : null}
+              verwijderTitel="Verwijder deze voorziening definitief" />
           </div>
         </div>
       </div>
