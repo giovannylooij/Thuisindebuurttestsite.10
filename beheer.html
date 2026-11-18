@@ -1142,7 +1142,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.281', datum: '18-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.282', datum: '18-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -3647,6 +3647,7 @@ function tibLegeInvoer() {
 
 function NieuwItemScherm({ onNav }) {
   const iconenLijst = useIconen();
+  useVzSoorten();
   const [soorten, setSoorten] = React.useState({});
   const [fd, setFd] = React.useState(tibLegeInvoer);
   const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
@@ -3885,7 +3886,7 @@ function NieuwItemScherm({ onNav }) {
               <div className="row-2">
                 <Field label="Soort" hint="Bepaalt de kleur van de stip op de kaart.">
                   <select value={fd.soort} onChange={e => up('soort', e.target.value)}>
-                    {TIB_VOORZIENING_SOORTEN.map(x => <option key={x.id} value={x.id}>{x.id}</option>)}
+                    {tibVzSoortOpties(fd.soort).map(x => <option key={x} value={x}>{x}</option>)}
                   </select>
                 </Field>
                 <Field label="Openingstijden" hint="Vrije tekst, bijvoorbeeld: ma–vr 08:30–17:30.">
@@ -6292,12 +6293,139 @@ function PagesScreen({ startPagina }) {
               </div>
             </div>
           )}
+          {pagina.id === 'contact' && (
+            <div className="card" style={{ marginTop: 14 }}>
+              <div className="card-head"><h3 className="card-title">Snelle antwoorden</h3></div>
+              <div className="card-pad">
+                <SnelleAntwoordenBeheer />
+              </div>
+            </div>
+          )}
           <HintCard icon="info" style={{ marginTop: 14 }}>
             Het menu van de website beheer je in het scherm Navigatie, niet hier.
           </HintCard>
         </div>
       </div>
     </>
+  );
+}
+
+/* Snelle antwoorden op de contactpagina (Margareth deel 5: "Hoe kan ik hier
+   zelf vragen en antwoorden neerzetten?"). Tabel snelle_antwoorden. Elke
+   vraag kan een link naar een pagina van de site krijgen; die staat onder
+   het antwoord. */
+const TIB_SITE_PAGINAS = [
+  ['', '— geen link —'], ['clubjes', 'Bewonersinitiatieven'], ['activiteiten', 'Activiteiten'],
+  ['agenda', 'Agenda'], ['buurtatlas', 'Buurtatlas'], ['partners', 'Partners'],
+  ['voorzieningen', 'Voorzieningen'], ['netwerken', 'Netwerken'], ['nieuws', 'Nieuws'],
+  ['doemee', 'Doe mee'], ['doneren', 'Doneren'], ['boek', 'Boek'], ['contact', 'Contact'],
+];
+function SnelleAntwoordenBeheer() {
+  const [rijen, setRijen] = React.useState(null);
+  const [ontbreekt, setOntbreekt] = React.useState(false);
+  const [open, setOpen] = React.useState(null);   // id, 'nieuw' of null
+  const [fd, setFd] = React.useState({});
+  const [bezig, setBezig] = React.useState(false);
+  const toast = (t) => window.__showToast && window.__showToast(t);
+
+  async function laad() {
+    const { data, error } = await window.supabase.from('snelle_antwoorden').select('*').order('volgorde').order('id');
+    if (error) { setOntbreekt(true); setRijen([]); return; }
+    setOntbreekt(false); setRijen(data || []);
+  }
+  React.useEffect(() => { laad(); }, []);
+
+  function begin(r) {
+    setOpen(r ? r.id : 'nieuw');
+    setFd(r ? { vraag: r.vraag, antwoord: r.antwoord || '', pagina: r.pagina || '', zichtbaar: r.zichtbaar !== false }
+            : { vraag: '', antwoord: '', pagina: '', zichtbaar: true });
+  }
+  async function bewaar() {
+    if (!String(fd.vraag || '').trim()) { toast('Vul een vraag in.'); return; }
+    setBezig(true);
+    const rij = { vraag: fd.vraag.trim(), antwoord: String(fd.antwoord || '').trim(), pagina: fd.pagina || null, zichtbaar: !!fd.zichtbaar };
+    let res;
+    if (open === 'nieuw') {
+      const volgorde = (rijen || []).reduce((m, r) => Math.max(m, r.volgorde || 0), 0) + 1;
+      res = await window.supabase.from('snelle_antwoorden').insert({ ...rij, volgorde });
+    } else {
+      res = await window.supabase.from('snelle_antwoorden').update(rij).eq('id', open);
+    }
+    setBezig(false);
+    if (res.error) { toast('Niet opgeslagen: ' + res.error.message); return; }
+    toast('Opgeslagen — staat nu zo op de contactpagina');
+    setOpen(null); laad();
+  }
+  async function verwijder(r) {
+    if (!window.confirm('Vraag "' + r.vraag + '" definitief verwijderen?')) return;
+    const { error } = await window.supabase.from('snelle_antwoorden').delete().eq('id', r.id);
+    if (error) { toast('Niet verwijderd: ' + error.message); return; }
+    toast('Verwijderd'); laad();
+  }
+  async function verplaats(i, richting) {
+    const doel = i + richting;
+    if (!rijen || doel < 0 || doel >= rijen.length || bezig) return;
+    const lijst = rijen.slice(); const t = lijst[i]; lijst[i] = lijst[doel]; lijst[doel] = t;
+    setRijen(lijst); setBezig(true);
+    const res = await Promise.all(lijst.map((r, j) => window.supabase.from('snelle_antwoorden').update({ volgorde: j + 1 }).eq('id', r.id)));
+    setBezig(false);
+    if (res.find(x => x.error)) toast('Volgorde opslaan mislukt'); else toast('Volgorde aangepast');
+    laad();
+  }
+
+  if (ontbreekt) return (
+    <HintCard variant="warn" icon="warn">
+      Dit werkt pas nadat <strong>sql/margareth-deel5-fase3.sql</strong> in Supabase is uitgevoerd. Tot die tijd toont de site de vaste vragen.
+    </HintCard>
+  );
+  if (rijen === null) return <div style={{ color: 'var(--ink-soft)' }}>Laden…</div>;
+
+  const formulier = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--cream)' }}>
+      <Field label="Vraag" verplicht><input type="text" value={fd.vraag} onChange={e => setFd({ ...fd, vraag: e.target.value })} style={{ width: '100%', boxSizing: 'border-box' }} /></Field>
+      <Field label="Antwoord" hint="Een webadres of e-mailadres wordt vanzelf klikbaar.">
+        <textarea rows={4} value={fd.antwoord} onChange={e => setFd({ ...fd, antwoord: e.target.value })} style={{ width: '100%', boxSizing: 'border-box' }} />
+      </Field>
+      <Field label="Link naar een pagina (optioneel)" hint="Komt onder het antwoord te staan, bijvoorbeeld: Naar Doe mee →">
+        <select value={fd.pagina} onChange={e => setFd({ ...fd, pagina: e.target.value })}>
+          {TIB_SITE_PAGINAS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+        </select>
+      </Field>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
+        <input type="checkbox" checked={!!fd.zichtbaar} onChange={e => setFd({ ...fd, zichtbaar: e.target.checked })} /> Zichtbaar op de website
+      </label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn btn-sm btn-primary" title="Bewaar deze vraag" onClick={bewaar} disabled={bezig}><Icon name="check" size={12} /> Opslaan</button>
+        <button className="btn btn-sm" title="Niet bewaren" onClick={() => setOpen(null)}>Annuleren</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 4px' }}>
+        De vragen in het blok "Snelle antwoorden" op de contactpagina. Gebruik de pijltjes voor de volgorde.
+      </p>
+      {rijen.map((r, i) => open === r.id ? <div key={r.id}>{formulier}</div> : (
+        <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8, opacity: r.zichtbaar === false ? 0.55 : 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 13.5 }}>{r.vraag}</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-soft)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {r.zichtbaar === false ? 'Verborgen · ' : ''}{r.antwoord}
+            </div>
+          </div>
+          <button className="icon-btn" title="Naar boven" disabled={i === 0 || bezig} onClick={() => verplaats(i, -1)}><Icon name="chevron" size={12} style={{ transform: 'rotate(-90deg)' }} /></button>
+          <button className="icon-btn" title="Naar beneden" disabled={i === rijen.length - 1 || bezig} onClick={() => verplaats(i, 1)}><Icon name="chevron" size={12} style={{ transform: 'rotate(90deg)' }} /></button>
+          <button className="icon-btn" title="Pas deze vraag aan" onClick={() => begin(r)}><Icon name="edit" size={14} /></button>
+          <button className="icon-btn" title="Verwijder deze vraag" onClick={() => verwijder(r)}><Icon name="trash" size={14} /></button>
+        </div>
+      ))}
+      {open === 'nieuw' ? formulier : (
+        <button className="btn btn-sm" style={{ alignSelf: 'flex-start', marginTop: 4 }} title="Voeg een vraag toe" onClick={() => begin(null)}>
+          <Icon name="plus" size={13} /> Vraag toevoegen
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -6486,15 +6614,51 @@ function PartnerEdit({ item, onBack }) {
    Wat er in de wijk is: huisarts, apotheek, buurthuis. Staat in de eigen tabel
    `voorzieningen` (sql/blok5_voorzieningen.sql). Komt op een eigen pagina én
    als stip op de Buurtatlas. */
+// De soorten komen uit de tabel voorziening_soorten; Margareth beheert ze
+// in het scherm Categorieën (deel 5, 18-11). Deze lijst is wat er staat
+// zolang de tabel nog niet geladen is (sql/margareth-deel5-fase3.sql).
+// Hij wordt na het laden in-place gevuld, zodat elke plek hem meekrijgt.
 const TIB_VOORZIENING_SOORTEN = [
-  { id: 'Zorg',      kleur: '#e53935' },
-  { id: 'Winkels',   kleur: '#f57c00' },
-  { id: 'Buurthuis', kleur: '#1faa59' },
-  { id: 'Overheid',  kleur: '#1a73e8' },
-  { id: 'Vervoer',   kleur: '#8e44d6' },
-  { id: 'Onderwijs', kleur: '#2f6db5' },
-  { id: 'Overig',    kleur: '#7a7363' },
+  { id: 'Buurtcentra/Welzijn',         kleur: '#1faa59' },
+  { id: 'Gemeentelijke voorzieningen', kleur: '#1a73e8' },
+  { id: 'Horeca',                      kleur: '#d35400' },
+  { id: 'Kerk/Religie',                kleur: '#8e44d6' },
+  { id: 'Muziek',                      kleur: '#c2185b' },
+  { id: 'Scholen',                     kleur: '#2f6db5' },
+  { id: 'Sport',                       kleur: '#00897b' },
+  { id: 'Winkels',                     kleur: '#f57c00' },
+  { id: 'Zorg',                        kleur: '#e53935' },
+  { id: 'Overig',                      kleur: '#7a7363' },
 ];
+let _tibVzSoortenGeladen = false;
+function tibLaadVzSoorten(opnieuw) {
+  if (_tibVzSoortenGeladen && !opnieuw) return;
+  _tibVzSoortenGeladen = true;
+  window.supabase.from('voorziening_soorten').select('*').order('volgorde').then(({ data, error }) => {
+    if (error || !Array.isArray(data) || !data.length) return;
+    TIB_VOORZIENING_SOORTEN.length = 0;
+    data.forEach(r => TIB_VOORZIENING_SOORTEN.push({ id: r.naam, kleur: r.kleur || '#7a7363', volgorde: r.volgorde }));
+    window.dispatchEvent(new Event('tib-vz-soorten'));
+  });
+}
+// Laat een scherm opnieuw tekenen zodra de soorten binnen of gewijzigd zijn.
+function useVzSoorten() {
+  const [, tik] = React.useState(0);
+  React.useEffect(() => {
+    const opnieuw = () => tik(n => n + 1);
+    window.addEventListener('tib-vz-soorten', opnieuw);
+    tibLaadVzSoorten();
+    return () => window.removeEventListener('tib-vz-soorten', opnieuw);
+  }, []);
+  return TIB_VOORZIENING_SOORTEN;
+}
+// Keuzes voor de keuzelijst; een soort die het item al heeft maar niet
+// (meer) in de lijst staat, blijft zichtbaar zodat er niets stil verandert.
+function tibVzSoortOpties(huidige) {
+  const lijst = TIB_VOORZIENING_SOORTEN.map(x => x.id);
+  if (huidige && lijst.indexOf(huidige) === -1) lijst.push(huidige);
+  return lijst;
+}
 function tibSoortKleur(soort) {
   const hit = TIB_VOORZIENING_SOORTEN.find(s => s.id === soort);
   return hit ? hit.kleur : '#7a7363';
@@ -6503,6 +6667,7 @@ function tibSoortKleur(soort) {
 function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
   // De terugknop van de browser sluit dit item in plaats van het CMS te verlaten.
   useTerugknop(onBack);
+  useVzSoorten();
   // Van wie is dit item? Alleen de eigenaar mag het aanpassen.
   const magBewerken = tibMagBewerken(item);
   // Alleen de assistent die dit zelf heeft aangemaakt, kan het overdragen.
@@ -6603,7 +6768,7 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
             <Field label="Naam" verplicht><input type="text" value={fd.naam || ''} onChange={e => up('naam', e.target.value)} placeholder="bijv. Apotheek Duinstraat" /></Field>
             <Field label="Soort" hint="Bepaalt de kleur van de stip en de knop waarmee bezoekers filteren.">
               <select value={fd.soort || 'Overig'} onChange={e => up('soort', e.target.value)}>
-                {TIB_VOORZIENING_SOORTEN.map(s => <option key={s.id} value={s.id}>{s.id}</option>)}
+                {tibVzSoortOpties(fd.soort || 'Overig').map(x => <option key={x} value={x}>{x}</option>)}
               </select>
             </Field>
             <Field label="Omschrijving" hint="Eén of twee zinnen. Een webadres of e-mailadres wordt vanzelf klikbaar." kopieer={fd.omschrijving}>
@@ -6702,6 +6867,7 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
 }
 
 function VoorzieningenScreen() {
+  useVzSoorten();
   const [rijen, setRijen] = React.useState(null);
   const [zoek, setZoek] = React.useState('');
   const [soortFilter, setSoortFilter] = React.useState('alle');
@@ -8204,7 +8370,165 @@ function CategoriesScreen() {
           </div>
         ))}
       </div>
+
+      <VoorzieningSoortenBeheer kleuren={kleuren} />
     </>
+  );
+}
+
+/* Soorten voorzieningen beheren (Margareth deel 5, 18-11): naam, kleur en
+   volgorde, net als de categorieën hierboven. Hernoemen neemt de
+   voorzieningen vanzelf mee (koppeling in de database); een soort die nog
+   gebruikt wordt, kan niet weg. */
+function VoorzieningSoortenBeheer({ kleuren }) {
+  const [rijen, setRijen] = React.useState(null);
+  const [tabelOntbreekt, setTabelOntbreekt] = React.useState(false);
+  const [aantallen, setAantallen] = React.useState({});
+  const [bewerkNaam, setBewerkNaam] = React.useState(null);
+  const [naam, setNaam] = React.useState('');
+  const [kleur, setKleur] = React.useState('#7a7363');
+  const [nieuwNaam, setNieuwNaam] = React.useState('');
+  const [nieuwKleur, setNieuwKleur] = React.useState(kleuren[0]);
+  const [bezig, setBezig] = React.useState(false);
+  const toast = (t) => window.__showToast && window.__showToast(t);
+
+  async function laad() {
+    const { data, error } = await window.supabase.from('voorziening_soorten').select('*').order('volgorde');
+    if (error) { setTabelOntbreekt(true); setRijen([]); return; }
+    setTabelOntbreekt(false);
+    setRijen(data || []);
+    const { data: vz } = await window.supabase.from('voorzieningen').select('soort');
+    const tel = {};
+    (vz || []).forEach(v => { tel[v.soort] = (tel[v.soort] || 0) + 1; });
+    setAantallen(tel);
+    tibLaadVzSoorten(true);
+  }
+  React.useEffect(() => { laad(); }, []);
+
+  const bestaat = (n, behalve) => (rijen || []).some(r => r.naam !== behalve && r.naam.trim().toLowerCase() === n.trim().toLowerCase());
+
+  async function maakAan() {
+    const n = nieuwNaam.trim();
+    if (!n) { toast('Vul een naam in voor de nieuwe soort.'); return; }
+    if (bestaat(n)) { toast('Er bestaat al een soort met de naam "' + n + '".'); return; }
+    setBezig(true);
+    const volgorde = (rijen || []).reduce((m, r) => Math.max(m, r.volgorde || 0), 0) + 1;
+    const { error } = await window.supabase.from('voorziening_soorten').insert({ naam: n, kleur: nieuwKleur, volgorde });
+    setBezig(false);
+    if (error) { toast('Niet aangemaakt: ' + error.message); return; }
+    toast('Soort aangemaakt: ' + n);
+    setNieuwNaam('');
+    laad();
+  }
+
+  async function bewaar(oud) {
+    const n = naam.trim();
+    if (!n) { toast('Vul een naam in.'); return; }
+    if (bestaat(n, oud)) { toast('Er bestaat al een soort met de naam "' + n + '".'); return; }
+    setBezig(true);
+    const { error } = await window.supabase.from('voorziening_soorten').update({ naam: n, kleur }).eq('naam', oud);
+    setBezig(false);
+    if (error) { toast('Niet opgeslagen: ' + error.message); return; }
+    const mee = aantallen[oud] || 0;
+    toast('Soort opgeslagen: ' + n + (n !== oud && mee ? ' — ' + mee + ' voorziening' + (mee === 1 ? '' : 'en') + ' meegenomen' : ''));
+    setBewerkNaam(null);
+    laad();
+  }
+
+  async function verwijder(r) {
+    const n = aantallen[r.naam] || 0;
+    if (n > 0) {
+      window.alert('Soort "' + r.naam + '" wordt nog gebruikt door ' + n + ' voorziening' + (n === 1 ? '' : 'en') +
+        '.\n\nGeef die eerst een andere soort. Daarna kun je deze verwijderen.\n\n' +
+        'Wil je alleen de naam veranderen? Gebruik dan Bewerken — dan gaan de voorzieningen vanzelf mee.');
+      return;
+    }
+    if (!window.confirm('Soort "' + r.naam + '" definitief verwijderen?')) return;
+    const { error } = await window.supabase.from('voorziening_soorten').delete().eq('naam', r.naam);
+    if (error) { toast('Niet verwijderd: ' + error.message); return; }
+    toast('Verwijderd: ' + r.naam);
+    laad();
+  }
+
+  async function verplaats(i, richting) {
+    const doel = i + richting;
+    if (!rijen || doel < 0 || doel >= rijen.length || bezig) return;
+    const lijst = rijen.slice();
+    const t = lijst[i]; lijst[i] = lijst[doel]; lijst[doel] = t;
+    setRijen(lijst);
+    setBezig(true);
+    const res = await Promise.all(lijst.map((r, j) =>
+      window.supabase.from('voorziening_soorten').update({ volgorde: j + 1 }).eq('naam', r.naam)));
+    setBezig(false);
+    const fout = res.find(x => x.error);
+    if (fout) { toast('Volgorde opslaan mislukt: ' + fout.error.message); }
+    else toast('Volgorde aangepast — zo staan ze nu ook op de website');
+    laad();
+  }
+
+  return (
+    <div style={{ marginTop: 36 }}>
+      <h2 style={{ fontFamily: 'var(--serif)', fontSize: 22, margin: '0 0 6px' }}>Soorten voorzieningen</h2>
+      <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 14px' }}>
+        Deze soorten kies je bij een voorziening. De kleur zie je op de website: op de stip op de kaart en bij de knoppen
+        waarmee bezoekers filteren. De volgorde bepaalt hoe ze op de pagina Voorzieningen onder elkaar staan.
+      </p>
+      {tabelOntbreekt ? (
+        <HintCard variant="warn" icon="warn">
+          Dit werkt pas nadat <strong>sql/margareth-deel5-fase3.sql</strong> in Supabase is uitgevoerd.
+        </HintCard>
+      ) : rijen === null ? (
+        <div style={{ color: 'var(--ink-soft)' }}>Laden…</div>
+      ) : (
+        <>
+          <div className="form-section" style={{ marginBottom: 16 }}>
+            <h3>Nieuwe soort</h3>
+            <div className="row-2">
+              <Field label="Naam"><input type="text" placeholder="bijv. Bibliotheek" value={nieuwNaam}
+                onChange={e => setNieuwNaam(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') maakAan(); }} /></Field>
+              <Field label="Kleur"><KleurKiezer waarde={nieuwKleur} opKies={setNieuwKleur} kleuren={kleuren} /></Field>
+            </div>
+            <button title="Maak deze soort aan" className="btn btn-primary" style={{ marginTop: 10 }} onClick={maakAan} disabled={bezig}>
+              <Icon name="plus" size={14} /> Soort aanmaken
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {rijen.map((r, i) => (
+              <div key={r.naam} className="card card-pad">
+                {bewerkNaam === r.naam ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <Field label="Naam"><input type="text" value={naam} onChange={e => setNaam(e.target.value)} autoFocus /></Field>
+                    <Field label="Kleur"><KleurKiezer waarde={kleur} opKies={setKleur} kleuren={kleuren} /></Field>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button title="Bewaar deze soort" className="btn btn-sm btn-primary" onClick={() => bewaar(r.naam)} disabled={bezig}><Icon name="check" size={12} /> Opslaan</button>
+                      <button title="Laat deze soort zoals hij was" className="btn btn-sm" onClick={() => setBewerkNaam(null)}>Annuleren</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 10, background: r.kleur || '#7a7363', flexShrink: 0 }}></div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: 'var(--serif)', fontSize: 15.5, fontWeight: 600 }}>{r.naam}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{aantallen[r.naam] || 0} voorziening{(aantallen[r.naam] || 0) === 1 ? '' : 'en'}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="icon-btn" title="Naar boven" disabled={i === 0 || bezig} onClick={() => verplaats(i, -1)}>
+                        <Icon name="chevron" size={12} style={{ transform: 'rotate(-90deg)' }} />
+                      </button>
+                      <button className="icon-btn" title="Naar beneden" disabled={i === rijen.length - 1 || bezig} onClick={() => verplaats(i, 1)}>
+                        <Icon name="chevron" size={12} style={{ transform: 'rotate(90deg)' }} />
+                      </button>
+                      <button title="Pas de naam of de kleur aan" className="icon-btn" onClick={() => { setBewerkNaam(r.naam); setNaam(r.naam); setKleur(r.kleur || '#7a7363'); }}><Icon name="edit" size={14} /></button>
+                      <button title="Verwijder deze soort" className="icon-btn" onClick={() => verwijder(r)}><Icon name="trash" size={14} /></button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -10122,6 +10446,9 @@ function BgAanvragenScreen({ onBadgeRefresh }) {
           React.createElement('div', { style: { fontSize: 14, fontWeight: 600, color: '#166534' } }, item.icoon_label || '—')
         )
       ),
+      // Aangemelde activiteit: herkenbaar aan "Activiteit" als categorie, met de organisatie erbij (Margareth deel 5).
+      item.categorie === 'Activiteit' && React.createElement(DetailField, { label: 'Soort aanmelding', value: 'Activiteit' }),
+      item.organisatie && React.createElement(DetailField, { label: 'Naam organisatie', value: item.organisatie }),
       React.createElement(DetailField, { label: 'Contactpersoon', value: item.contactpersoon }),
       // Sinds F3 staat hier altijd het e-mailadres en telefoon apart. Oudere
       // aanvragen kunnen in dit veld nog een telefoonnummer hebben.
