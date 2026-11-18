@@ -587,6 +587,16 @@ a { color: inherit; text-decoration: none; }
   .foto-keuze { grid-template-columns: 1fr; }
   .foto-keuze-of { justify-self: center; }
 }
+.soort-keuze { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.soort-vak {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none;
+  border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; font-size: 13.5px;
+  background: var(--paper);
+}
+.soort-vak input { width: 16px; height: 16px; accent-color: var(--accent-1); cursor: pointer; margin: 0; }
+.soort-vak.aan { background: var(--cream-2); border-color: var(--ink); font-weight: 500; }
+.soort-label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-soft);
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
 .veld-kopieer-knop {
   margin-left: 8px; border: 1px solid var(--line); background: transparent;
   color: var(--ink-soft); border-radius: 999px; padding: 1px 8px; font-size: 11px;
@@ -1130,7 +1140,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.274', datum: '18-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.275', datum: '18-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1342,6 +1352,9 @@ function tibLogboekZichtbaar() {
 const NAV = [
   { group: "Werkruimte", items: [
     { id: "dashboard", label: "Dashboard", icon: "dashboard" },
+    // Alleen voor de redactie-assistent (18-11); voor de andere rollen verborgen.
+    { id: "nieuw-item", label: "Nieuw item", icon: "plus" },
+    { id: "mijn-items", label: "Mijn items", icon: "list" },
     { id: "wijzigingen", label: "Wijzigingen", icon: "refresh" },
   ]},
   { group: "Inhoud", items: [
@@ -1400,7 +1413,10 @@ const TIB_ROLLEN = {
   beheerder:          'Initiatief-beheerder',
 };
 // Waar mag een redactie-assistent bij?
-const ASSISTENT_ROUTES = new Set(['dashboard', 'clubjes', 'activiteiten', 'voorzieningen', 'nieuws', 'netwerken']);
+// Sinds 18-11 voert een assistent alles in via Nieuw item en vindt hij zijn
+// werk terug in Mijn items. De vijf losse schermen zijn voor hem vervallen.
+const ASSISTENT_ROUTES = new Set(['dashboard', 'nieuw-item', 'mijn-items']);
+const ALLEEN_ASSISTENT_ROUTES = ['nieuw-item', 'mijn-items'];
 // In deze tabellen houden we bij wie het heeft aangemaakt (kolom eigenaar_id,
 // zie sql/redactie_assistent.sql).
 const TIB_EIGENAAR_TABELLEN = ['clubjes', 'activiteiten', 'voorzieningen', 'nieuws', 'netwerken'];
@@ -1536,7 +1552,9 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
                 'voorzieningen', 'gebruikers', 'huisstijl', 'domein', 'wijzigingen'],
   };
   // Nog niet vrijgegeven? Dan voor iedereen uit het menu, ook voor Margareth.
-  const hidden = (HIDDEN[role] || []).concat(tibLogboekZichtbaar() ? [] : ['wijzigingen']);
+  const hidden = (HIDDEN[role] || []).concat(tibLogboekZichtbaar() ? [] : ['wijzigingen'])
+    // Nieuw item en Mijn items zijn er alleen voor de assistent.
+    .concat(role === 'redactie_assistent' ? [] : ALLEEN_ASSISTENT_ROUTES);
   const visibleNav = NAV.map(group => ({
     ...group,
     items: group.items.filter(item => !hidden.includes(item.id)),
@@ -2179,7 +2197,11 @@ function Dashboard({ onNav, onPreview, badges }) {
       .then(({ data, error }) => setLaatsteWijzigingen(error ? [] : (data || [])));
   }, []);
 
-  const quickActions = [
+  // De assistent heeft geen losse schermen meer; hij krijgt deze twee. (18-11)
+  const quickActions = tibIsAssistent() ? [
+    { id: 'nieuw-item', icon: 'plus', title: 'Nieuw item', sub: 'Bewonersinitiatief, activiteit, nieuws, voorziening of netwerk' },
+    { id: 'mijn-items', icon: 'list', title: 'Mijn items', sub: 'Alles wat u hebt gemaakt' },
+  ] : [
     { id: 'clubjes', icon: 'club', title: 'Nieuw bewonersinitiatief', sub: 'Verschijnt in de Bewonersinitiatieven-cards' },
     { id: 'activiteiten', icon: 'activity', title: 'Nieuwe activiteit', sub: 'Wekelijks of eenmalig' },
     { id: 'agenda', icon: 'calendar', title: 'Agenda-item', sub: 'Komt direct in /agenda' },
@@ -2193,7 +2215,7 @@ function Dashboard({ onNav, onPreview, badges }) {
         sub="Welkom in het beheerpanel van Thuis in de Buurt. Hier beheert u de inhoud van de website."
         actions={<>
           <a className="btn" href="https://www.thuisindebuurt.nl" target="_blank" rel="noopener noreferrer"><Icon name="eye" size={14} /> Bekijk site</a>
-          <button title="Ga naar Bewonersinitiatieven om er een toe te voegen" className="btn btn-primary" onClick={() => onNav('clubjes')}><Icon name="plus" size={14} /> Snel toevoegen</button>
+          <button title="Ga naar Bewonersinitiatieven om er een toe te voegen" className="btn btn-primary" onClick={() => onNav(tibIsAssistent() ? 'nieuw-item' : 'clubjes')}><Icon name="plus" size={14} /> Snel toevoegen</button>
         </>}
       />
 
@@ -3546,6 +3568,480 @@ function ClubjeEdit({ id, onBack }) {
         </div>
       </div>
       </fieldset>
+    </>
+  );
+}
+
+/* ===== Nieuw item en Mijn items — alleen voor de redactie-assistent (18-11) =====
+   Voorstel van Giovanny. Een assistent hoeft niet meer te kiezen in welk
+   scherm iets hoort: hij vult het één keer in, vinkt aan wat het is, en het
+   komt op elke aangevinkte plek op de website. Velden die meerdere soorten
+   delen staan er maar één keer.
+   Na het opslaan zijn het gewone losse items, elk met een eigen bewerkscherm.
+   Ze zijn niet aan elkaar gekoppeld: wie later de tijd van de activiteit
+   aanpast, verandert die niet bij het bewonersinitiatief.
+   Het scherm van Margareth blijft precies zoals het was. */
+const TIB_SOORTEN = [
+  { id: 'clubjes',       label: 'Bewonersinitiatief', icoon: 'club' },
+  { id: 'activiteiten',  label: 'Activiteit',         icoon: 'activity' },
+  { id: 'nieuws',        label: 'Nieuws',             icoon: 'news' },
+  { id: 'voorzieningen', label: 'Voorziening',        icoon: 'map' },
+  { id: 'netwerken',     label: 'Netwerk',            icoon: 'network' },
+];
+// De schermen die een assistent vroeger had. Wie daar via een oude link of
+// knop terechtkomt, belandt nu in Mijn items.
+const TIB_OUDE_ASSISTENT_SCHERMEN = ['clubjes', 'activiteiten', 'nieuws', 'voorzieningen', 'netwerken'];
+
+function tibLegeInvoer() {
+  return {
+    naam: '', omschrijving: '', uitgebreid: '',
+    categorie: 'Ontmoeting/Sociaal', wijk: TIB_STANDAARD_WIJK,
+    voor_wie: '', wat: '', waar: '', kosten: '',
+    startdatum: null, frequentie: '', maand_weken: null, tot_datum: null, begintijd: null, eindtijd: null,
+    contact: '', email: '', telefoon: '', contact_zichtbaar: false, website: '',
+    adres: '', lat: null, lng: null, icoon_url: null, icoon_label: null,
+    foto_url: null, foto_alt: '',
+    nieuws_label: '', auteur: '', nieuws_datum: new Date().toISOString().slice(0, 10),
+    soort: 'Overig', openingstijden: '',
+    doelgroep: '', bijeenkomsten: '', locatie: '', toegankelijk: '',
+  };
+}
+
+function NieuwItemScherm({ onNav }) {
+  const iconenLijst = useIconen();
+  const [soorten, setSoorten] = React.useState({});
+  const [fd, setFd] = React.useState(tibLegeInvoer);
+  const up = (k, v) => setFd(prev => ({ ...prev, [k]: v }));
+  const [bezig, setBezig] = React.useState(false);
+  const [uitslag, setUitslag] = React.useState(null);
+  const [planKolommen, setPlanKolommen] = React.useState(null);
+  React.useEffect(() => {
+    window.supabase.from('clubjes').select('startdatum, frequentie').limit(1)
+      .then(({ error }) => setPlanKolommen(!error));
+  }, []);
+
+  const heeft = (id) => !!soorten[id];
+  const gekozen = TIB_SOORTEN.filter(x => soorten[x.id]);
+  const clubOfAct = heeft('clubjes') || heeft('activiteiten');
+  const metContact = clubOfAct || heeft('netwerken') || heeft('voorzieningen');
+  const metPersoon = clubOfAct || heeft('netwerken');
+  const metWebsite = heeft('voorzieningen') || heeft('netwerken');
+  const metAdres = clubOfAct || heeft('voorzieningen');
+  const metIcoon = clubOfAct || heeft('voorzieningen');
+  const alleenNieuws = gekozen.length === 1 && heeft('nieuws');
+
+  function rijVoor(soort, publiceer) {
+    const kort = String(fd.omschrijving || '').trim();
+    const lang = String(fd.uitgebreid || '').trim();
+    const naam = String(fd.naam || '').trim();
+    const leegNull = (v) => (v === '' || v === undefined) ? null : v;
+    const plan = {};
+    if (planKolommen === true) TIB_PLAN_VELDEN.forEach(k => { plan[k] = fd[k] === '' ? null : fd[k]; });
+    const gedeeld = {
+      naam, categorie: fd.categorie, wijk: fd.wijk,
+      omschrijving: kort, uitgebreide_omschrijving: lang,
+      voor_wie: fd.voor_wie, wat: fd.wat, waar: fd.waar, kosten: fd.kosten,
+      contact: fd.contact, email: fd.email, telefoon: fd.telefoon, contact_zichtbaar: !!fd.contact_zichtbaar,
+      adres: fd.adres, lat: fd.lat, lng: fd.lng,
+      icoon_url: fd.icoon_url, icoon_label: fd.icoon_label,
+      foto_url: fd.foto_url || null, foto_alt: leegNull(fd.foto_alt),
+      status: publiceer ? 'Gepubliceerd' : 'Concept',
+      ...plan,
+    };
+    if (soort === 'clubjes') return gedeeld;
+    if (soort === 'activiteiten') return { ...gedeeld, herhalend: fd.frequentie ? fd.frequentie !== 'eenmalig' : true };
+    if (soort === 'nieuws') return {
+      titel: naam, lead: kort, inhoud: lang, cat: fd.nieuws_label, auteur: fd.auteur,
+      datum: fd.nieuws_datum || null, photo: fd.foto_url || null, photoAlt: fd.foto_alt || '',
+      status: publiceer ? 'Gepubliceerd' : 'Concept', uitgelicht: false,
+    };
+    if (soort === 'voorzieningen') return {
+      naam, soort: fd.soort || 'Overig', omschrijving: leegNull(kort || lang),
+      adres: leegNull(fd.adres), lat: fd.lat, lng: fd.lng,
+      telefoon: leegNull(fd.telefoon), website: leegNull(fd.website), openingstijden: leegNull(fd.openingstijden),
+      icoon_url: fd.icoon_url || null, icoon_label: fd.icoon_label || null,
+      foto_url: fd.foto_url || null, foto_alt: leegNull(fd.foto_alt),
+      zichtbaar: !!publiceer, volgorde: 0, bijgewerkt_op: new Date().toISOString(),
+    };
+    if (soort === 'netwerken') return {
+      naam, omschrijving: lang || kort, doelgroep: fd.doelgroep, locatie: fd.locatie,
+      website: fd.website, contact: fd.contact, email: fd.email, telefoon: fd.telefoon,
+      bijeenkomsten: fd.bijeenkomsten, voor_wie: fd.voor_wie, toegankelijk: fd.toegankelijk,
+      actief: !!publiceer,
+    };
+    return null;
+  }
+
+  async function bewaar(publiceer) {
+    if (bezig) return;
+    setUitslag(null);
+    if (!gekozen.length) { window.__showToast && window.__showToast('Vink eerst aan wat het is.'); return; }
+    if (!String(fd.naam || '').trim()) {
+      window.__showToast && window.__showToast('Vul eerst een ' + (alleenNieuws ? 'titel' : 'naam') + ' in — dat veld is verplicht.');
+      return;
+    }
+    setBezig(true);
+    const resultaten = [];
+    for (const soort of gekozen) {
+      const rij = rijVoor(soort.id, publiceer);
+      const gemaakt = await window.__supabaseInsert(soort.id, rij);
+      if (gemaakt) {
+        // De bewerkschermen zoeken hun item in DATA; zet het er meteen in.
+        if (soort.id !== 'voorzieningen' && Array.isArray(DATA[soort.id])) DATA[soort.id].push({ ...rij, ...gemaakt });
+        resultaten.push({ soort, gelukt: true });
+      } else {
+        resultaten.push({ soort, gelukt: false });
+      }
+    }
+    setBezig(false);
+    window.__syncToSite && window.__syncToSite();
+    const mislukt = resultaten.filter(r => !r.gelukt);
+    if (!mislukt.length) {
+      window.__showToast && window.__showToast((publiceer ? 'Gepubliceerd: ' : 'Opgeslagen als concept: ')
+        + resultaten.map(r => r.soort.label.toLowerCase()).join(', '));
+      onNav('mijn-items');
+      return;
+    }
+    // Wat wel gelukt is niet nog een keer aanmaken bij een volgende poging.
+    setSoorten(prev => {
+      const rest = { ...prev };
+      resultaten.filter(r => r.gelukt).forEach(r => { delete rest[r.soort.id]; });
+      return rest;
+    });
+    setUitslag(resultaten);
+  }
+
+  return (
+    <>
+      <PageHead title={fd.naam || 'Nieuw item'}
+        sub="Vul het één keer in en vink aan waar het op de website moet komen." />
+      <div className="form-grid">
+        <div>
+          <div className="form-section">
+            <h3>Wat is het?</h3>
+            <div className="sec-sub">Vink alles aan waar het op de website moet komen. Elk vinkje wordt een eigen item, dat u daarna los kunt aanpassen.</div>
+            <div className="soort-keuze">
+              {TIB_SOORTEN.map(x => (
+                <label key={x.id} className={'soort-vak' + (soorten[x.id] ? ' aan' : '')}>
+                  <input type="checkbox" checked={!!soorten[x.id]}
+                    onChange={e => setSoorten(prev => ({ ...prev, [x.id]: e.target.checked }))} />
+                  <Icon name={x.icoon} size={14} /> {x.label}
+                </label>
+              ))}
+            </div>
+            {uitslag && (
+              <HintCard variant="warn" icon="warn" style={{ marginTop: 12 }}>
+                {uitslag.filter(r => r.gelukt).length > 0 && (
+                  <div>Aangemaakt: {uitslag.filter(r => r.gelukt).map(r => r.soort.label.toLowerCase()).join(', ')}.</div>
+                )}
+                <div>Niet gelukt: {uitslag.filter(r => !r.gelukt).map(r => r.soort.label.toLowerCase()).join(', ')}.
+                  Die staan nog aangevinkt — probeer het nog een keer.</div>
+              </HintCard>
+            )}
+          </div>
+
+          {gekozen.length === 0 ? (
+            <HintCard icon="info">Kies hierboven wat u wilt toevoegen. Daarna verschijnen de velden die erbij horen.</HintCard>
+          ) : (<>
+          <div className="form-section">
+            <h3>Basisgegevens</h3>
+            <Field label={alleenNieuws ? 'Titel' : 'Naam'} verplicht>
+              <input type="text" value={fd.naam} onChange={e => up('naam', e.target.value)} />
+            </Field>
+            {clubOfAct && (
+              <div className="row-2">
+                <Field label="Categorie" uitleg="Kies de categorie uit de lijst. Die bepaalt het label en de kleur op de website bij bewonersinitiatieven en activiteiten.">
+                  <CategorieSelect value={fd.categorie} onChange={v => up('categorie', v)} />
+                </Field>
+                <Field label="Wijk / gebied" hint={'Staat standaard op ' + TIB_STANDAARD_WIJK + '.'}>
+                  <input type="text" value={fd.wijk} onChange={e => up('wijk', e.target.value)} placeholder={TIB_STANDAARD_WIJK} />
+                </Field>
+              </div>
+            )}
+            <Field label={heeft('nieuws') ? 'Korte omschrijving / intro' : 'Korte omschrijving'}
+              hint="Eén zin. Staat op de kaartjes en in de lijsten." kopieer={fd.omschrijving}>
+              <input type="text" value={fd.omschrijving} onChange={e => up('omschrijving', e.target.value)} />
+            </Field>
+            <Field label={heeft('nieuws') ? 'Uitgebreide tekst / het bericht' : 'Uitgebreide tekst'}
+              hint="Zichtbaar als iemand het item opent." kopieer={fd.uitgebreid}>
+              <textarea rows={7} value={fd.uitgebreid} onChange={e => up('uitgebreid', e.target.value)} />
+            </Field>
+            <SpellingKnop stukken={[
+              { label: 'Naam', tekst: fd.naam },
+              { label: 'Korte omschrijving', tekst: fd.omschrijving },
+              { label: 'Uitgebreide tekst', tekst: fd.uitgebreid },
+            ]} />
+          </div>
+
+          {heeft('nieuws') && (
+            <div className="form-section">
+              <h3>Nieuwsbericht</h3>
+              <div className="sec-sub">Alleen voor het nieuwsbericht.</div>
+              <Field label="Datum" hint="De dag waarop het bericht hoort — niet de dag waarop u het typt."
+                uitleg="Deze datum zien bezoekers bij het bericht, en de nieuwslijst wordt erop gesorteerd. Een datum in de toekomst maakt het bericht niet later zichtbaar: zodra het gepubliceerd is, staat het meteen online.">
+                <DatumVeld waarde={fd.nieuws_datum} onChange={v => up('nieuws_datum', v)} />
+              </Field>
+              <div className="row-2">
+                <Field label="Label" hint="Bijvoorbeeld Buurttuin of Winkeliers. Leeg laten geeft Nieuws.">
+                  <input type="text" value={fd.nieuws_label} onChange={e => up('nieuws_label', e.target.value)} placeholder="Nieuws" />
+                </Field>
+                <Field label="Auteur" hint="Staat alleen in het CMS, niet op de website. Mag leeg blijven.">
+                  <input type="text" value={fd.auteur} onChange={e => up('auteur', e.target.value)} />
+                </Field>
+              </div>
+            </div>
+          )}
+
+          {clubOfAct && (
+            <div className="form-section">
+              <h3>Praktische informatie</h3>
+              <div className="sec-sub">Vult de blokjes "Voor wie / Wat / Waar / Kosten" op de pagina.</div>
+              <div className="row-2">
+                <Field label="Voor wie"><input type="text" value={fd.voor_wie} onChange={e => up('voor_wie', e.target.value)} /></Field>
+                <Field label="Wat"><input type="text" value={fd.wat} onChange={e => up('wat', e.target.value)} placeholder="bijv. Samen koken en eten" /></Field>
+              </div>
+              <Field label="Waar"><input type="text" value={fd.waar} onChange={e => up('waar', e.target.value)} /></Field>
+              <Field label="Kosten"><input type="text" value={fd.kosten} onChange={e => up('kosten', e.target.value)} /></Field>
+            </div>
+          )}
+
+          {clubOfAct && (
+            <WanneerBlok fd={fd} up={up} kolommen={planKolommen}
+              soort={heeft('clubjes') ? 'bewonersinitiatief' : 'activiteit'} />
+          )}
+
+          {heeft('voorzieningen') && (
+            <div className="form-section">
+              <h3>Voorziening</h3>
+              <div className="sec-sub">Alleen voor de voorziening.</div>
+              <div className="row-2">
+                <Field label="Soort" hint="Bepaalt de kleur van de stip op de kaart.">
+                  <select value={fd.soort} onChange={e => up('soort', e.target.value)}>
+                    {TIB_VOORZIENING_SOORTEN.map(x => <option key={x.id} value={x.id}>{x.id}</option>)}
+                  </select>
+                </Field>
+                <Field label="Openingstijden" hint="Vrije tekst, bijvoorbeeld: ma–vr 08:30–17:30.">
+                  <input type="text" value={fd.openingstijden} onChange={e => up('openingstijden', e.target.value)} />
+                </Field>
+              </div>
+            </div>
+          )}
+
+          {heeft('netwerken') && (
+            <div className="form-section">
+              <h3>Netwerk</h3>
+              <div className="sec-sub">Alleen voor het netwerk.</div>
+              <div className="row-2">
+                <Field label="Doelgroep"><input type="text" value={fd.doelgroep} onChange={e => up('doelgroep', e.target.value)} /></Field>
+                <Field label="Bereik / locatie"><input type="text" value={fd.locatie} onChange={e => up('locatie', e.target.value)} /></Field>
+              </div>
+              <div className="row-2">
+                <Field label="Wanneer komen ze samen"><input type="text" value={fd.bijeenkomsten} onChange={e => up('bijeenkomsten', e.target.value)} /></Field>
+                <Field label="Toegankelijkheid"><input type="text" value={fd.toegankelijk} onChange={e => up('toegankelijk', e.target.value)} /></Field>
+              </div>
+              {!clubOfAct && (
+                <Field label="Voor wie"><input type="text" value={fd.voor_wie} onChange={e => up('voor_wie', e.target.value)} /></Field>
+              )}
+            </div>
+          )}
+
+          {metContact && (
+            <div className="form-section">
+              <h3>Contact</h3>
+              {clubOfAct && (
+                <Field label="Contact weergeven op website">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+                    <input type="checkbox" checked={!!fd.contact_zichtbaar} onChange={e => up('contact_zichtbaar', e.target.checked)}
+                      style={{ width: 18, height: 18, accentColor: 'var(--accent-1)', cursor: 'pointer' }} />
+                    <span style={{ fontSize: '0.92rem' }}>Toon de Contact-tab op de pagina</span>
+                  </label>
+                </Field>
+              )}
+              {metPersoon && (
+                <div className="row-2">
+                  <Field label="Contactpersoon"><input type="text" value={fd.contact} onChange={e => up('contact', e.target.value)} /></Field>
+                  <Field label="E-mailadres"><input type="email" value={fd.email} onChange={e => up('email', e.target.value)} /></Field>
+                </div>
+              )}
+              <div className="row-2">
+                <Field label="Telefoon (optioneel)"><input type="tel" value={fd.telefoon} onChange={e => up('telefoon', e.target.value)} /></Field>
+                {metWebsite && (
+                  <Field label="Website (optioneel)"><input type="text" value={fd.website} onChange={e => up('website', e.target.value)} placeholder="bijv. bibliotheekdenhaag.nl" /></Field>
+                )}
+              </div>
+            </div>
+          )}
+
+          {metAdres && (
+            <div className="form-section">
+              <h3>Locatie op de kaart</h3>
+              <div className="sec-sub">Typ het adres en kies de juiste suggestie. Staat de pin niet goed? Sleep hem — het adres verandert mee.</div>
+              <Field label="Adres">
+                <AdresVeld value={fd.adres} onChange={v => up('adres', v)}
+                  onLocatieGevonden={(lat, lng) => { up('lat', lat); up('lng', lng); }} />
+              </Field>
+              {fd.lat != null && fd.lng != null ? (
+                <MiniMap lat={fd.lat} lng={fd.lng} label={fd.naam}
+                  onVerplaats={(la, lo) => { up('lat', la); up('lng', lo); }}
+                  onAdres={a => up('adres', a)} />
+              ) : null}
+            </div>
+          )}
+
+          <div className="form-section">
+            <h3>Foto</h3>
+            <div className="sec-sub">Eén foto voor alle aangevinkte plekken.</div>
+            <FotoVeld waarde={fd.foto_url} onChange={v => up('foto_url', v)}
+              alt={fd.foto_alt} onAlt={v => up('foto_alt', v)}
+              map="items" naam={fd.naam || 'item'} />
+          </div>
+
+          {metIcoon && (
+            <div className="form-section">
+              <h3>Icoon</h3>
+              <div className="sec-sub">Staat op de kaart en op de kaartjes.</div>
+              {fd.icoon_url && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <img src={fd.icoon_url} alt={fd.icoon_label || ''} style={{ width: 36, height: 36, borderRadius: 8 }} />
+                  <strong style={{ fontSize: 14 }}>{fd.icoon_label}</strong>
+                  <button type="button" title="Haal het gekozen icoon weg" className="btn btn-sm btn-ghost btn-danger" style={{ marginLeft: 'auto' }}
+                    onClick={() => { up('icoon_url', null); up('icoon_label', null); }}>
+                    <Icon name="trash" size={12} /> Weghalen
+                  </button>
+                </div>
+              )}
+              <IconenKiezer iconen={iconenLijst} gekozenLabel={fd.icoon_label}
+                onKies={(url, label) => { up('icoon_url', url); up('icoon_label', label); }} />
+            </div>
+          )}
+          </>)}
+        </div>
+
+        <div className="form-zijkolom">
+          <div className="side-card">
+            <h4>Publicatie</h4>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginBottom: 6 }}>Komt op:</div>
+            {gekozen.length === 0
+              ? <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>Nog niets aangevinkt.</div>
+              : gekozen.map(x => (
+                  <div key={x.id} className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>
+                    <Icon name={x.icoon} size={13} /> <strong>{x.label}</strong>
+                  </div>
+                ))}
+            <div className="divider"></div>
+            <button className="btn btn-primary btn-sm" style={{ width: '100%' }} disabled={bezig || !gekozen.length}
+              title="Zet het op de website, op elke aangevinkte plek" onClick={() => bewaar(true)}>
+              <Icon name="check" size={13} /> {bezig ? 'Bezig…' : 'Publiceren'}
+            </button>
+            <button className="btn btn-sm" style={{ width: '100%', marginTop: 8 }} disabled={bezig || !gekozen.length}
+              title="Bewaar het, maar zet het nog niet op de website" onClick={() => bewaar(false)}>
+              <Icon name="save" size={13} /> Opslaan als concept
+            </button>
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '10px 0 0' }}>
+              Beide knoppen gelden voor alles wat aangevinkt is. Daarna vindt u elk item terug in <strong>Mijn items</strong>.
+            </p>
+          </div>
+          <div className="side-card" style={{ background: 'var(--cream-2)' }}>
+            <h4>Hulp nodig?</h4>
+            <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0 }}>
+              Mail naar <a href="mailto:info@thuisindebuurt.nl" style={{ color: 'var(--accent-2)' }}>info@thuisindebuurt.nl</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function tibItemStatus(soortId, rij) {
+  if (soortId === 'voorzieningen') return rij.zichtbaar === false ? 'Concept' : 'Gepubliceerd';
+  if (soortId === 'netwerken') return rij.actief === false ? 'Concept' : 'Gepubliceerd';
+  return rij.status === 'Gepubliceerd' ? 'Gepubliceerd' : 'Concept';
+}
+
+function MijnItemsScherm({ onNav }) {
+  const [rijen, setRijen] = React.useState(null);
+  const [bewerken, setBewerken] = React.useState(null);
+  const [filter, setFilter] = React.useState('alle');
+  const [zoek, setZoek] = React.useState('');
+
+  async function laad() {
+    const res = await Promise.all(TIB_SOORTEN.map(x => window.supabase.from(x.id).select('*')));
+    const alles = [];
+    res.forEach((r, i) => {
+      const soort = TIB_SOORTEN[i];
+      if (r.error || !Array.isArray(r.data)) return;
+      // De bewerkschermen zoeken hun item in DATA: die meteen bijwerken,
+      // zodat een opgeslagen wijziging niet als nieuw item wordt aangemaakt.
+      if (soort.id !== 'voorzieningen') {
+        if (!Array.isArray(DATA[soort.id])) DATA[soort.id] = [];
+        DATA[soort.id].length = 0;
+        r.data.forEach(x => DATA[soort.id].push(x));
+      }
+      r.data.forEach(x => alles.push({ soort, rij: x }));
+    });
+    alles.sort((a, b) => String(b.rij.aangemaakt_op || '').localeCompare(String(a.rij.aangemaakt_op || '')));
+    setRijen(alles);
+  }
+  React.useEffect(() => { if (!bewerken) laad(); }, [bewerken]);
+
+  if (bewerken) {
+    const terug = () => setBewerken(null);
+    const { soort, rij } = bewerken;
+    if (soort.id === 'clubjes') return <ClubjeEdit id={rij.id} onBack={terug} />;
+    if (soort.id === 'activiteiten') return <ActiviteitEdit item={DATA.activiteiten.find(a => a.id === rij.id) || rij} onBack={terug} />;
+    if (soort.id === 'nieuws') return <NieuwsEdit item={DATA.nieuws.find(n => n.id === rij.id) || rij} onBack={terug} />;
+    if (soort.id === 'voorzieningen') return <VoorzieningEdit item={rij} onBack={terug} onOpgeslagen={laad} />;
+    if (soort.id === 'netwerken') return <NetwerkEdit item={DATA.netwerken.find(n => String(n.id) === String(rij.id)) || rij} onBack={terug} onOpgeslagen={laad} />;
+  }
+
+  const zichtbaar = (rijen || [])
+    .filter(x => filter === 'alle' || x.soort.id === filter)
+    .filter(x => !zoek || String(x.rij.naam || x.rij.titel || '').toLowerCase().includes(zoek.toLowerCase()));
+
+  return (
+    <>
+      <PageHead title="Mijn items" sub="Alles wat u hebt gemaakt. Klik op een item om het aan te passen of over te dragen aan Margareth."
+        actions={<button className="btn btn-primary" title="Voeg iets nieuws toe" onClick={() => onNav('nieuw-item')}>
+          <Icon name="plus" size={14} /> Nieuw item</button>} />
+      <div className="toolbar">
+          <div className="search">
+            <Icon name="search" size={14} />
+            <input placeholder="Zoek op naam…" value={zoek} onChange={e => setZoek(e.target.value)} />
+          </div>
+          <button className={'chip' + (filter === 'alle' ? ' active' : '')} title="Toon alles" onClick={() => setFilter('alle')}>Alles</button>
+          {TIB_SOORTEN.map(x => (
+            <button key={x.id} className={'chip' + (filter === x.id ? ' active' : '')} title={'Toon alleen ' + x.label.toLowerCase()}
+              onClick={() => setFilter(x.id)}>{x.label}</button>
+          ))}
+          <div style={{ marginLeft: 'auto', color: 'var(--ink-soft)', fontSize: 12.5 }}>
+            {rijen ? rijen.length + (rijen.length === 1 ? ' item' : ' items') : ''}
+          </div>
+      </div>
+      <div className="table-wrap">
+        {rijen === null ? (
+          <div style={{ padding: 24, color: 'var(--ink-soft)' }}>Bezig met laden…</div>
+        ) : zichtbaar.length === 0 ? (
+          <EmptyState title={rijen.length ? 'Niets gevonden' : 'Nog niets gemaakt'}
+            sub={rijen.length ? 'Pas het zoeken of de keuze aan.' : 'Klik op Nieuw item om iets toe te voegen.'} />
+        ) : (
+          <table className="table">
+            <thead><tr><th>Soort</th><th>Naam</th><th>Status</th><th>Aangemaakt</th><th></th></tr></thead>
+            <tbody>
+              {zichtbaar.map(x => (
+                <tr key={x.soort.id + '-' + x.rij.id} style={{ cursor: 'pointer' }} onClick={() => setBewerken(x)}>
+                  <td><span className="soort-label"><Icon name={x.soort.icoon} size={12} /> {x.soort.label}</span></td>
+                  <td><strong>{x.rij.naam || x.rij.titel || '(zonder naam)'}</strong></td>
+                  <td>{tibItemStatus(x.soort.id, x.rij) === 'Gepubliceerd'
+                    ? <Pill variant="published">Gepubliceerd</Pill> : <Pill variant="draft">Concept</Pill>}</td>
+                  <td style={{ color: 'var(--ink-soft)', fontSize: 12.5 }}>{x.rij.aangemaakt_op ? tibAanmaakMoment(x.rij.aangemaakt_op) : '—'}</td>
+                  <td><button className="btn btn-sm btn-ghost" title="Open dit item"><Icon name="edit" size={13} /></button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </>
   );
 }
@@ -10281,6 +10777,8 @@ function App() {
     dashboard: { crumbs: ['Dashboard'], render: () => <Dashboard onNav={gaNaar} onPreview={() => setPreviewOn(true)} badges={badges} /> },
     wijzigingen: { crumbs: ['Wijzigingen'], render: () => <WijzigingenScreen onNav={gaNaar} onBadgeRefresh={loadBadges} /> },
     pages: { crumbs: ["Pagina's"], render: () => <PagesScreen /> },
+    'nieuw-item': { crumbs: ['Nieuw item'], render: () => <NieuwItemScherm onNav={gaNaar} /> },
+    'mijn-items': { crumbs: ['Mijn items'], render: () => <MijnItemsScherm onNav={gaNaar} /> },
     clubjes: { crumbs: ['Bewonersinitiatieven'], render: () => <ClubjesScreen onNav={gaNaar} profile={profile} /> },
     activiteiten: { crumbs: ['Activiteiten'], render: () => <ActiviteitenScreen /> },
     agenda: { crumbs: ['Agenda'], render: () => <AgendaScreen /> },
@@ -10307,17 +10805,21 @@ function App() {
   };
 
   const role = profile?.role || 'beheerder';
+  // Een assistent die via een oude link of knop bij een van de vijf losse
+  // schermen uitkomt, gaat naar Mijn items. (18-11)
+  const echteRoute = (role === 'redactie_assistent' && TIB_OUDE_ASSISTENT_SCHERMEN.includes(route)) ? 'mijn-items' : route;
   const REDACTIE_BLOCKED = ['gebruikers', 'huisstijl', 'domein', 'wijzigingen'];
   const isBlocked =
-    (role === 'beheerder' && !BEHEERDER_ROUTES.has(route)) ||
-    (role === 'redactie_assistent' && !ASSISTENT_ROUTES.has(route)) ||
-    (role === 'redactie' && REDACTIE_BLOCKED.includes(route));
+    (role === 'beheerder' && !BEHEERDER_ROUTES.has(echteRoute)) ||
+    (role === 'redactie_assistent' && !ASSISTENT_ROUTES.has(echteRoute)) ||
+    (role === 'redactie' && REDACTIE_BLOCKED.includes(echteRoute)) ||
+    (role !== 'redactie_assistent' && ALLEEN_ASSISTENT_ROUTES.includes(echteRoute));
 
   // Nog niet vrijgegeven? Dan is het scherm ook niet te bereiken, ook niet
   // via een bewaarde link of een knop die ergens is blijven staan.
-  const current = (route === 'wijzigingen' && !tibLogboekZichtbaar())
+  const current = (echteRoute === 'wijzigingen' && !tibLogboekZichtbaar())
     ? screens.dashboard
-    : (screens[route] || screens.dashboard);
+    : (screens[echteRoute] || screens.dashboard);
 
   return (
     <div className={"app" + (previewOn ? " preview-on" : "")}>
