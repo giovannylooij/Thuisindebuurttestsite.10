@@ -298,6 +298,8 @@ a { color: inherit; text-decoration: none; }
 .btn-ghost:hover { background: var(--cream-2); color: var(--ink); }
 .btn-danger { color: var(--danger); }
 .btn-danger:hover { background: oklch(0.96 0.04 25); border-color: oklch(0.85 0.08 25); }
+/* Publiceren bij Nieuw item: grijs tot alles ingevuld is, dan groen (wens Armando, 18-11). */
+.publiceer-knop:disabled { background: var(--cream-2); border-color: var(--line); color: var(--ink-mute); cursor: not-allowed; }
 .btn-sm { padding: 5px 9px; font-size: 12.5px; }
 
 /* === Cards / Panels === */
@@ -1140,7 +1142,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.277', datum: '18-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.278', datum: '18-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -3126,7 +3128,11 @@ function IconenKiezer({ iconen, gekozenLabel, onKies }) {
   const [zweef, setZweef] = React.useState(null);
   const lijst = iconen || [];
   const toon = zweef || lijst.find(i => i.label === gekozenLabel) || null;
-  return (
+  return (<>
+    {/* Wens Armando, 18-11: duidelijk maken wat te kiezen als niets past. */}
+    <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--ink-soft)' }}>
+      Kies <strong>Overig</strong> als het gewenste icoon er niet tussen staat.
+    </p>
     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(74px, 1fr))', gap: 8,
@@ -3177,7 +3183,7 @@ function IconenKiezer({ iconen, gekozenLabel, onKies }) {
         )}
       </div>
     </div>
-  );
+  </>);
 }
 
 /* Een datumveld met een kruisje erachter. Een datum weer leegmaken was in de
@@ -3662,6 +3668,32 @@ function NieuwItemScherm({ onNav }) {
   const metIcoon = clubOfAct || heeft('voorzieningen');
   const alleenNieuws = gekozen.length === 1 && heeft('nieuws');
 
+  // Wat moet er nog in voordat het gepubliceerd mag worden? Opslaan als
+  // concept kan altijd (alleen de naam is dan nodig). Afgesproken met
+  // Giovanny en Armando, 18-11.
+  const isLeeg = (v) => !String(v == null ? '' : v).trim();
+  const ontbreekt = [];
+  if (gekozen.length) {
+    const nodigBij = (tekst, ids) => {
+      const bij = gekozen.filter(x => ids.indexOf(x.id) !== -1);
+      if (!bij.length) return;
+      ontbreekt.push(gekozen.length > 1 ? tekst + ' (' + bij.map(x => x.label.toLowerCase()).join(', ') + ')' : tekst);
+    };
+    if (isLeeg(fd.naam)) ontbreekt.push(alleenNieuws ? 'titel' : 'naam');
+    if (isLeeg(fd.omschrijving)) ontbreekt.push('korte omschrijving');
+    if (!fd.icoon_url && !fd.icoon_label) nodigBij('icoon', ['clubjes', 'activiteiten']);
+    if (isLeeg(fd.email) && isLeeg(fd.telefoon)) nodigBij('e-mailadres of telefoon', ['clubjes']);
+    if (planKolommen === true) {
+      if (isLeeg(fd.frequentie)) nodigBij('hoe vaak', ['activiteiten']);
+      if (fd.frequentie !== 'onregelmatig' && !fd.startdatum) nodigBij('startdatum', ['activiteiten']);
+    }
+    if (isLeeg(fd.uitgebreid)) nodigBij('uitgebreide tekst', ['nieuws']);
+    if (!fd.nieuws_datum) nodigBij('datum', ['nieuws']);
+    if (isLeeg(fd.adres) || fd.lat == null || fd.lng == null) nodigBij('adres met pin op de kaart', ['voorzieningen']);
+    if (isLeeg(fd.contact) && isLeeg(fd.email)) nodigBij('contactpersoon of e-mailadres', ['netwerken']);
+  }
+  const klaarVoorPubliceren = gekozen.length > 0 && ontbreekt.length === 0;
+
   function rijVoor(soort, publiceer) {
     const kort = String(fd.omschrijving || '').trim();
     const lang = String(fd.uitgebreid || '').trim();
@@ -3710,6 +3742,10 @@ function NieuwItemScherm({ onNav }) {
     if (!gekozen.length) { window.__showToast && window.__showToast('Vink eerst aan wat het is.'); return; }
     if (!String(fd.naam || '').trim()) {
       window.__showToast && window.__showToast('Vul eerst een ' + (alleenNieuws ? 'titel' : 'naam') + ' in — dat veld is verplicht.');
+      return;
+    }
+    if (publiceer && ontbreekt.length) {
+      window.__showToast && window.__showToast('Nog invullen voor publiceren: ' + ontbreekt.join(', ') + '.');
       return;
     }
     setBezig(true);
@@ -3969,10 +4005,25 @@ function NieuwItemScherm({ onNav }) {
               title="Eerst opslaan, dan kunt u het op de website bekijken">
               <Icon name="eye" size={13} /> Voorvertoning
             </button>
-            <button className="btn btn-primary btn-sm" style={{ width: '100%', marginTop: 8 }} disabled={bezig || !gekozen.length}
-              title="Zet het op de website, op elke aangevinkte plek" onClick={() => bewaar(true)}>
-              <Icon name="check" size={13} /> Publiceren
+            <button className={'btn btn-sm publiceer-knop' + (klaarVoorPubliceren ? ' btn-accent' : '')}
+              style={{ width: '100%', marginTop: 8 }} disabled={bezig || !klaarVoorPubliceren}
+              title={klaarVoorPubliceren ? 'Zet het op de website, op elke aangevinkte plek'
+                : 'Eerst de verplichte velden invullen; zie de lijst hieronder'}
+              onClick={() => bewaar(true)}>
+              {klaarVoorPubliceren && <Icon name="check" size={13} />} Publiceren
             </button>
+            {gekozen.length > 0 && (klaarVoorPubliceren ? (
+              <p style={{ fontSize: 12, color: 'var(--accent-2)', margin: '8px 0 0', fontWeight: 600 }}>
+                Alles ingevuld — klaar om te publiceren.
+              </p>
+            ) : (
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0 0' }}>
+                <strong style={{ color: 'var(--ink)' }}>Nog invullen voor publiceren:</strong>
+                <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                  {ontbreekt.map(t => <li key={t}>{t}</li>)}
+                </ul>
+              </div>
+            ))}
             <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '10px 0 0' }}>
               Met <strong>Opslaan</strong> bewaart u het als concept — het staat dan nog niet op de
               website, en u kunt later verder in <strong>Mijn items</strong>. Beide knoppen gelden voor
