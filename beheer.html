@@ -1142,7 +1142,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.280', datum: '18-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.281', datum: '18-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -5954,8 +5954,13 @@ const TIB_TEKST_PAGINAS = [
     { sleutel: 'hero_lead', label: 'Tekst onder de titel', lang: true, standaard: 'Thuis in de Buurt brengt buurtgenoten samen. Ontdek bewonersinitiatieven om de hoek, sluit aan bij koffieochtenden, of start zelf iets nieuws. Allemaal vrijwilligers, allemaal buren.' },
     { sleutel: 'intro_eyebrow', label: 'Blok "Wat is TIB" — klein kopje', standaard: 'Wat is Thuis in de Buurt?' },
     { sleutel: 'intro_titel', label: 'Blok "Wat is TIB" — titel', standaard: 'Een buurtprikbord gemaakt door TIBbers.' },
+    // De tekst rechts in dit blok en de knop (Margareth deel 5: "Waar kan ik de tekst rechts aanpassen?").
+    { sleutel: 'intro_tekst1', label: 'Blok "Wat is TIB" — eerste alinea rechts', lang: true, hint: 'Pas je deze tekst aan, dan staat het woord TIBbers niet meer vetgedrukt.', standaard: 'Wij zijn een groep buurtbewoners de TIBbers — die zich inzet voor een warme, levendige wijk. Geen organisatie van bovenaf, maar een netwerk van mensen die elkaar willen leren kennen.' },
+    { sleutel: 'intro_tekst2', label: 'Blok "Wat is TIB" — tweede alinea rechts', lang: true, standaard: 'Op deze site vind je álles wat er in Noordelijk Scheveningen te doen is: van bewonersinitiatieven en koffieochtenden tot de jaarlijkse Walking Dinner.' },
+    { sleutel: 'intro_knop', label: 'Blok "Wat is TIB" — tekst op de knop', standaard: 'Word ook TIBber' },
     { sleutel: 'clubjes_eyebrow', label: 'Blok Bewonersinitiatieven — klein kopje', standaard: 'Bewonersinitiatieven om de hoek' },
     { sleutel: 'clubjes_titel', label: 'Blok Bewonersinitiatieven — titel', standaard: 'Zoek jouw mensen, vind jouw ding.' },
+    { sleutel: 'clubjes_tekst', label: 'Blok Bewonersinitiatieven — tekst rechts', lang: true, standaard: 'Een bewonersinitiatief komt uit de buurt zelf: bewoners die samen iets organiseren — schaken, wandelen, lezen, fotograferen. Open voor iedereen die wil aansluiten.' },
     { sleutel: 'activiteiten_eyebrow', label: 'Blok Activiteiten — klein kopje', standaard: 'Elke week iets te doen' },
     { sleutel: 'activiteiten_titel', label: 'Blok Activiteiten — titel', standaard: 'Terugkerende activiteiten.' },
     { sleutel: 'partners_eyebrow', label: 'Blok Partners — klein kopje', standaard: 'Samen met' },
@@ -7007,10 +7012,11 @@ function NetwerkEdit({ item, onBack, onOpgeslagen }) {
             <Field label="Toegankelijkheid" hint="bijv. Begane grond · ringleiding aanwezig">
               <input type="text" value={fd.toegankelijk || ''} onChange={e => up('toegankelijk', e.target.value)} />
             </Field>
-            <div className="row-2">
-              <Field label="Contactpersoon"><input type="text" value={fd.contact || ''} onChange={e => up('contact', e.target.value)} /></Field>
-              <Field label="E-mailadres"><input type="email" value={fd.email || ''} onChange={e => up('email', e.target.value)} /></Field>
-            </div>
+            {/* Groter veld, zodat er meer dan één contactpersoon in past (Margareth deel 5). */}
+            <Field label="Contactperso(o)n(en)" hint="Meer dan één? Zet elke persoon op een eigen regel; zo komen ze ook op de website.">
+              <textarea rows={4} value={fd.contact || ''} onChange={e => up('contact', e.target.value)} style={{ width: '100%', boxSizing: 'border-box' }} />
+            </Field>
+            <Field label="E-mailadres"><input type="email" value={fd.email || ''} onChange={e => up('email', e.target.value)} /></Field>
             <Field label="Telefoon"><input type="tel" value={fd.telefoon || ''} onChange={e => up('telefoon', e.target.value)} /></Field>
           </div>
           )}
