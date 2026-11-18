@@ -1142,7 +1142,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.284', datum: '18-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.285', datum: '18-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -3438,8 +3438,11 @@ function ClubjeEdit({ id, onBack }) {
         </HintCard>
       )}
       {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
-          maar nergens op reageert, laat iemand eindeloos klikken. */}
-      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55 }}>
+          maar nergens op reageert, laat iemand eindeloos klikken.
+          "disabled" blokkeert alleen echte velden en knoppen; de iconen, de
+          kaartpin en de adres-suggesties zijn klikbare vlakken. Daarom ook
+          pointerEvents uit (Giovanny 18-11: icoon en locatie bleven te wijzigen). */}
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55, pointerEvents: magBewerken ? 'auto' : 'none' }}>
 
       <div className="form-grid">
         {/* Main */}
@@ -4821,7 +4824,7 @@ function ActiviteitEdit({ item: itemProp, onBack }) {
       )}
       {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
           maar nergens op reageert, laat iemand eindeloos klikken. */}
-      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55 }}>
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55, pointerEvents: magBewerken ? 'auto' : 'none' }}>
 
       {TIB_BETALEN_AAN && bestaat && fd.betaald && betaalKolommen !== false && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
@@ -5583,7 +5586,7 @@ function NieuwsEdit({ item, onBack }) {
       )}
       {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
           maar nergens op reageert, laat iemand eindeloos klikken. */}
-      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55 }}>
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55, pointerEvents: magBewerken ? 'auto' : 'none' }}>
       <div className="form-grid">
         <div>
           <div className="form-section">
@@ -6776,7 +6779,7 @@ function VoorzieningEdit({ item, onBack, onOpgeslagen }) {
       )}
       {/* Op slot? Dan ook zichtbaar grijs. Een formulier dat er gewoon uitziet
           maar nergens op reageert, laat iemand eindeloos klikken. */}
-      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55 }}>
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55, pointerEvents: magBewerken ? 'auto' : 'none' }}>
       <div className="form-grid">
         <div>
           <div className="form-section">
@@ -7163,7 +7166,7 @@ function NetwerkEdit({ item, onBack, onOpgeslagen }) {
         </HintCard>
       )}
       {/* Op slot? Dan ook zichtbaar grijs, net als bij de andere schermen. */}
-      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55 }}>
+      <fieldset disabled={!magBewerken} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: magBewerken ? 1 : 0.55, pointerEvents: magBewerken ? 'auto' : 'none' }}>
       <div className="form-grid">
         <div>
           <div className="form-section">
