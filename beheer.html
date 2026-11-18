@@ -1142,7 +1142,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.282', datum: '18-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.284', datum: '18-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -6032,6 +6032,23 @@ const TIB_TEKST_PAGINAS = [
     { sleutel: 'titel', label: 'Titel', standaard: 'Bestel nu het boek "Leven is spelen".' },
     { sleutel: 'intro1', label: 'Introtekst', lang: true, standaard: 'Het inspirerende en informatieve boek van Margreet Jonkers (77). Met jouw bestelling steun je ook Thuis in de Buurt.' },
   ]},
+  // Privacybeleid, Cookies en Colofon (Margareth deel 5, 18-11): in de tekst wordt
+  // een regel met "## " een tussenkop en een regel met "- " een opsomming.
+  { id: 'privacy', label: 'Privacybeleid', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: "Privacybeleid" },
+    { sleutel: 'titel', label: 'Titel', standaard: "Zo gaan we om met je gegevens." },
+    { sleutel: 'tekst', label: 'Tekst van de pagina', lang: true, rijen: 22, hint: 'Een regel die begint met ## wordt een tussenkop, een regel die begint met - wordt een opsomming. Laat een lege regel tussen alinea\'s.', standaard: "Thuis in de Buurt is een initiatief van vrijwilligers in Noordelijk Scheveningen. Op deze pagina lees je welke gegevens we via deze website krijgen, wat we ermee doen en wat je rechten zijn. Vragen? Mail naar info@thuisindebuurt.nl.\n\n## Welke gegevens we krijgen\nWe krijgen alleen wat je zelf invult in een formulier op deze website:\n- Contactformulier: je naam, e-mailadres, het onderwerp en je bericht.\n- Doe mee: je naam, e-mailadres en je bericht.\n- Een bewonersinitiatief of activiteit aanmelden: de naam van het initiatief of de activiteit, bij een activiteit de naam van de organisatie, de naam van de contactpersoon, het e-mailadres, een telefoonnummer als je dat invult, de locatie, een korte beschrijving en het gekozen icoon.\n- Je aanmelden voor een bewonersinitiatief of activiteit: je naam, e-mailadres en een telefoonnummer als je dat invult. Bij sommige activiteiten ook het aantal personen, de namen van wie er meedoet en je antwoorden op de vragen bij die activiteit.\n- Het boek bestellen: je naam, adres, postcode, woonplaats, e-mailadres, een telefoonnummer als je dat invult en het aantal boeken.\n- \"Bestaat dit nog?\": wat er niet meer klopt en, als je dat invult, je e-mailadres.\n\n## Waarvoor we ze gebruiken\nAlleen voor het doel van het formulier: je vraag beantwoorden, contact met je opnemen over meedoen, je initiatief of activiteit op de website zetten, je aanmelding verwerken, het boek naar je opsturen of een fout op de website herstellen. We gebruiken je gegevens niet voor reclame en we verkopen ze nooit aan anderen.\n\nMeld je een bewonersinitiatief of activiteit aan, dan zetten we de naam van de contactpersoon en een knop om te mailen op de website, zodat buurtbewoners contact kunnen opnemen. Wil je dat niet, laat het ons dan weten.\n\n## Wie je gegevens kan zien\nAlleen de vrijwilligers van Thuis in de Buurt die de website bijhouden. De gegevens staan in een beveiligde database bij Supabase; de website zelf draait bij Vercel.\n\n## Hoe lang we ze bewaren\nNiet langer dan nodig. Berichten en aanmeldingen verwijderen we uiterlijk een jaar nadat ze zijn afgehandeld. Gegevens van een bewonersinitiatief of activiteit bewaren we zo lang als die op de website staat.\n\n## Doneren\nDoneren gaat via Donorbox. Je naam, adres en betaalgegevens vul je daar in, niet op onze website. Voor wat Donorbox met die gegevens doet, geldt het privacybeleid van Donorbox.\n\n## Je rechten\nJe mag altijd vragen welke gegevens we van je hebben, en vragen om ze te verbeteren of te verwijderen. Mail daarvoor naar info@thuisindebuurt.nl. We reageren binnen vier weken. Ben je het niet eens met hoe we met je gegevens omgaan, dan kun je een klacht indienen bij de Autoriteit Persoonsgegevens (www.autoriteitpersoonsgegevens.nl).\n\n## Cookies\nHoe we omgaan met cookies, lees je op de pagina Cookies." },
+  ]},
+  { id: 'cookies', label: 'Cookies', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: "Cookies" },
+    { sleutel: 'titel', label: 'Titel', standaard: "Geen volgcookies op deze website." },
+    { sleutel: 'tekst', label: 'Tekst van de pagina', lang: true, rijen: 22, hint: 'Een regel die begint met ## wordt een tussenkop, een regel die begint met - wordt een opsomming. Laat een lege regel tussen alinea\'s.', standaard: "Deze website gebruikt geen cookies die je volgen: geen advertentiecookies en geen cookies om bezoekers te tellen of te analyseren. Daarom vragen we ook niet om toestemming als je de website bezoekt.\n\n## Wat er wel in je browser blijft\nSoms onthoudt de website een kleine instelling in je eigen browser, bijvoorbeeld dat je een foto liever niet ziet. Dat blijft op je eigen apparaat en wordt niet naar ons gestuurd. Je kunt het wissen via de instellingen van je browser.\n\n## Diensten van anderen\nOm de website te laten werken, haalt je browser een paar dingen op bij andere diensten. Die krijgen daarbij, zoals bij elke website, je IP-adres te zien:\n- Google Fonts, voor de lettertypes.\n- OpenStreetMap, voor de kaarten.\n- Supabase, waar de gegevens van de website staan.\n\n## Links naar andere websites\nKlik je op een link naar bijvoorbeeld Facebook of Donorbox, dan ga je naar hun website. Daar gelden hun eigen regels voor cookies en privacy.\n\nVragen? Mail naar info@thuisindebuurt.nl. Lees ook ons privacybeleid." },
+  ]},
+  { id: 'colofon', label: 'Colofon', velden: [
+    { sleutel: 'eyebrow', label: 'Klein kopje', standaard: "Colofon" },
+    { sleutel: 'titel', label: 'Titel', standaard: "Over deze website." },
+    { sleutel: 'tekst', label: 'Tekst van de pagina', lang: true, rijen: 22, hint: 'Een regel die begint met ## wordt een tussenkop, een regel die begint met - wordt een opsomming. Laat een lege regel tussen alinea\'s.', standaard: "## Thuis in de Buurt\nEen initiatief van en voor bewoners van Noordelijk Scheveningen, gedragen door vrijwilligers. Mail ons via info@thuisindebuurt.nl.\n\n## Redactie\nDe inhoud van deze website wordt bijgehouden door de vrijwilligers van Thuis in de Buurt. Zie je iets dat niet klopt? Mail ons, of klik bij een bewonersinitiatief of activiteit op \"Bestaat dit nog?\".\n\n## Ontwerp en bouw\nLuxsoft — www.luxsoft.nl\n\n## Kaarten\nKaartgegevens © OpenStreetMap-bijdragers (www.openstreetmap.org/copyright).\n\n## Foto's en teksten\nFoto's en teksten zijn van Thuis in de Buurt of van de bewoners en organisaties die ze aanleverden, tenzij er iets anders bij staat. Wil je iets overnemen? Vraag het ons eerst.\n\n## Aansprakelijkheid\nWe doen ons best om alles op deze website juist en actueel te houden. Toch kan er iets niet kloppen; aan de inhoud kunnen geen rechten worden ontleend. Voor de inhoud van websites waarnaar we linken, zijn we niet verantwoordelijk." },
+  ]},
   { id: 'footer', label: 'Contactblok onderaan', velden: [
     { sleutel: 'titel', label: 'Kopje', standaard: 'Thuis in de Buurt' },
     { sleutel: 'tekst', label: 'Tekst', lang: true, standaard: 'Een vrijwilligersinitiatief in Noordelijk Scheveningen. Voor en door bewoners — van schaakclub tot Walking Dinner.' },
@@ -6252,7 +6269,7 @@ function PagesScreen({ startPagina }) {
                     </div>
                     {veld.lang ? (
                       <textarea
-                        rows={3}
+                        rows={veld.rijen || 3}
                         value={waardeVan(veld)}
                         placeholder={veld.standaard}
                         onChange={e => zetWaarde(veld, e.target.value)}
