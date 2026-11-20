@@ -1,6 +1,6 @@
 # To-do & stand van zaken — Thuis in de Buurt
 
-*Bijgewerkt: 13 september 2026 (opmerkingen deel 2 toegevoegd)*
+*Bijgewerkt: 20 november 2026 (stand betalen via Mollie toegevoegd)*
 
 ## Samenvatting
 
@@ -24,6 +24,38 @@ loopt mee, verwijderen wordt geblokkeerd zolang een categorie in gebruik is).
 1. B4 afmaken (keuze A of B + SQL-migratie) en daarna B3.
 2. Rechten-audit database — het gaat om persoonsgegevens.
 3. Een besluit over iDEAL (wacht al op een Mollie-account).
+
+---
+
+## 💳 Betalen via Mollie — stand 20-11-2026 (Margareth deel 5, punt "lukt betalen al?")
+
+Mollie draait nog op een **testaccount**. Niets gaat live voordat er een eigen
+account voor Thuis in de Buurt is.
+
+- **Doneren** werkt al, via Donorbox. Los daarvan: de rekening op naam van
+  "Livingstone" in het Donorbox-account nakijken (Giovanny).
+- **Betaalde activiteiten:** gebouwd en met de testsleutel getest (6/7-11),
+  maar uitgeschakeld. Nog te doen:
+  - [ ] **Eigen Mollie-account/websiteprofiel voor thuisindebuurt.nl.** Nu
+        staat er "Nexa Onderhoudsbedrijf" boven het bedrag op de betaalpagina.
+  - [ ] Bevestigingsmail na een geslaagde betaling (bestaat nog niet).
+  - [ ] Besluit overboeking: houdt 12–14 dagen een plek bezet. Voorstel:
+        alleen iDEAL bij activiteiten met een beperkt aantal plekken.
+  - [ ] Hintkaart "De koppeling met Mollie zit er nog niet in" weghalen.
+  - [ ] Live sleutel als Supabase-secret `MOLLIE_API_KEY` (Giovanny zelf,
+        nooit in chat of git), dan de drie schakelaars aan
+        (`TIB_BETALEN_AAN` in `beheer.html` én `bundle-src/detail.jsx`,
+        `TIB_MOLLIE_AAN` in `detail.jsx`), encode, pushen, live controleren.
+- **Boek:** nog géén online betaling. Bestelling komt in het CMS bij
+  Bestellingen; betalen gaat handmatig.
+  - [ ] Online betalen voor het boek bouwen met dezelfde Mollie-koppeling,
+        zodra het eigen account er is.
+  - [x] **Tot die tijd de boekpagina eerlijk maken** (gebouwd 20-11): de keuze
+        iDEAL/overboeking doet niets, en na het bestellen staat er
+        "We ontvangen de betaling van € … via iDEAL" terwijl er niet betaald
+        is (klacht Margareth). Nu: geen betaalkeuze meer, en "We nemen
+        contact met je op over de betaling van € …". Zodra online betalen
+        aangaat, dit in `bundle-src/boek.jsx` weer terugdraaien.
 
 **Rode draad in de gevonden problemen:** op meerdere plekken bewaart het CMS
 gegevens alleen in de browser (`localStorage`), waardoor wijzigingen de live
