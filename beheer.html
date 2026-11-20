@@ -223,6 +223,19 @@ a { color: inherit; text-decoration: none; }
   color: var(--ink-soft);
 }
 .search input { background: transparent; border: 0; outline: 0; width: 100%; }
+/* Zoeken in alles (topbalk) — de lijst met treffers onder het zoekvak. */
+.zoek-alles { position: relative; }
+.zoek-treffers {
+  position: absolute; top: calc(100% + 6px); right: 0; width: 420px; max-height: 70vh; overflow: auto;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(20, 30, 25, .16); z-index: 60; padding: 6px;
+}
+.zoek-treffers .zt-kop { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); padding: 8px 10px 4px; }
+.zoek-treffers .zt-rij { display: block; width: 100%; text-align: left; padding: 7px 10px; border-radius: 7px; cursor: pointer; color: var(--ink); }
+.zoek-treffers .zt-rij.actief, .zoek-treffers .zt-rij:hover { background: var(--cream-2); }
+.zoek-treffers .zt-naam { font-size: 13.5px; font-weight: 600; }
+.zoek-treffers .zt-sub { font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zoek-treffers .zt-leeg { padding: 12px 10px; font-size: 13px; color: var(--ink-soft); }
 .icon-btn {
   width: 34px; height: 34px;
   border-radius: 7px;
@@ -1142,7 +1155,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.286', datum: '20-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.287', datum: '20-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -1627,8 +1640,57 @@ function Sidebar({ active, onNav, onLogout, profile, userEmail, badges }) {
   );
 }
 
+/* Zoeken in alles (wens Giovanny 20-11): Margareth typt in het zoekvak
+   bovenin en ziet meteen treffers uit alle rubrieken. Klikken of Enter
+   opent het item, op dezelfde manier als "Bekijken" in het logboek. */
+const TIB_ZOEK_RUBRIEKEN = [
+  { tabel: 'clubjes',       label: 'Bewonersinitiatieven' },
+  { tabel: 'activiteiten',  label: 'Activiteiten' },
+  { tabel: 'agenda',        label: 'Agenda' },
+  { tabel: 'nieuws',        label: 'Nieuws' },
+  { tabel: 'voorzieningen', label: 'Voorzieningen' },
+  { tabel: 'partners',      label: 'Partners' },
+  { tabel: 'netwerken',     label: 'Netwerken' },
+];
+// Voorzieningen staan niet in DATA: bij elke klik in het zoekvak vers
+// ophalen, zodat een net toegevoegde voorziening meteen te vinden is.
+function tibZoekLaadVz() {
+  if (!window.supabase) return Promise.resolve([]);
+  return Promise.resolve(window.supabase.from('voorzieningen').select('id, naam, soort, adres, omschrijving'))
+    .then(r => (r && r.data) || []).catch(() => []);
+}
+function tibZoekInAlles(term, vz) {
+  const t = String(term || '').trim().toLowerCase();
+  if (t.length < 2) return [];
+  const velden = ['naam', 'titel', 'korte_omschrijving', 'omschrijving', 'samenvatting', 'intro',
+    'locatie', 'adres', 'contact', 'categorie', 'soort', 'type', 'korte_naam'];
+  const groepen = [];
+  TIB_ZOEK_RUBRIEKEN.forEach(r => {
+    const lijst = r.tabel === 'voorzieningen' ? (vz || []) : ((window.DATA && window.DATA[r.tabel]) || []);
+    const hits = lijst.filter(x => velden.some(v => x && x[v] && String(x[v]).toLowerCase().includes(t)));
+    // Wie de naam zelf raakt, komt bovenaan.
+    hits.sort((a, b) => {
+      const na = String(a.naam || a.titel || '').toLowerCase().includes(t) ? 0 : 1;
+      const nb = String(b.naam || b.titel || '').toLowerCase().includes(t) ? 0 : 1;
+      return na - nb;
+    });
+    if (hits.length) groepen.push({ ...r, items: hits.slice(0, 6), meer: hits.length - 6 });
+  });
+  return groepen;
+}
+function tibZoekOpen(tabel, id) {
+  tibWilItemOpenen(tabel, id);
+  window.__tibGaNaar && window.__tibGaNaar(TIB_LOG_ROUTE[tabel] || tabel);
+}
+
 function Topbar({ crumbs, previewOn, onTogglePreview, kanTerug }) {
   const [globalSearch, setGlobalSearch] = React.useState('');
+  const [zoekOpen, setZoekOpen] = React.useState(false);
+  const [zoekVz, setZoekVz] = React.useState([]);
+  const [actief, setActief] = React.useState(0);
+  const zoekGroepen = tibIsAssistent() ? [] : tibZoekInAlles(globalSearch, zoekVz);
+  const zoekPlat = [];
+  zoekGroepen.forEach(g => g.items.forEach(x => zoekPlat.push({ tabel: g.tabel, rij: x })));
   // Verschijnt zodra er een item openstaat, en verdwijnt weer als het sluit.
   const [itemOpen, setItemOpen] = React.useState(!!window.__tibSluitItem);
   React.useEffect(() => {
@@ -1641,11 +1703,10 @@ function Topbar({ crumbs, previewOn, onTogglePreview, kanTerug }) {
     try { window.history.back(); } catch (e) {}
   }
   // Een redactie-assistent zoekt in zijn eigen items: Enter opent Mijn items
-  // met de zoekterm al ingevuld, en ⌘K zet de cursor in het zoekvak.
-  // Voor de andere rollen blijft het zoekvak zoals het was.
+  // met de zoekterm al ingevuld. De andere rollen zoeken in alles (lijst met
+  // treffers onder het zoekvak). ⌘K zet voor iedereen de cursor in het zoekvak.
   const zoekRef = React.useRef(null);
   React.useEffect(() => {
-    if (!tibIsAssistent()) return;
     function sneltoets(e) {
       if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {
         e.preventDefault();
@@ -1664,10 +1725,24 @@ function Topbar({ crumbs, previewOn, onTogglePreview, kanTerug }) {
       e.target.blur();
       return;
     }
+    if (e.key === 'Escape') { setZoekOpen(false); e.target.blur(); return; }
+    if (e.key === 'ArrowDown' && zoekPlat.length) { e.preventDefault(); setZoekOpen(true); setActief(a => Math.min(a + 1, zoekPlat.length - 1)); return; }
+    if (e.key === 'ArrowUp' && zoekPlat.length) { e.preventDefault(); setActief(a => Math.max(a - 1, 0)); return; }
     if (e.key === 'Enter' && globalSearch.trim()) {
-      window.__showToast && window.__showToast('Zoeken naar: ' + globalSearch.trim());
-      setGlobalSearch('');
+      const keuze = zoekPlat[actief] || zoekPlat[0];
+      if (keuze) { kiesTreffer(keuze.tabel, keuze.rij.id); e.target.blur(); }
     }
+  }
+  function kiesTreffer(tabel, id) {
+    setZoekOpen(false);
+    setGlobalSearch('');
+    setActief(0);
+    tibZoekOpen(tabel, id);
+  }
+  function zoekFocus() {
+    if (tibIsAssistent()) return;
+    setZoekOpen(true);
+    tibZoekLaadVz().then(setZoekVz);
   }
   return (
     <div className="topbar">
@@ -1687,10 +1762,38 @@ function Topbar({ crumbs, previewOn, onTogglePreview, kanTerug }) {
         ))}
       </div>
       <div className="topbar-right">
-        <div className="search">
+        <div className="search zoek-alles">
           <Icon name="search" size={14} />
-          <input ref={zoekRef} placeholder={tibIsAssistent() ? 'Zoek in mijn items…' : 'Zoek in alles…'} value={globalSearch} onChange={e => setGlobalSearch(e.target.value)} onKeyDown={handleSearch} />
+          <input ref={zoekRef} placeholder={tibIsAssistent() ? 'Zoek in mijn items…' : 'Zoek in alles…'} value={globalSearch}
+            onChange={e => { setGlobalSearch(e.target.value); setActief(0); setZoekOpen(true); }}
+            onFocus={zoekFocus}
+            onBlur={() => setTimeout(() => setZoekOpen(false), 150)}
+            onKeyDown={handleSearch} />
           <span className="kbd">⌘K</span>
+          {zoekOpen && !tibIsAssistent() && globalSearch.trim().length >= 2 && (
+            <div className="zoek-treffers" onMouseDown={e => e.preventDefault()}>
+              {zoekGroepen.length === 0 ? (
+                <div className="zt-leeg">Niets gevonden voor “{globalSearch.trim()}”.</div>
+              ) : zoekGroepen.map(g => (
+                <div key={g.tabel}>
+                  <div className="zt-kop">{g.label}</div>
+                  {g.items.map(x => {
+                    const plek = zoekPlat.findIndex(p => p.tabel === g.tabel && p.rij === x);
+                    const sub = [x.datum, x.categorie || x.soort || x.type, x.korte_omschrijving || x.samenvatting || x.intro || x.omschrijving || x.adres]
+                      .filter(Boolean).join(' · ');
+                    return (
+                      <button key={x.id} type="button" className={'zt-rij' + (plek === actief ? ' actief' : '')}
+                        onMouseEnter={() => setActief(plek)} onClick={() => kiesTreffer(g.tabel, x.id)}>
+                        <div className="zt-naam">{x.naam || x.titel || '(zonder naam)'}</div>
+                        {sub && <div className="zt-sub">{sub}</div>}
+                      </button>
+                    );
+                  })}
+                  {g.meer > 0 && <div className="zt-leeg" style={{ padding: '2px 10px 6px', fontSize: 12 }}>en nog {g.meer} — typ verder om te verfijnen</div>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <button className="icon-btn" title="Meldingen" onClick={() => window.__showToast && window.__showToast('Geen nieuwe meldingen')}>
           <Icon name="bell" size={16} />
