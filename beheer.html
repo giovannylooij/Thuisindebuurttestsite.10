@@ -1142,7 +1142,7 @@ window.getActivityIcon = getActivityIcon;
 // Versienummer van het CMS. Deze regel wordt automatisch bijgewerkt door
 // tools/tib-versie.mjs bij elke commit waarin beheer.html meegaat — niet
 // met de hand aanpassen.
-const CMS_VERSIE = { nummer: '1.0.285', datum: '18-11-2026' };
+const CMS_VERSIE = { nummer: '1.0.286', datum: '20-11-2026' };
 
 window.DATA = {
   // Exact zoals in jouw site (Sport / Cultuur / Sociaal / Buiten / Lezen & leren / Overig)
@@ -6899,9 +6899,16 @@ function VoorzieningenScreen() {
   useOpenWens('voorzieningen', rijen || [], rij => setBewerken(rij));
   // Punt 16: volgorde slepen. De kolom `volgorde` zit al in de tabel.
   const magSlepen = soortFilter === 'alle' && !zoek;
+  // Margareth deel 5: de lijst staat per soort, in de volgorde van de soorten
+  // (Categorieën → Soorten voorzieningen). Binnen een soort telt de gesleepte
+  // volgorde.
+  const soortPlek = s => { const i = TIB_VOORZIENING_SOORTEN.findIndex(x => x.id === s); return i < 0 ? 999 : i; };
+  const gesorteerd = (rijen || []).map((r, i) => ({ r, i }))
+    .sort((a, b) => (soortPlek(a.r.soort) - soortPlek(b.r.soort)) || (a.i - b.i))
+    .map(x => x.r);
   const sleep = useSleepVolgorde({
     tabel: 'voorzieningen',
-    lijst: rijen || [],
+    lijst: gesorteerd,
     aan: magSlepen,
     naVerplaatsen: (nieuweLijst) => setRijen(nieuweLijst)
   });
@@ -6915,6 +6922,15 @@ function VoorzieningenScreen() {
   }
   React.useEffect(() => { laad(); }, []);
 
+  // Verwijderen vanuit de lijst, net als bij Bewonersinitiatieven.
+  async function verwijderVz(v) {
+    if (!window.confirm('Voorziening "' + v.naam + '" definitief verwijderen?')) return;
+    const { error } = await window.supabase.from('voorzieningen').delete().eq('id', v.id);
+    if (error) { window.__showToast && window.__showToast('Verwijderen mislukt: ' + error.message); return; }
+    window.__showToast && window.__showToast('Voorziening verwijderd');
+    laad();
+  }
+
   if (bewerken) {
     return <VoorzieningEdit
       item={bewerken === 'nieuw' ? null : bewerken}
@@ -6923,7 +6939,7 @@ function VoorzieningenScreen() {
     />;
   }
 
-  const lijst = tibZichtbaarVoorMij(rijen || [])
+  const lijst = tibZichtbaarVoorMij(gesorteerd)
     .filter(v => soortFilter === 'alle' || v.soort === soortFilter)
     .filter(v => !zoek || [v.naam, v.adres, v.omschrijving].some(x => x && x.toLowerCase().includes(zoek.toLowerCase())));
 
@@ -6943,13 +6959,29 @@ function VoorzieningenScreen() {
 
       {tabelBestaat && (
         <>
-          <div className="chip-row" style={{ marginBottom: 14, gap: 8, alignItems: 'center', flexWrap: 'wrap', display: 'flex' }}>
-            <input type="text" value={zoek} onChange={e => setZoek(e.target.value)} placeholder="Zoeken op naam of adres…" style={{ maxWidth: 260 }} />
-            <button title="Toon alle soorten voorzieningen" className={'btn btn-sm' + (soortFilter === 'alle' ? ' btn-primary' : '')} onClick={() => setSoortFilter('alle')}>Alle</button>
+          {/* Zelfde opbouw als Bewonersinitiatieven (wens Giovanny 19-11).
+              Er zijn meer soorten dan categorieën: de knoppen lopen door
+              naar een tweede regel in plaats van buiten beeld te vallen. */}
+          <div className="toolbar" style={{ flexWrap: 'wrap' }}>
+            <div className="search">
+              <Icon name="search" size={14} />
+              <input placeholder="Zoek op naam, adres of omschrijving…" value={zoek} onChange={e => setZoek(e.target.value)} />
+            </div>
+            <button title="Toon alle soorten voorzieningen" className={"chip" + (soortFilter === 'alle' ? " active" : "")} onClick={() => setSoortFilter('alle')}>Alle</button>
             {TIB_VOORZIENING_SOORTEN.map(s => (
-              <button title="Toon alleen deze soort" key={s.id} className={'btn btn-sm' + (soortFilter === s.id ? ' btn-primary' : '')} onClick={() => setSoortFilter(s.id)}>{s.id}</button>
+              <button title="Toon alleen deze soort" key={s.id} style={{ whiteSpace: 'nowrap' }} className={"chip" + (soortFilter === s.id ? " active" : "")} onClick={() => setSoortFilter(s.id)}>{s.id}</button>
             ))}
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', color: 'var(--ink-soft)', fontSize: 12.5 }}>
+              {lijst.length} voorzieningen
+            </div>
           </div>
+
+          {rijen && rijen.length > 1 && (
+            <SleepUitleg
+              aan={magSlepen}
+              redenUit={<>Zet het filter op <strong>Alle</strong> en maak het zoekveld leeg om de volgorde te kunnen slepen.</>}
+            />
+          )}
 
           {rijen === null ? (
             <p style={{ color: 'var(--ink-soft)' }}>Bezig met laden…</p>
@@ -6960,32 +6992,52 @@ function VoorzieningenScreen() {
                 : 'Geen voorzieningen gevonden met deze zoekopdracht.'}
             </HintCard>
           ) : (
-            <div>
-              {rijen.length > 1 && (
-                <SleepUitleg
-                  aan={magSlepen}
-                  redenUit={<>Zet het filter op <strong>Alle</strong> en maak het zoekveld leeg om de volgorde te kunnen slepen.</>}
-                />
-              )}
-              <div className="card">
-                <table className="table">
-                  <thead><tr><th style={{ width: 52 }}></th><th>Naam</th><th>Soort</th><th>Adres</th><th>Op de kaart</th><th>Zichtbaar</th></tr></thead>
-                  <tbody>
-                    {lijst.map((v, index) => (
-                      <tr key={v.id} onClick={() => setBewerken(v)} {...sleep.rijProps(index)}>
-                        <td>{sleep.greepCel(index)}</td>
-                        <td style={{ fontWeight: 600 }}>{v.naam}<EigenaarLabel rij={v} /></td>
-                        <td><span className="badge" style={{ background: tibSoortKleur(v.soort), color: 'white' }}>{v.soort}</span></td>
-                        <td>{v.adres || '—'}</td>
-                        <td>{v.lat != null && v.lng != null
-                          ? <Icon name="check" size={14} style={{ color: 'var(--accent-2)' }} />
-                          : <span style={{ color: 'var(--ink-soft)' }}>geen locatie</span>}</td>
-                        <td><Pill variant={v.zichtbaar !== false ? 'published' : 'draft'}>{v.zichtbaar !== false ? 'Zichtbaar' : 'Verborgen'}</Pill></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 52 }}></th>
+                    <th>Naam</th>
+                    <th>Soort</th>
+                    <th>Adres</th>
+                    <th>Op de kaart</th>
+                    <th>Status</th>
+                    <th style={{ width: 60 }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lijst.map((v, index) => (
+                    <tr key={v.id} onClick={() => setBewerken(v)} {...sleep.rijProps(index)}>
+                      <td>{sleep.greepCel(index)}</td>
+                      <td>
+                        <div className="strong">
+                          {v.naam}
+                          <EigenaarLabel rij={v} />
+                        </div>
+                        <div className="sub">{v.omschrijving}</div>
+                      </td>
+                      <td>{v.soort}</td>
+                      <td>{v.adres || '—'}</td>
+                      <td>{v.lat != null && v.lng != null
+                        ? <Icon name="check" size={14} style={{ color: 'var(--accent-2)' }} />
+                        : <span style={{ color: 'var(--ink-soft)' }}>geen locatie</span>}</td>
+                      <td><Pill variant={v.zichtbaar !== false ? 'published' : 'draft'}>{v.zichtbaar !== false ? 'Zichtbaar' : 'Verborgen'}</Pill></td>
+                      <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                        {tibMagBewerken(v) ? (
+                          <>
+                            <button className="icon-btn" title="Bewerken" onClick={() => setBewerken(v)}><Icon name="edit" size={15} /></button>
+                            <button className="icon-btn btn-danger" title="Verwijderen" onClick={() => verwijderVz(v)}><Icon name="trash" size={15} /></button>
+                          </>
+                        ) : (
+                          <button className="icon-btn" title={tibEigenaarTekst(v) + ' — u kunt het bekijken, niet aanpassen'} onClick={() => setBewerken(v)}>
+                            <Icon name="eye" size={15} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
